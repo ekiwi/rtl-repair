@@ -74,6 +74,7 @@ object SMTLibSerializer {
     case BVConcat(a, b)                     => s"(concat ${asBitVector(a)} ${asBitVector(b)})"
     case ArrayRead(array, index)            => s"(select ${serialize(array)} ${asBitVector(index)})"
     case BVIte(cond, tru, fals)             => s"(ite ${serialize(cond)} ${serialize(tru)} ${serialize(fals)})"
+    case BVFunctionCall(name, List(), _)    => escapeIdentifier(name)
     case BVFunctionCall(name, args, _)      => args.map(serializeArg).mkString(s"($name ", " ", ")")
     case BVForall(variable, e)              => s"(forall ((${variable.name} ${serialize(variable.tpe)})) ${serialize(e)})"
   }
@@ -89,6 +90,7 @@ object SMTLibSerializer {
     case ArrayStore(array, index, data)      => s"(store ${serialize(array)} ${serialize(index)} ${serialize(data)})"
     case ArrayIte(cond, tru, fals)           => s"(ite ${serialize(cond)} ${serialize(tru)} ${serialize(fals)})"
     case c @ ArrayConstant(e, _)             => s"((as const ${serializeArrayType(c.indexWidth, c.dataWidth)}) ${serialize(e)})"
+    case ArrayFunctionCall(name, List(), _,_) => escapeIdentifier(name)
     case ArrayFunctionCall(name, args, _, _) => args.map(serializeArg).mkString(s"($name ", " ", ")")
   }
 

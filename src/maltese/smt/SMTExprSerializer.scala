@@ -39,6 +39,7 @@ object SMTExprSerializer {
     // ternary
     case BVIte(cond, tru, fals) => s"ite(${serialize(cond)}, ${serialize(tru)}, ${serialize(fals)})"
     // n-ary
+    case BVFunctionCall(name, List(), _) => name // for 0-ary functions we just print the name
     case BVFunctionCall(name, args, _) => name + serialize(args).mkString("(", ",", ")")
   }
 
@@ -47,6 +48,7 @@ object SMTExprSerializer {
     case ArrayConstant(e, indexWidth)        => s"([${serialize(e)}] x ${(BigInt(1) << indexWidth)})"
     case ArrayStore(array, index, data)      => s"${serialize(array)}[${serialize(index)} := ${serialize(data)}]"
     case ArrayIte(cond, tru, fals)           => s"ite(${serialize(cond)}, ${serialize(tru)}, ${serialize(fals)})"
+    case ArrayFunctionCall(name, List(), _, _) => name // for 0-ary functions we just print the name
     case ArrayFunctionCall(name, args, _, _) => name + serialize(args).mkString("(", ",", ")")
   }
 
