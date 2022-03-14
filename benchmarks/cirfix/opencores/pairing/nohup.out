@@ -1,0 +1,60 @@
+PID 29301
+Running time 1672
+Killing 29301
+PID 25418
+Running time 6166
+Killing 25418
+PID 18909
+Running time 4470
+Killing 18909
+PID 14072
+Running time 4558
+Killing 14072
+PID 9326
+Running time 5854
+Killing 9326
+PID 9113
+Running time 3715
+Killing 9113
+PID 12830
+Running time 23
+PID 21429
+Running time 0
+PID 29608
+Running time 12
+PID 30859
+Running time 29
+PID 31484
+Running time 49
+PID 1009
+Running time 0
+PID 31484
+Running time 109
+Killing 31484
+PID 14613
+Running time 13
+PID 15240
+Running time 33
+PID 14613
+Running time 74
+Killing 14613
+PID 8784
+Running time 3
+PID 9426
+Running time 24
+PID 14788
+Running time 17
+PID 16695
+Running time 29
+PID 3959
+Running time 1
+PID 6549
+Running time 7
+PID 7942
+Running time 24
+PID 9694
+Running time 9694 9694 2
+/home/hammada/clean_simv.sh: line 17: 9694
+9694
+2 - 60: syntax error in expression (error token is "9694
+2 - 60")

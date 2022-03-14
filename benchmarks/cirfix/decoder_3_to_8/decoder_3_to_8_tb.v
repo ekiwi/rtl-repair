@@ -1,0 +1,50 @@
+`timescale 1ns / 100ps
+/**********************************************************************
+ * Date: Aug. 28, 1999
+ * File: Test Decoder 3 to 8.v   (440 Examples)
+ *
+ * Testbench to generate some stimulus and display the results for the
+ * 3-to-8 decoder module.
+ **********************************************************************/
+//*********************************************************
+  module Test_decoder_3to8;
+//*********************************************************  
+     wire  Y7, Y6, Y5, Y4, Y3, Y2, Y1, Y0;
+     reg   A, B, C;
+     reg   en;
+     // Instantiate the Decoder (named DUT {device under test})
+     decoder_3to8  DUT(Y7,Y6,Y5,Y4,Y3,Y2,Y1,Y0, A, B, C, en);
+  
+     integer f;
+     initial  begin
+        f = $fopen("output.txt");
+        $timeformat(-9, 1, " ns", 6); #1;
+        A  = 1'b0;       // time = 0
+        B  = 1'b0;
+        C  = 1'b0;
+        en = 1'b0;
+        #9;
+        en = 1'b1;      // time = 10
+        #10;
+        A  = 1'b0;
+        B  = 1'b1; 
+        C  = 1'b0;      // time = 20
+        #10;
+        A  = 1'b1;
+        B  = 1'b0;      
+        C  = 1'b0;      // time = 30
+        #10;
+        A  = 1'b1;
+        B  = 1'b1;
+        C  = 1'b0;      // time = 40
+        #5;
+        en = 1'b0;      // time = 45
+        #5;
+        $fclose(f);
+        $finish;
+     end
+   always @(A or B or C or en)  
+     $fmonitor(f,"t=%t en=%b ABC=%b%b%b Y=%b%b%b%b%b%b%b%b",
+$time,en,A,B,C,Y7,Y6,Y5,Y4,Y3,Y2,Y1,Y0);
+    
+  endmodule
