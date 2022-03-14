@@ -1,0 +1,30 @@
+# Scala
+/project/target
+/project/project
+target/
+/.bsp/
+
+# Intellij Idea
+/.idea/
+
+# chisel testers
+/test_run_dir/
+
+# Chisel compiler
+/*.v
+/*.fir
+/*.json
+
+# treadle
+/*.vcd
+
+# hprof profiling
+/*.hprof
+/*.txt
+/*.svg
+
+# unfortunate firrtl artifacts
+/*.btor2
+
+# system debug output
+/*.sys
