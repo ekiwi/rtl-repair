@@ -1,7 +1,7 @@
 package bugfix
 
 import maltese.mc._
-import maltese.smt._
+import maltese.smt.{BVLiteral, _}
 
 // playing around with a simple repair
 object Simple {
@@ -15,11 +15,11 @@ object Simple {
 
     // replace literals in system
     val (synSys, synSyms) = replaceConstants(sys)
-    println(synSys.serialize)
+    // println(synSys.serialize)
 
     // load system and communicate to solver
     val encoding = new CompactEncoding(synSys)
-    val ctx = Z3SMTLib.createContext(true)
+    val ctx = Z3SMTLib.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
     ctx.setLogic("ALL")
     encoding.defineHeader(ctx)
     encoding.init(ctx)
@@ -30,14 +30,43 @@ object Simple {
     }
 
     // unroll and compare results
+    val tbSymbols = Seq("en", "A", "B", "C", "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7")
+      .map(name => BVSymbol(name, 1))
     val tb = Seq(
-//      en=0 ABC=000 Y=11111111
-//      en=1 ABC=000 Y=11111110
-//      en=1 ABC=010 Y=11111011
-//      en=1 ABC=100 Y=11101111
-//      en=1 ABC=110 Y=10111111
-//      en=0 ABC=110 Y=11111111
+      //      en=0 ABC=000 Y=11111111
+      //      en=1 ABC=000 Y=11111110
+      //      en=1 ABC=010 Y=11111011
+      //      en=1 ABC=100 Y=11101111
+      //      en=1 ABC=110 Y=10111111
+      //      en=0 ABC=110 Y=11111111
+      Seq(0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+      Seq(1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0),
+      Seq(1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1),
+      Seq(1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1),
+      Seq(1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1),
+      Seq(0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1),
     )
+
+    tb.zipWithIndex.foreach { case (values, ii) =>
+      values.zip(tbSymbols).foreach { case (value, sym) =>
+        val signal = encoding.getSignalAt(sym, ii)
+        if(value == 1) { ctx.assert(signal) } else { ctx.assert(BVNot(signal)) }
+      }
+      encoding.unroll(ctx)
+    }
+
+    // try to synthesize constants
+    ctx.check() match {
+      case IsSat => println("Solution found:")
+      case IsUnSat => throw new RuntimeException(s"No possible solution could be found")
+      case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
+    }
+    synSyms.foreach { case (sym, oldValue) =>
+      val newValue = ctx.getValue(sym).get
+      if(oldValue != newValue) {
+        println(s"${sym.name}: $oldValue -> $newValue")
+      }
+    }
 
 
     ctx.close()
