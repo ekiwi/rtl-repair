@@ -8,12 +8,18 @@ object Simple {
   def main(args: Array[String]): Unit = {
     val circuits = Seq(
       "decoder_3_to_8.btor",
+      // expected change for buggy1 (bug -> fix):
+      // 4'b1000 -> 4'b1010
+      // 8'b0111_1111 -> 8'b1111_1111
       "decoder_3_to_8_wadden_buggy1.btor",
+      // expected change for buggy2 (bug -> fix):
+      // 8 constants should change (missing leading 1)
       "decoder_3_to_8_wadden_buggy2.btor",
     )
 
     // define a testbench
-    val tbSymbols = Seq("en", "A", "B", "C", "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7")
+    //val tbSymbols = Seq("en", "A", "B", "C", "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7")
+    val tbSymbols = Seq("en", "A", "B", "C", "Y7", "Y6", "Y5", "Y4", "Y3", "Y2", "Y1", "Y0")
       .map(name => BVSymbol(name, 1))
     val tb = Seq(
       //      en=0 ABC=000 Y=11111111
@@ -34,14 +40,21 @@ object Simple {
       println(s"Trying to repair: $name")
       val sys = Btor2.load(os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8" / name)
       // try to synthesize a fix
-      fixConstants(sys, tbSymbols, tb, softConstraints = true)
+      val fixedSys = fixConstants(sys, tbSymbols, tb)
+      fixedSys.foreach { fixed =>
+        println("BEFORE:")
+        println(sys.serialize)
+        println("")
+        println("AFTER:")
+        println(fixed.serialize)
+      }
       println()
     }
   }
 
 
   // simple repair approach that tries to find a replacements for constants in the circuit
-  private def fixConstants(sys: TransitionSystem, tbSymbols: Seq[BVSymbol], tb: Seq[Seq[Int]], softConstraints: Boolean): Unit = {
+  private def fixConstants(sys: TransitionSystem, tbSymbols: Seq[BVSymbol], tb: Seq[Seq[Int]]): Option[TransitionSystem] = {
     // replace literals in system
     val (synSys, synSyms) = replaceConstants(sys)
     // println(synSys.serialize)
@@ -54,15 +67,15 @@ object Simple {
     encoding.init(ctx)
 
     // add soft constraints to change as few constants as possible
-    if(softConstraints) {
-      synSyms.foreach { case (sym, value) =>
-        ctx.softAssert(BVEqual(sym, BVLiteral(value, sym.width)))
-      }
+    synSyms.foreach { case (sym, value) =>
+      ctx.softAssert(BVEqual(sym, BVLiteral(value, sym.width)))
     }
 
+    // print out constants
+    println(s"${sys.name} contains ${synSyms.length} constants.")
+    println(synSyms.map(_._2).map(_.toLong.toBinaryString).mkString(", "))
+
     // unroll and compare results
-
-
     tb.zipWithIndex.foreach { case (values, ii) =>
       values.zip(tbSymbols).foreach { case (value, sym) =>
         val signal = encoding.getSignalAt(sym, ii)
@@ -77,15 +90,38 @@ object Simple {
       case IsUnSat => throw new RuntimeException(s"No possible solution could be found")
       case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
     }
-    synSyms.foreach { case (sym, oldValue) =>
-      val newValue = ctx.getValue(sym).get
-      if(oldValue != newValue) {
-        println(s"${sym.name}: $oldValue -> $newValue")
-      }
-    }
 
-
+    val newConstants = synSyms.map(t => ctx.getValue(t._1).get)
     ctx.close()
+
+    // print results
+    val changedConstants = synSyms.zip(newConstants).flatMap { case ((sym, oldValue), newValue) =>
+      if(oldValue != newValue) { Some((sym, oldValue, newValue)) } else { None }
+    }
+    if(changedConstants.isEmpty) {
+      println("Nothing needs to change. The circuit was already working correctly!")
+      None
+    } else {
+      changedConstants.foreach { case (sym, oldValue, newValue) =>
+        println(s"${sym.name}: ${oldValue.toLong.toBinaryString} -> ${newValue.toLong.toBinaryString}")
+      }
+      // substitute constants
+      val mapping = synSyms.zip(newConstants).map { case ((sym, _), newValue) => sym.name -> newValue }.toMap
+      Some(subBackConstants(synSys, mapping))
+    }
+  }
+
+  private def subBackConstants(sys: TransitionSystem, mapping: Map[String, BigInt]): TransitionSystem = {
+    def onExpr(s: SMTExpr): SMTExpr = s match {
+      case call @ BVFunctionCall(name, List(), width)  =>
+        mapping.get(name) match {
+          case Some(value) => BVLiteral(value, width)
+          case None => call
+        }
+      case other => SMTExprMap.mapExpr(other, onExpr)
+    }
+    val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
+    sys.copy(signals = signals)
   }
 
   private def replaceConstants(sys: TransitionSystem, prefix: String = "const_"): (TransitionSystem, Seq[(BVSymbol, BigInt)]) = {
