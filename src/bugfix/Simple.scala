@@ -39,14 +39,18 @@ object Simple {
     circuits.foreach { name =>
       println(s"Trying to repair: $name")
       val sys = Btor2.load(os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8" / name)
+
       // try to synthesize a fix
       val fixedSys = fixConstants(sys, tbSymbols, tb)
-      fixedSys.foreach { fixed =>
-        println("BEFORE:")
-        println(sys.serialize)
-        println("")
-        println("AFTER:")
-        println(fixed.serialize)
+      // print repaired system
+      if(false) {
+        fixedSys.foreach { fixed =>
+          println("BEFORE:")
+          println(sys.serialize)
+          println("")
+          println("AFTER:")
+          println(fixed.serialize)
+        }
       }
       println()
     }
@@ -55,8 +59,11 @@ object Simple {
 
   // simple repair approach that tries to find a replacements for constants in the circuit
   private def fixConstants(sys: TransitionSystem, tbSymbols: Seq[BVSymbol], tb: Seq[Seq[Int]]): Option[TransitionSystem] = {
+    // first inline constants which will have the effect of duplicating constants that are used more than once
+    val sysInlineConst = inlineConstants(sys)
+
     // replace literals in system
-    val (synSys, synSyms) = replaceConstants(sys)
+    val (synSys, synSyms) = replaceConstants(sysInlineConst)
     // println(synSys.serialize)
 
     // load system and communicate to solver
@@ -137,6 +144,29 @@ object Simple {
     }
     val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
     (sys.copy(signals = signals), consts)
+  }
+
+
+  /** Inlines all nodes that are only a constant.
+    * This can be very helpful for repairing constants, since we sometimes only want to fix one use of the constant
+    * and not all of them.
+    * */
+  private def inlineConstants(sys: TransitionSystem): TransitionSystem = {
+    val (const, nonConst) = sys.signals.partition { s => s.e match {
+      case _ : BVLiteral => true
+      case _ => false
+    }}
+    val lookup = const.map(s => s.name -> s.e).toMap
+    def onExpr(e: SMTExpr): SMTExpr = e match {
+      case sym : BVSymbol =>
+        lookup.get(sym.name) match {
+          case Some(value) => value
+          case None => sym
+        }
+      case other => SMTExprMap.mapExpr(other, onExpr)
+    }
+    val signals = nonConst.map(s => s.copy(e = onExpr(s.e)))
+    sys.copy(signals = signals)
   }
 
 }
