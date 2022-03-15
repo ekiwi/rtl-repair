@@ -14,6 +14,10 @@ object Simple {
       "decoder_3_to_8_wadden_buggy1.btor",
       // expected change for buggy2 (bug -> fix):
       // 8 constants should change (missing leading 1)
+      // However, there are some missing test cases, so that we do not actually need
+      // to change all the constants to pass the test bench.
+      // Missing cases (for ABC, with en=1): 001, 011, 101, 111
+      // TODO: how does CirFix deal with the fact that these are never covered by the TB?
       "decoder_3_to_8_wadden_buggy2.btor",
     )
 
@@ -38,6 +42,10 @@ object Simple {
 
     circuits.foreach { name =>
       println(s"Trying to repair: $name")
+      // note: the btor was crated with yosys using:
+      // - read_verilog
+      // - proc -noopt
+      // - write_btor
       val sys = Btor2.load(os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8" / name)
 
       // try to synthesize a fix
