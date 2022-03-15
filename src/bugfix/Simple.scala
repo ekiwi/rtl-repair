@@ -6,30 +6,13 @@ import maltese.smt.{BVLiteral, _}
 // playing around with a simple repair
 object Simple {
   def main(args: Array[String]): Unit = {
-    // load the simples benchmark
-    val sys = Btor2.load(os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8" / "decoder_3_to_8_wadden_buggy1.btor")
+    val circuits = Seq(
+      "decoder_3_to_8.btor",
+      "decoder_3_to_8_wadden_buggy1.btor",
+      "decoder_3_to_8_wadden_buggy2.btor",
+    )
 
-
-    // print benchmark
-    // println(sys.serialize)
-
-    // replace literals in system
-    val (synSys, synSyms) = replaceConstants(sys)
-    // println(synSys.serialize)
-
-    // load system and communicate to solver
-    val encoding = new CompactEncoding(synSys)
-    val ctx = Z3SMTLib.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
-    ctx.setLogic("ALL")
-    encoding.defineHeader(ctx)
-    encoding.init(ctx)
-
-    // add soft constraints to change as few constants as possible
-    synSyms.foreach { case (sym, value) =>
-      ctx.softAssert(BVEqual(sym, BVLiteral(value, sym.width)))
-    }
-
-    // unroll and compare results
+    // define a testbench
     val tbSymbols = Seq("en", "A", "B", "C", "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7")
       .map(name => BVSymbol(name, 1))
     val tb = Seq(
@@ -46,6 +29,39 @@ object Simple {
       Seq(1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1),
       Seq(0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1),
     )
+
+    circuits.foreach { name =>
+      println(s"Trying to repair: $name")
+      val sys = Btor2.load(os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8" / name)
+      // try to synthesize a fix
+      fixConstants(sys, tbSymbols, tb, softConstraints = true)
+      println()
+    }
+  }
+
+
+  // simple repair approach that tries to find a replacements for constants in the circuit
+  private def fixConstants(sys: TransitionSystem, tbSymbols: Seq[BVSymbol], tb: Seq[Seq[Int]], softConstraints: Boolean): Unit = {
+    // replace literals in system
+    val (synSys, synSyms) = replaceConstants(sys)
+    // println(synSys.serialize)
+
+    // load system and communicate to solver
+    val encoding = new CompactEncoding(synSys)
+    val ctx = Z3SMTLib.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
+    ctx.setLogic("ALL")
+    encoding.defineHeader(ctx)
+    encoding.init(ctx)
+
+    // add soft constraints to change as few constants as possible
+    if(softConstraints) {
+      synSyms.foreach { case (sym, value) =>
+        ctx.softAssert(BVEqual(sym, BVLiteral(value, sym.width)))
+      }
+    }
+
+    // unroll and compare results
+
 
     tb.zipWithIndex.foreach { case (values, ii) =>
       values.zip(tbSymbols).foreach { case (value, sym) =>
