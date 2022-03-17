@@ -76,7 +76,9 @@ object Simple {
 
     // load system and communicate to solver
     val encoding = new CompactEncoding(synSys)
-    val ctx = Z3SMTLib.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
+    // select solver
+    val solver = if(true) { Z3SMTLib } else { OptiMathSatSMTLib }
+    val ctx = solver.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
     ctx.setLogic("ALL")
     encoding.defineHeader(ctx)
     encoding.init(ctx)

@@ -31,6 +31,15 @@ object Z3SMTLib extends Solver {
   override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
 }
 
+object OptiMathSatSMTLib extends Solver {
+  private val cmd = List("optimathsat", "-optimization=true", "-model_generation=true")
+  override def name = "opti-math-sat-smtlib"
+  override def supportsConstArrays = true
+  override def supportsUninterpretedFunctions = true
+  override def supportsQuantifiers = true
+  override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
+}
+
 /** provides basic facilities to interact with any SMT solver that supports a SMTLib base textual interface */
 private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: Boolean) extends SolverContext {
   private var _stackDepth: Int = 0
