@@ -71,9 +71,9 @@ object TransitionSystem {
   private def findUFCalls(e: SMTExpr): List[DeclareFunction] = {
     val f = e match {
       case BVFunctionCall(name, args, width) =>
-        Some(DeclareFunction(BVSymbol(name, width), args))
+        Some(DeclareFunction(BVSymbol(name, width), args.map(_.tpe)))
       case ArrayFunctionCall(name, args, indexWidth, dataWidth) =>
-        Some(DeclareFunction(ArraySymbol(name, indexWidth, dataWidth), args))
+        Some(DeclareFunction(ArraySymbol(name, indexWidth, dataWidth), args.map(_.tpe)))
       case _ => None
     }
     f.toList ++ e.children.flatMap(findUFCalls)

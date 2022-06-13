@@ -75,7 +75,7 @@ object SMTLibSerializer {
     case ArrayRead(array, index)            => s"(select ${serialize(array)} ${asBitVector(index)})"
     case BVIte(cond, tru, fals)             => s"(ite ${serialize(cond)} ${serialize(tru)} ${serialize(fals)})"
     case BVFunctionCall(name, List(), _)    => escapeIdentifier(name)
-    case BVFunctionCall(name, args, _)      => args.map(serializeArg).mkString(s"($name ", " ", ")")
+    case BVFunctionCall(name, args, _)      => args.map(serialize).mkString(s"($name ", " ", ")")
     case BVForall(variable, e)              => s"(forall ((${variable.name} ${serialize(variable.tpe)})) ${serialize(e)})"
   }
 
@@ -91,33 +91,20 @@ object SMTLibSerializer {
     case ArrayIte(cond, tru, fals)           => s"(ite ${serialize(cond)} ${serialize(tru)} ${serialize(fals)})"
     case c @ ArrayConstant(e, _)             => s"((as const ${serializeArrayType(c.indexWidth, c.dataWidth)}) ${serialize(e)})"
     case ArrayFunctionCall(name, List(), _,_) => escapeIdentifier(name)
-    case ArrayFunctionCall(name, args, _, _) => args.map(serializeArg).mkString(s"($name ", " ", ")")
+    case ArrayFunctionCall(name, args, _, _) => args.map(serialize).mkString(s"($name ", " ", ")")
   }
 
   def serialize(c: SMTCommand): String = c match {
     case Comment(msg)                   => msg.split("\n").map("; " + _).mkString("\n")
     case DeclareUninterpretedSort(name) => s"(declare-sort ${escapeIdentifier(name)} 0)"
     case DefineFunction(name, args, e) =>
-      val aa = args.map(a => s"(${serializeArg(a)} ${serializeArgTpe(a)})").mkString(" ")
+      val aa = args.map(a => s"(${serialize(a)} ${serialize(a.tpe)})").mkString(" ")
       s"(define-fun ${escapeIdentifier(name)} ($aa) ${serialize(e.tpe)} ${serialize(e)})"
     case DeclareFunction(sym, tpes) =>
-      val aa = tpes.map(serializeArgTpe).mkString(" ")
+      val aa = tpes.map(serialize).mkString(" ")
       s"(declare-fun ${escapeIdentifier(sym.name)} ($aa) ${serialize(sym.tpe)})"
     case SetLogic(logic) => s"(set-logic $logic)"
-    case DeclareUninterpretedSymbol(name, tpe) =>
-      s"(declare-fun ${escapeIdentifier(name)} () ${escapeIdentifier(tpe)})"
   }
-
-  private def serializeArgTpe(a: SMTFunctionArg): String =
-    a match {
-      case u: UTSymbol => escapeIdentifier(u.tpe)
-      case s: SMTExpr  => serialize(s.tpe)
-    }
-  private def serializeArg(a: SMTFunctionArg): String =
-    a match {
-      case u: UTSymbol => escapeIdentifier(u.name)
-      case s: SMTExpr  => serialize(s)
-    }
 
   private def serializeArrayType(indexWidth: Int, dataWidth: Int): String =
     s"(Array ${serializeBitVectorType(indexWidth)} ${serializeBitVectorType(dataWidth)})"

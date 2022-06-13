@@ -7,7 +7,6 @@ package maltese.smt
 sealed trait SMTCommand
 case class Comment(msg: String) extends SMTCommand
 case class SetLogic(logic: String) extends SMTCommand
-case class DefineFunction(name: String, args: Seq[SMTFunctionArg], e: SMTExpr) extends SMTCommand
-case class DeclareFunction(sym: SMTSymbol, args: Seq[SMTFunctionArg]) extends SMTCommand
+case class DefineFunction(name: String, args: Seq[SMTSymbol], e: SMTExpr) extends SMTCommand
+case class DeclareFunction(sym: SMTSymbol, args: Seq[SMTType]) extends SMTCommand
 case class DeclareUninterpretedSort(name: String) extends SMTCommand
-case class DeclareUninterpretedSymbol(name: String, tpe: String) extends SMTCommand

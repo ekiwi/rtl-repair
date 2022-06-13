@@ -157,7 +157,7 @@ class CompactEncoding(sys: TransitionSystem) {
 
   private def appendState(ctx: SolverContext): UTSymbol = {
     val s = UTSymbol(s"s${states.length}", stateType)
-    ctx.runCommand(DeclareUninterpretedSymbol(s.name, s.tpe))
+    ctx.runCommand(DeclareFunction(s, List()))
     states.append(s)
     s
   }
@@ -236,7 +236,7 @@ object SMTTransitionSystemEncoder {
     def declare(sym: SMTSymbol, kind: String): Unit = {
       cmds ++= toDescription(sym, kind, sys.comments.get)
       val s = SMTSymbol.fromExpr(sym.name + SignalSuffix, sym)
-      cmds += DeclareFunction(s, List(State))
+      cmds += DeclareFunction(s, List(State.tpe))
     }
     sys.inputs.foreach(i => declare(i, "input"))
     sys.states.foreach(s => declare(s.sym, "register"))
@@ -321,7 +321,7 @@ object SMTTransitionSystemEncoder {
   }
   // All signals are modelled with functions that need to be called with the state as argument,
   // this replaces all Symbols with function applications to the state.
-  private def replaceSymbols(suffix: String, arg: SMTFunctionArg, vars: Set[String] = Set())(e: SMTExpr): SMTExpr =
+  private def replaceSymbols(suffix: String, arg: SMTSymbol, vars: Set[String] = Set())(e: SMTExpr): SMTExpr =
     e match {
       case BVSymbol(name, width) if !vars(name) => BVFunctionCall(id(name + suffix), List(arg), width)
       case ArraySymbol(name, indexWidth, dataWidth) if !vars(name) =>

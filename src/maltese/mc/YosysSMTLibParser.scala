@@ -6,6 +6,8 @@ package maltese.mc
 
 import maltese.smt._
 
+import scala.collection.mutable
+
 /** Parses Transitions Systems serialized by yosys's `write_smt2` command */
 object YosysSMTLibParser {
   def load(file: os.Path): TransitionSystem = {
@@ -19,9 +21,13 @@ object YosysSMTLibParser {
 
 private class YosysSMTLibParser(lines: Iterable[String]) {
 
-  private var sys: Option[TransitionSystem] = None
-  def read(): TransitionSystem = {
-    sys.getOrElse(parse())
+  private var sysOption: Option[TransitionSystem] = None
+  def read(): TransitionSystem = sysOption match {
+    case Some(sys) => sys
+    case None =>
+      val sys = parse()
+      sysOption = Some(sys)
+      sys
   }
 
   private def parse(): TransitionSystem = {
@@ -38,37 +44,62 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
     val yosysVersion = header.drop(YosysHeaderPrefix.length).trim
     println(s"Yosys Version: $yosysVersion")
 
-    val startSys = TransitionSystem("", List(), List(), List())
-    content.drop(1).foldLeft(startSys)(parseLineContent)
+    // parse rest
+    content.drop(1).foreach(parseLineContent)
+    sys
   }
 
+  // parser state, make sure to only run parser once!
+  private case class Descriptor(tpe: String, value: String)
+  private var lastDescriptor: Option[Descriptor] = None
+  private var lastComment = ""
+  private var sys = TransitionSystem("", List(), List(), List())
+  // keeps track of symbols on a stack to account for local symbols (i.e. functions args)
+  private var symbols = mutable.Stack[mutable.HashMap[String, SMTSymbol]]()
+  symbols.push(mutable.HashMap())
+  private def lookupSymbol(name: String): Option[SMTSymbol] =
+    // go from top to bottom of stack
+    symbols.flatMap(_.get(name)).headOption
+  private def lookupLocalSymbol(name: String): Option[SMTSymbol] = symbols.head.get(name)
+  private def addSymbol(sym: SMTSymbol): Unit = {
+    val existing = lookupLocalSymbol(sym.name)
+    assert(existing.isEmpty, s"Symbol $sym already declared as ${existing.get}!")
+    symbols.head(sym.name) = sym
+  }
+
+  // keeps track of uninterpreted sorts
+  private var sorts = mutable.HashSet[String]()
+
   private val YosysDescriptorPrefix = "yosys-smt2-"
-  private def parseLineContent(sys: TransitionSystem, line: LineContent): TransitionSystem = {
+  private def parseLineContent(line: LineContent): Unit = {
     if(line.expr.isEmpty) {
       if(line.comment.startsWith(YosysDescriptorPrefix)) {
         val suffix = line.comment.drop(YosysDescriptorPrefix.length)
-        val desc = suffix.split(' ').head.trim
+        val tpe = suffix.split(' ').head.trim
         val value = suffix.split(' ').drop(1).mkString(" ")
-        desc match {
+        tpe match {
           case "module" =>
             assert(sys.name.isEmpty, s"we are being asked to overwrite the system name ${sys.name} with $value")
-            sys.copy(name = value.trim)
+            sys = sys.copy(name = value.trim)
+          case "input" =>
+            val dd = Descriptor(tpe, value)
+            assert(lastDescriptor.isEmpty, s"About to overwrite unused descriptor: $lastDescriptor with $dd")
+            lastDescriptor = Some(dd)
           case other => throw new NotImplementedError(s"unknown yosys descriptor: $other")
         }
       } else {
         println(s"Unknown comment: ${line.comment}")
-        sys
       }
     } else { // we have a non-empty expression
       val expr = parseSmtCommand(line.expr)
       expr match {
-        case DeclareUninterpretedSort(_) =>
+        case DeclareUninterpretedSort(name) =>
           assert(line.comment.isEmpty)
-          sys // ignore data type declaration
+          // ignore data type declaration
         case DeclareFunction(sym, args) =>
           assert(args.length == 1, "expect every function to take the state as argument")
           println(s"TODO: deal with function declaration $sym")
-          sys // ignore function declaration for now....
+          // ignore function declaration for now....
       }
     }
   }
@@ -78,14 +109,29 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
   }
 
   private def parseSmtCommand(expr: SExpr): SMTCommand = {
+    println(expr) // debug
     expr match {
       case SExprNode(List(SExprLeaf("declare-sort"), SExprLeaf(name), SExprLeaf("0"))) =>
+        assert(!sorts.contains(name), s"redeclaring uninterpreted sort $name")
+        sorts.add(name)
         DeclareUninterpretedSort(SMTLibSerializer.unescapeIdentifier(name))
       case SExprNode(List(SExprLeaf("declare-fun"), SExprLeaf(name), SExprNode(args), retTpe)) =>
         val sym = SMTSymbol.fromType(SMTLibSerializer.unescapeIdentifier(name), parseSmtType(retTpe))
         val argTpes = args.map(parseSmtType)
         assert(argTpes.forall(_.isInstanceOf[UninterpretedSort]), s"expected only unintepreted sort args! $argTpes")
-        DeclareFunction(sym, argTpes.map(a => UTSymbol("", a.asInstanceOf[UninterpretedSort].name)))
+        addSymbol(sym)
+        DeclareFunction(sym, argTpes)
+      case SExprNode(List(SExprLeaf("define-fun"), SExprLeaf(name), SExprNode(argExprs), retTpe, body)) =>
+        val sym = SMTSymbol.fromType(SMTLibSerializer.unescapeIdentifier(name), parseSmtType(retTpe))
+        val args = argExprs.map(parseSmtArg)
+        // add a new local scope before parsing the body
+        symbols.push(mutable.HashMap())
+        args.map(addSymbol)
+        val expr = parseSmtExpr(body)
+        symbols.pop()
+        assert(sym.tpe == expr.tpe)
+        addSymbol(sym)
+        DefineFunction(sym.name, args, expr)
       case other => throw new RuntimeException(s"Unexpected S-Expr: $other")
     }
   }
@@ -96,8 +142,14 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
     case other => throw new NotImplementedError(s"TODO: parse SMT type $other")
   }
 
-  private def parseSmtExpr(expr: SExpr): SMTExpr = {
-    ???
+  private def parseSmtArg(expr: SExpr): SMTSymbol = expr match {
+    case SExprNode(List(SExprLeaf(name), tpe)) => SMTSymbol.fromType(name, parseSmtType(tpe))
+    case other => throw new RuntimeException(s"Unexpected function argument S-Expr: $other")
+  }
+
+  private def parseSmtExpr(expr: SExpr): SMTExpr = expr match {
+
+    case other => throw new NotImplementedError(s"Unexpected SMT Expression S-Expr: $other")
   }
 
   private case class LineContent(expr: SExpr, comment: String) {

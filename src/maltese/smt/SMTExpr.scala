@@ -5,7 +5,7 @@
 package maltese.smt
 
 /** base trait for all SMT expressions */
-sealed trait SMTExpr extends SMTFunctionArg {
+sealed trait SMTExpr {
   def tpe:      SMTType
   def children: List[SMTExpr]
 }
@@ -26,8 +26,7 @@ object SMTSymbol {
   def fromType(name: String, tpe: SMTType): SMTSymbol = tpe match {
     case BVType(width) => BVSymbol(name, width)
     case ArrayType(indexWidth, dataWidth) => ArraySymbol(name, indexWidth, dataWidth)
-    case UninterpretedSort(name) =>
-      throw new NotImplementedError(s"Cannot create SMT Symbol of uninterpreted sort $name")
+    case UninterpretedSort(tpeName) => UTSymbol(name, tpeName)
   }
 }
 sealed trait SMTNullaryExpr extends SMTExpr {
@@ -229,18 +228,21 @@ case class BVForall(variable: BVSymbol, e: BVExpr) extends BVUnaryExpr {
 }
 
 /** apply arguments to a function which returns a result of bit vector type */
-case class BVFunctionCall(name: String, args: List[SMTFunctionArg], width: Int) extends BVExpr {
-  override def children = args.map(_.asInstanceOf[SMTExpr])
+case class BVFunctionCall(name: String, args: List[SMTExpr], width: Int) extends BVExpr {
+  override def children = args
 }
 
 /** apply arguments to a function which returns a result of array type */
-case class ArrayFunctionCall(name: String, args: List[SMTFunctionArg], indexWidth: Int, dataWidth: Int)
+case class ArrayFunctionCall(name: String, args: List[SMTExpr], indexWidth: Int, dataWidth: Int)
     extends ArrayExpr {
-  override def children = args.map(_.asInstanceOf[SMTExpr])
+  override def children = args
 }
-sealed trait SMTFunctionArg
+
 // we allow symbols with uninterpreted type to be function arguments
-case class UTSymbol(name: String, tpe: String) extends SMTFunctionArg
+case class UTSymbol(name: String, tpeName: String) extends SMTSymbol {
+  override def tpe: SMTType = UninterpretedSort(tpeName)
+  override def rename(newName: String): SMTSymbol = UTSymbol(newName, tpeName)
+}
 
 object BVAnd {
   def apply(a: BVExpr, b: BVExpr): BVExpr = {

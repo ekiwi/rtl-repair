@@ -85,7 +85,6 @@ private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: 
     case c: DefineFunction             => writeCommand(serialize(c))
     case c: DeclareFunction            => writeCommand(serialize(c))
     case c: DeclareUninterpretedSort   => writeCommand(serialize(c))
-    case c: DeclareUninterpretedSymbol => writeCommand(serialize(c))
   }
 
   /** releases all native resources */
