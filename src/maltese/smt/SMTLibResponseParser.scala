@@ -82,12 +82,7 @@ case class SExprLeaf(value: String) extends SExpr {
 /** simple S-Expression parser to make sense of SMTLib solver output */
 object SExprParser {
   def parse(line: String): SExpr = {
-    val tokens = line
-      .replace("(", " ( ")
-      .replace(")", " ) ")
-      .split("\\s+")
-      .filterNot(_.isEmpty)
-      .toList
+    val tokens = tokenize(line)
 
     if(tokens.isEmpty) {
       SExprLeaf("")
@@ -97,6 +92,29 @@ object SExprParser {
       assert(tokens.tail.isEmpty)
       SExprLeaf(tokens.head)
     }
+  }
+
+  // tokenization with | as escape character
+  private def tokenize(line: String): List[String] = {
+    var tokens: List[String] = List()
+    var inEscape = false
+    var tmp = ""
+    def finish(): Unit = {
+      if(tmp.nonEmpty) {
+        tokens = tokens :+ tmp
+        tmp = ""
+      }
+    }
+    line.foreach {
+      case '(' => finish() ; tokens = tokens :+ "("
+      case ')' => finish() ; tokens = tokens :+ ")"
+      case '|' if inEscape => tmp += '|' ; finish() ; inEscape = false
+      case '|' if !inEscape => finish() ; inEscape = true ; tmp = "|"
+      case ' ' | '\t' | '\r' | '\n' if !inEscape => finish()
+      case other => tmp += other
+    }
+    finish()
+    tokens
   }
 
   private def parseSExpr(tokens: List[String]): (SExpr, List[String]) = {
