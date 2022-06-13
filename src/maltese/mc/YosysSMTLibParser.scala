@@ -52,28 +52,20 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
   // parser state, make sure to only run parser once!
   private case class Descriptor(tpe: String, value: String)
   private var lastDescriptor: Option[Descriptor] = None
+  private def popDescriptor(): Option[Descriptor] = {
+    val value = lastDescriptor
+    lastDescriptor = None
+    value
+  }
   private var lastComment = ""
   private var sys = TransitionSystem("", List(), List(), List())
-  // keeps track of symbols on a stack to account for local symbols (i.e. functions args)
-  private var symbols = mutable.Stack[mutable.HashMap[String, SMTSymbol]]()
-  symbols.push(mutable.HashMap())
-  private def lookupSymbol(name: String): Option[SMTSymbol] =
-    // go from top to bottom of stack
-    symbols.flatMap(_.get(name)).headOption
-  private def lookupLocalSymbol(name: String): Option[SMTSymbol] = symbols.head.get(name)
-  private def addSymbol(sym: SMTSymbol): Unit = {
-    val existing = lookupLocalSymbol(sym.name)
-    assert(existing.isEmpty, s"Symbol $sym already declared as ${existing.get}!")
-    symbols.head(sym.name) = sym
-  }
-
-  // keeps track of uninterpreted sorts
-  private var sorts = mutable.HashSet[String]()
+  private val parser = new SMTLibParser
 
   private val YosysDescriptorPrefix = "yosys-smt2-"
   private def parseLineContent(line: LineContent): Unit = {
-    if(line.expr.isEmpty) {
-      if(line.comment.startsWith(YosysDescriptorPrefix)) {
+    println(s"${line.expr}  ;;  ${line.comment}".trim)
+    if (line.expr.isEmpty) {
+      if (line.comment.startsWith(YosysDescriptorPrefix)) {
         val suffix = line.comment.drop(YosysDescriptorPrefix.length)
         val tpe = suffix.split(' ').head.trim
         val value = suffix.split(' ').drop(1).mkString(" ")
@@ -91,65 +83,50 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
         println(s"Unknown comment: ${line.comment}")
       }
     } else { // we have a non-empty expression
-      val expr = parseSmtCommand(line.expr)
+      val expr = parser.parseCommand(line.expr)
       expr match {
         case DeclareUninterpretedSort(name) =>
           assert(line.comment.isEmpty)
-          // ignore data type declaration
+        // ignore data type declaration
         case DeclareFunction(sym, args) =>
           assert(args.length == 1, "expect every function to take the state as argument")
-          println(s"TODO: deal with function declaration $sym")
-          // ignore function declaration for now....
+          popDescriptor() match {
+            case Some(desc) => desc.tpe match {
+              case "input" => sys = sys.copy(inputs = sys.inputs :+ sym.asInstanceOf[BVSymbol])
+              case other => throw new RuntimeException(s"Unexpected descriptor $desc for $expr")
+            }
+            case None => // ignore declarations without a descriptor
+          }
+        case DefineFunction(name, args, e) =>
+          assert(name.startsWith(sys.name), s"unexpected function name, does not start with ${sys.name}: $name")
+          assert(args.length == 1)
+          popDescriptor() match {
+            case Some(desc) => desc.tpe match {
+              case "input" =>
+                // weird: we would expect all inputs to be declarations and not definitions .... but yosys sometimes
+                //        creates phantome symbols before defining the actual input as that symbol...
+                val sym = yosysDescriptorValueToBVSymbol(desc)
+                assert(name == sys.name + "_n " + sym.name, "unexpected next function name!")
+                sys = sys.copy(inputs = sys.inputs :+ sym)
+              case other => throw new RuntimeException(s"Unexpected descriptor $desc for $expr")
+            }
+            case None => // without a descriptor, we just make a normal node
+              val node = Signal("n" + name.drop(sys.name.length), e, IsNode)
+              sys = sys.copy(signals = sys.signals :+ node)
+
+          }
       }
     }
   }
 
+  private def yosysDescriptorValueToBVSymbol(desc: Descriptor): BVSymbol = {
+    val parts = desc.value.split("\\s+")
+    assert(parts.size == 2)
+    BVSymbol(parts.head, parts(1).toInt)
+  }
+
   private def parseComment(sys: TransitionSystem, comment: String): TransitionSystem = {
     ???
-  }
-
-  private def parseSmtCommand(expr: SExpr): SMTCommand = {
-    println(expr) // debug
-    expr match {
-      case SExprNode(List(SExprLeaf("declare-sort"), SExprLeaf(name), SExprLeaf("0"))) =>
-        assert(!sorts.contains(name), s"redeclaring uninterpreted sort $name")
-        sorts.add(name)
-        DeclareUninterpretedSort(SMTLibSerializer.unescapeIdentifier(name))
-      case SExprNode(List(SExprLeaf("declare-fun"), SExprLeaf(name), SExprNode(args), retTpe)) =>
-        val sym = SMTSymbol.fromType(SMTLibSerializer.unescapeIdentifier(name), parseSmtType(retTpe))
-        val argTpes = args.map(parseSmtType)
-        assert(argTpes.forall(_.isInstanceOf[UninterpretedSort]), s"expected only unintepreted sort args! $argTpes")
-        addSymbol(sym)
-        DeclareFunction(sym, argTpes)
-      case SExprNode(List(SExprLeaf("define-fun"), SExprLeaf(name), SExprNode(argExprs), retTpe, body)) =>
-        val sym = SMTSymbol.fromType(SMTLibSerializer.unescapeIdentifier(name), parseSmtType(retTpe))
-        val args = argExprs.map(parseSmtArg)
-        // add a new local scope before parsing the body
-        symbols.push(mutable.HashMap())
-        args.map(addSymbol)
-        val expr = parseSmtExpr(body)
-        symbols.pop()
-        assert(sym.tpe == expr.tpe)
-        addSymbol(sym)
-        DefineFunction(sym.name, args, expr)
-      case other => throw new RuntimeException(s"Unexpected S-Expr: $other")
-    }
-  }
-
-  private def parseSmtType(expr: SExpr): SMTType = expr match {
-    case SExprLeaf("Bool") => BVType(1)
-    case SExprLeaf(name) => UninterpretedSort(SMTLibSerializer.unescapeIdentifier(name))
-    case other => throw new NotImplementedError(s"TODO: parse SMT type $other")
-  }
-
-  private def parseSmtArg(expr: SExpr): SMTSymbol = expr match {
-    case SExprNode(List(SExprLeaf(name), tpe)) => SMTSymbol.fromType(name, parseSmtType(tpe))
-    case other => throw new RuntimeException(s"Unexpected function argument S-Expr: $other")
-  }
-
-  private def parseSmtExpr(expr: SExpr): SMTExpr = expr match {
-
-    case other => throw new NotImplementedError(s"Unexpected SMT Expression S-Expr: $other")
   }
 
   private case class LineContent(expr: SExpr, comment: String) {
@@ -161,4 +138,114 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
     val comment = parts.drop(1).mkString(";").trim
     LineContent(expr = SExprParser.parse(exprStr), comment = comment)
   }
+}
+
+class SMTLibParser {
+  def resetState(): Unit = {
+    symbols.clear()
+    symbols.push(mutable.HashMap())
+    sorts.clear()
+  }
+  def parseCommand(line: String): SMTCommand = parseCommand(SExprParser.parse(line))
+  def parseCommand(expr: SExpr): SMTCommand = {
+    expr match {
+      case SExprNode(List(SExprLeaf("declare-sort"), SExprLeaf(name), SExprLeaf("0"))) =>
+        assert(!sorts.contains(name), s"redeclaring uninterpreted sort $name")
+        sorts.add(name)
+        DeclareUninterpretedSort(SMTLibSerializer.unescapeIdentifier(name))
+      case SExprNode(List(SExprLeaf("declare-fun"), SExprLeaf(name), SExprNode(args), retTpe)) =>
+        val sym = SMTSymbol.fromType(SMTLibSerializer.unescapeIdentifier(name), parseType(retTpe))
+        val argTpes = args.map(parseType)
+        assert(argTpes.forall(_.isInstanceOf[UninterpretedSort]), s"expected only unintepreted sort args! $argTpes")
+        addSymbol(sym)
+        DeclareFunction(sym, argTpes)
+      case SExprNode(List(SExprLeaf("define-fun"), SExprLeaf(name), SExprNode(argExprs), retTpe, body)) =>
+        val sym = SMTSymbol.fromType(SMTLibSerializer.unescapeIdentifier(name), parseType(retTpe))
+        val args = argExprs.map(parseArg)
+        // add a new local scope before parsing the body
+        symbols.push(mutable.HashMap())
+        args.map(addSymbol)
+        val expr = parseExpr(body)
+        symbols.pop()
+        assert(sym.tpe == expr.tpe)
+        addSymbol(sym)
+        DefineFunction(sym.name, args, expr)
+      case other => throw new RuntimeException(s"Unexpected S-Expr: $other")
+    }
+  }
+
+  private def parseType(expr: SExpr): SMTType = expr match {
+    case SExprLeaf("Bool") => BVType(1)
+    case SExprLeaf(name) => UninterpretedSort(SMTLibSerializer.unescapeIdentifier(name))
+    case SExprNode(List(SExprLeaf("_"), SExprLeaf("BitVec"), SExprLeaf(bitStr))) =>
+      BVType(bitStr.toInt)
+    case other => throw new NotImplementedError(s"TODO: parse SMT type $other")
+  }
+
+  private def parseArg(expr: SExpr): SMTSymbol = expr match {
+    case SExprNode(List(SExprLeaf(name), tpe)) => SMTSymbol.fromType(name, parseType(tpe))
+    case other => throw new RuntimeException(s"Unexpected function argument S-Expr: $other")
+  }
+
+  private def parseExpr(expr: SExpr): SMTExpr = expr match {
+    case SExprLeaf(funNameUnEscaped) =>
+      parseBuiltInSymbol(funNameUnEscaped) match {
+        case Some(e) => e
+        case None => // user defined symbol?
+          val funName = SMTLibSerializer.unescapeIdentifier(funNameUnEscaped)
+          lookupSymbol(funName).getOrElse(throw new RuntimeException(s"unknown symbol $funName"))
+      }
+    case SExprNode(List(one)) =>
+      parseExpr(one)
+    case SExprNode(SExprLeaf(funNameUnEscaped) :: tail) =>
+      assert(tail.nonEmpty)
+      val args = tail.map(parseExpr)
+      parseBuiltInFoo(funNameUnEscaped, args) match {
+        case Some(e) => e
+        case None => // user function call?
+          val funName = SMTLibSerializer.unescapeIdentifier(funNameUnEscaped)
+          val funSym = lookupSymbol(funName)
+            .getOrElse(throw new RuntimeException(s"unknown function $funName"))
+          funSym match {
+            case BVSymbol(name, width) => BVFunctionCall(name, args, width)
+            case ArraySymbol(name, indexWidth, dataWidth) => ArrayFunctionCall(name, args, indexWidth, dataWidth)
+          }
+      }
+    case other => throw new NotImplementedError(s"Unexpected SMT Expression S-Expr: $other")
+  }
+
+  private def parseBuiltInSymbol(name: String): Option[SMTExpr] = {
+    if(name.startsWith("#b")) {
+      val value = BigInt(name.drop(2), 2)
+      val bits = name.drop(2).length
+      Some(BVLiteral(value, bits))
+    } else {
+      None
+    }
+  }
+
+  private def parseBuiltInFoo(name: String, args: List[SMTExpr]): Option[SMTExpr] = (name, args) match {
+    // binary
+    case ("=", List(a, b)) => Some(SMTEqual(a, b))
+    case ("concat", List(a: BVExpr, b: BVExpr)) => Some(BVConcat(a, b))
+    // ternary
+    case ("ite", List(c: BVExpr, a, b)) => Some(SMTIte(c, a, b))
+    case _ => None
+  }
+
+  // keeps track of symbols on a stack to account for local symbols (i.e. functions args)
+  private var symbols = mutable.Stack[mutable.HashMap[String, SMTSymbol]]()
+  private def lookupSymbol(name: String): Option[SMTSymbol] =
+  // go from top to bottom of stack
+    symbols.flatMap(_.get(name)).headOption
+  private def lookupLocalSymbol(name: String): Option[SMTSymbol] = symbols.head.get(name)
+  private def addSymbol(sym: SMTSymbol): Unit = {
+    val existing = lookupLocalSymbol(sym.name)
+    assert(existing.isEmpty, s"Symbol $sym already declared as ${existing.get}!")
+    symbols.head(sym.name) = sym
+  }
+  // keeps track of uninterpreted sorts
+  private var sorts = mutable.HashSet[String]()
+  // start with reset state
+  resetState()
 }

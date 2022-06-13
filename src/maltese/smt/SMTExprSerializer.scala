@@ -55,5 +55,6 @@ object SMTExprSerializer {
   def serialize(expr: SMTExpr): String = expr match {
     case a: ArrayExpr => serialize(a)
     case b: BVExpr => serialize(b)
+    case UTSymbol(name, _) => name
   }
 }

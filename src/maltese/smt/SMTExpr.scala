@@ -229,12 +229,14 @@ case class BVForall(variable: BVSymbol, e: BVExpr) extends BVUnaryExpr {
 
 /** apply arguments to a function which returns a result of bit vector type */
 case class BVFunctionCall(name: String, args: List[SMTExpr], width: Int) extends BVExpr {
+  require(args.nonEmpty, "for 0-arity functions, please use a BVSymbol")
   override def children = args
 }
 
 /** apply arguments to a function which returns a result of array type */
 case class ArrayFunctionCall(name: String, args: List[SMTExpr], indexWidth: Int, dataWidth: Int)
     extends ArrayExpr {
+  require(args.nonEmpty, "for 0-arity functions, please use an ArraySymbol")
   override def children = args
 }
 
