@@ -67,12 +67,16 @@ object SMTLibResponseParser {
   }
 }
 
-sealed trait SExpr
+sealed trait SExpr {
+  def isEmpty: Boolean
+}
 case class SExprNode(children: List[SExpr]) extends SExpr {
   override def toString = children.mkString("(", " ", ")")
+  override def isEmpty: Boolean = children.isEmpty || children.forall(_.isEmpty)
 }
 case class SExprLeaf(value: String) extends SExpr {
   override def toString = value
+  override def isEmpty: Boolean = value.trim.isEmpty
 }
 
 /** simple S-Expression parser to make sense of SMTLib solver output */
@@ -85,8 +89,9 @@ object SExprParser {
       .filterNot(_.isEmpty)
       .toList
 
-    assert(tokens.nonEmpty)
-    if (tokens.head == "(") {
+    if(tokens.isEmpty) {
+      SExprLeaf("")
+    } else if (tokens.head == "(") {
       parseSExpr(tokens.tail)._1
     } else {
       assert(tokens.tail.isEmpty)

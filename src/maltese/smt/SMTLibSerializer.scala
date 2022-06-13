@@ -156,6 +156,14 @@ object SMTLibSerializer {
     case simple() => name
     case _        => if (name.startsWith("|") && name.endsWith("|")) name else s"|$name|"
   }
+  def unescapeIdentifier(escaped: String): String = {
+    val name = if(escaped.startsWith("|")) {
+      assert(escaped.endsWith("|"), s"improperly escaped identifier: $escaped")
+      escaped.drop(1).dropRight(1)
+    } else { escaped }
+    assert(!name.contains('|'), s"improperly escaped identifier: $escaped")
+    name
+  }
 }
 
 /** Expands expressions that are not natively supported by SMTLib */

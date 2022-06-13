@@ -22,6 +22,13 @@ object SMTSymbol {
     case b: BVExpr    => BVSymbol(name, b.width)
     case a: ArrayExpr => ArraySymbol(name, a.indexWidth, a.dataWidth)
   }
+
+  def fromType(name: String, tpe: SMTType): SMTSymbol = tpe match {
+    case BVType(width) => BVSymbol(name, width)
+    case ArrayType(indexWidth, dataWidth) => ArraySymbol(name, indexWidth, dataWidth)
+    case UninterpretedSort(name) =>
+      throw new NotImplementedError(s"Cannot create SMT Symbol of uninterpreted sort $name")
+  }
 }
 sealed trait SMTNullaryExpr extends SMTExpr {
   override def children: List[SMTExpr] = List()
@@ -331,3 +338,4 @@ object False {
 sealed trait SMTType
 case class BVType(width: Int) extends SMTType
 case class ArrayType(indexWidth: Int, dataWidth: Int) extends SMTType
+case class UninterpretedSort(name: String) extends SMTType
