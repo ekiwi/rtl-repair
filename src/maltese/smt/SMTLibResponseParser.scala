@@ -89,9 +89,21 @@ object SExprParser {
     } else if (tokens.head == "(") {
       parseSExpr(tokens.tail)._1
     } else {
-      assert(tokens.tail.isEmpty)
+      assert(tokens.tail.isEmpty, s"multiple tokens, but not starting with a `(`:\n${tokens.mkString(" ")}")
       SExprLeaf(tokens.head)
     }
+  }
+
+  def hasBalancedParentheses(line: String): Boolean = {
+    var count = 0
+    var inEscape = false
+    line.foreach {
+      case '(' if !inEscape => count += 1
+      case ')' if !inEscape => count -= 1
+      case '|' => inEscape = !inEscape
+      case _ => // ignore
+    }
+    count == 0
   }
 
   // tokenization with | as escape character
