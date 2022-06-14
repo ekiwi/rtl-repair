@@ -42,7 +42,7 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
     val header = content.head.comment
     assert(header.startsWith(YosysHeaderPrefix), s"unexpected header comment: $header")
     val yosysVersion = header.drop(YosysHeaderPrefix.length).trim
-    println(s"Yosys Version: $yosysVersion")
+    // println(s"Yosys Version: $yosysVersion")
 
     // parse rest
     content.drop(1).foreach(parseLineContent)
@@ -63,7 +63,7 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
 
   private val YosysDescriptorPrefix = "yosys-smt2-"
   private def parseLineContent(line: LineContent): Unit = {
-    println(s"${line.expr}  ;;  ${line.comment}".trim)
+    // println(s"${line.expr}  ;;  ${line.comment}".trim)
     if (line.expr.isEmpty) {
       if (line.comment.startsWith(YosysDescriptorPrefix)) {
         val suffix = line.comment.drop(YosysDescriptorPrefix.length)
@@ -73,14 +73,16 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
           case "module" =>
             assert(sys.name.isEmpty, s"we are being asked to overwrite the system name ${sys.name} with $value")
             sys = sys.copy(name = value.trim)
-          case "input" =>
+          case "input" | "output" =>
             val dd = Descriptor(tpe, value)
             assert(lastDescriptor.isEmpty, s"About to overwrite unused descriptor: $lastDescriptor with $dd")
             lastDescriptor = Some(dd)
+          case "topmod" =>
+            assert(value.trim == sys.name, "Only a single module is supported!")
           case other => throw new NotImplementedError(s"unknown yosys descriptor: $other")
         }
       } else {
-        println(s"Unknown comment: ${line.comment}")
+        // println(s"Unknown comment: ${line.comment}")
       }
     } else { // we have a non-empty expression
       val expr = parser.parseCommand(line.expr)
@@ -99,7 +101,7 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
           }
         case DefineFunction(name, args, e) =>
           assert(name.startsWith(sys.name), s"unexpected function name, does not start with ${sys.name}: $name")
-          assert(args.length == 1)
+          assert(args.length == 1 || args.length == 2)
           popDescriptor() match {
             case Some(desc) => desc.tpe match {
               case "input" =>
@@ -108,6 +110,11 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
                 val sym = yosysDescriptorValueToBVSymbol(desc)
                 assert(name == sys.name + "_n " + sym.name, "unexpected next function name!")
                 sys = sys.copy(inputs = sys.inputs :+ sym)
+              case "output" =>
+                val sym = yosysDescriptorValueToBVSymbol(desc)
+                assert(name == sys.name + "_n " + sym.name, "unexpected next function name!")
+                val sig = Signal(sym.name, e, IsOutput)
+                sys = sys.copy(signals = sys.signals :+ sig)
               case other => throw new RuntimeException(s"Unexpected descriptor $desc for $expr")
             }
             case None => // without a descriptor, we just make a normal node
@@ -211,6 +218,8 @@ class SMTLibParser {
             case ArraySymbol(name, indexWidth, dataWidth) => ArrayFunctionCall(name, args, indexWidth, dataWidth)
           }
       }
+    case SExprNode(List(SExprNode(List(SExprLeaf("_"), SExprLeaf("extract"), SExprLeaf(msb), SExprLeaf(lsb))), expr)) =>
+      BVSlice(parseExpr(expr).asInstanceOf[BVExpr], hi = msb.toInt, lo = lsb.toInt)
     case other => throw new NotImplementedError(s"Unexpected SMT Expression S-Expr: $other")
   }
 
@@ -219,6 +228,10 @@ class SMTLibParser {
       val value = BigInt(name.drop(2), 2)
       val bits = name.drop(2).length
       Some(BVLiteral(value, bits))
+    } else if(name == "true") {
+      Some(BVLiteral(1, 1))
+    } else if(name == "false") {
+      Some(BVLiteral(0, 1))
     } else {
       None
     }

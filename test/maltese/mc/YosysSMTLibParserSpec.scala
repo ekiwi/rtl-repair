@@ -9,7 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 class YosysSMTLibParserSpec extends AnyFlatSpec {
   behavior of "YosysSMTLibParser"
 
-  it should "parse a simple decoder" ignore {
+  it should "parse a simple decoder" in {
     val sys = YosysSMTLibParser.load(os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8" / "decoder_3_to_8_wadden_buggy1.smt")
   }
 }
