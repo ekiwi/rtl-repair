@@ -6,13 +6,9 @@ import maltese.smt.{BVLiteral, _}
 // playing around with a simple repair
 object Simple {
   def repair(name: String, sys: TransitionSystem, tb: Testbench, verbose: Boolean): Option[TransitionSystem] = {
-
     if(verbose) println(s"Trying to repair: $name")
-
     // try to synthesize a fix
-    val fixedSys = fixConstants(sys, tb, verbose)
-
-    fixedSys
+    fixConstants(sys, tb, verbose)
   }
 
 
