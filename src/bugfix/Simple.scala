@@ -1,11 +1,16 @@
+// Copyright 2022 The Regents of the University of California
+// released under BSD 3-Clause License
+// author: Kevin Laeufer <laeufer@cs.berkeley.edu>
+
 package bugfix
 
+import bugfix.templates.{ReplaceLiteral, TemplateApplication}
 import maltese.mc._
 import maltese.smt.{BVLiteral, _}
 
 // playing around with a simple repair
 object Simple {
-  def repair(name: String, sys: TransitionSystem, tb: Testbench, verbose: Boolean): Option[TransitionSystem] = {
+  def repair(name: String, sys: TransitionSystem, tb: Testbench, verbose: Boolean): TransitionSystem = {
     if(verbose) println(s"Trying to repair: $name")
     // try to synthesize a fix
     fixConstants(sys, tb, verbose)
@@ -13,37 +18,27 @@ object Simple {
 
 
   // simple repair approach that tries to find a replacements for constants in the circuit
-  private def fixConstants(sys: TransitionSystem, tb: Testbench, verbose: Boolean, seed: Long = 0): Option[TransitionSystem] = {
+  private def fixConstants(sys: TransitionSystem, tb: Testbench, verbose: Boolean, seed: Long = 0): TransitionSystem = {
     val rand = new scala.util.Random(seed)
+    val namespace = Namespace(sys)
 
-    // first inline constants which will have the effect of duplicating constants that are used more than once
-    val sysInlineConst = inlineConstants(sys)
+    // apply repair template
+    val repair: TemplateApplication = ReplaceLiteral.apply(sys, namespace)
 
-    // replace literals in system
-    val (synSys, synSyms) = replaceConstants(sysInlineConst)
-    // println(synSys.serialize)
 
     // load system and communicate to solver
-    val encoding = new CompactEncoding(synSys)
+    val encoding = new CompactEncoding(repair.sys)
     // select solver
     val solver = if(true) { Z3SMTLib } else { OptiMathSatSMTLib }
     val ctx = solver.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
     ctx.setLogic("ALL")
     // define synthesis constants
-    synSyms.foreach { case (sym, _) => ctx.runCommand(DeclareFunction(sym, Seq())) }
+    repair.consts.foreach(c => ctx.runCommand(DeclareFunction(c, Seq())))
     encoding.defineHeader(ctx)
     encoding.init(ctx)
 
     // add soft constraints to change as few constants as possible
-    synSyms.foreach { case (sym, value) =>
-      ctx.softAssert(BVEqual(sym, BVLiteral(value, sym.width)))
-    }
-
-    // print out constants
-    if(verbose) {
-      println(s"${sys.name} contains ${synSyms.length} constants.")
-      println(synSyms.map(_._2).map(_.toLong.toBinaryString).mkString(", "))
-    }
+    repair.softConstraints.foreach(ctx.softAssert(_))
 
     // get some meta data for testbench application
     val signalWidth = (
@@ -75,72 +70,21 @@ object Simple {
       case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
     }
 
-    val newConstants = synSyms.map(t => ctx.getValue(t._1).get)
+    val newConstants = repair.consts.map(c => c.name -> ctx.getValue(c).get).toMap
     ctx.close()
 
-    // print results
-    val changedConstants = synSyms.zip(newConstants).flatMap { case ((sym, oldValue), newValue) =>
-      if(oldValue != newValue) { Some((sym, oldValue, newValue)) } else { None }
-    }
-    if(changedConstants.isEmpty) {
-      if(verbose) println("Nothing needs to change. The circuit was already working correctly!")
-      None
+    // do repair
+    val repaired = ReplaceLiteral.repair(repair, newConstants)
+    if(repaired.changed) {
+
     } else {
-      changedConstants.foreach { case (sym, oldValue, newValue) =>
-        if(verbose) println(s"${sym.name}: ${oldValue.toLong.toBinaryString} -> ${newValue.toLong.toBinaryString}")
-      }
-      // substitute constants
-      val mapping = synSyms.zip(newConstants).map { case ((sym, _), newValue) => sym.name -> newValue }.toMap
-      Some(subBackConstants(synSys, mapping))
+      if(verbose) println("No change necessary")
     }
-  }
 
-  private def subBackConstants(sys: TransitionSystem, mapping: Map[String, BigInt]): TransitionSystem = {
-    def onExpr(s: SMTExpr): SMTExpr = s match {
-      case BVSymbol(name, width) if mapping.contains(name)  =>
-        BVLiteral(mapping(name), width)
-      case other => SMTExprMap.mapExpr(other, onExpr)
-    }
-    val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
-    sys.copy(signals = signals)
-  }
 
-  private def replaceConstants(sys: TransitionSystem, prefix: String = "const_"): (TransitionSystem, Seq[(BVSymbol, BigInt)]) = {
-    var counter = 0
-    var consts: List[(BVSymbol, BigInt)] = List()
-    def onExpr(s: SMTExpr): SMTExpr = s match {
-      case BVLiteral(value, width) =>
-        val sym = BVSymbol(prefix + counter, width)
-        counter += 1
-        consts =  (sym, value) +: consts
-        sym
-      case other => SMTExprMap.mapExpr(other, onExpr)
-    }
-    val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
-    (sys.copy(signals = signals), consts)
+    repaired.sys
   }
 
 
-  /** Inlines all nodes that are only a constant.
-    * This can be very helpful for repairing constants, since we sometimes only want to fix one use of the constant
-    * and not all of them.
-    * */
-  private def inlineConstants(sys: TransitionSystem): TransitionSystem = {
-    val (const, nonConst) = sys.signals.partition { s => s.e match {
-      case _ : BVLiteral => true
-      case _ => false
-    }}
-    val lookup = const.map(s => s.name -> s.e).toMap
-    def onExpr(e: SMTExpr): SMTExpr = e match {
-      case sym : BVSymbol =>
-        lookup.get(sym.name) match {
-          case Some(value) => value
-          case None => sym
-        }
-      case other => SMTExprMap.mapExpr(other, onExpr)
-    }
-    val signals = nonConst.map(s => s.copy(e = onExpr(s.e)))
-    sys.copy(signals = signals)
-  }
 
 }

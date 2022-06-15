@@ -28,16 +28,14 @@ object Bugfixer {
     val repaired = Simple.repair(design.baseName, sys, tb, verbose)
 
     if(false) {
-      repaired.foreach { fixed =>
-        println("BEFORE:")
-        println(sys.serialize)
-        println("")
-        println("AFTER:")
-        println(fixed.serialize)
-      }
+      println("BEFORE:")
+      println(sys.serialize)
+      println("")
+      println("AFTER:")
+      println(repaired.serialize)
     }
 
-    repaired
+    Some(repaired)
   }
 
   // makes sure that all inputs and outputs are defined in the tb
