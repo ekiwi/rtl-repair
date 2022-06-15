@@ -48,12 +48,16 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
     // determine the name of our system
     val sysName = findModuleName(desc)
     sys = sys.copy(name = sysName)
+    // find state variables by looking at the transition function
+    val states = findStates(desc)
     // find signals like wires, registers, inputs etc.
-    parseSignals(desc)
+    parseSignals(desc, states)
 
 
     ??? // TODO!
   }
+
+  private val namespace = Namespace()
 
   // finds the name of the module that was serialized and performs checks to make sure only a single module is contained
   // as we do not support hierarchical circuits (use yosys's flatten command to work around)
@@ -67,7 +71,35 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
     name
   }
 
-  private def parseSignals(desc: YosysSystemDescription): Unit = {
+  private def findStates(desc: YosysSystemDescription): List[(SMTSymbol, SMTSymbol)] = {
+    assert(sys.name.nonEmpty)
+    val TransitionFun = sys.name + "_t"
+    val foo = desc.functions(TransitionFun).asInstanceOf[DefineFunction]
+    // the transition function is a large conjunction of equalities
+    val entries = destructConjunction(foo.e.asInstanceOf[BVExpr])
+    val states = entries.map {
+      case BVEqual(
+      BVFunctionCall(nextName, List(UTSymbol("state", _)), w1),     // the next state in the current state
+      BVFunctionCall(name, List(UTSymbol("next_state", _)), w2)) => // the state in the next state (confusing, I know..)
+        assert(w1 == w2)
+        BVSymbol(name, w1) -> BVSymbol(nextName, w1)
+      case ArrayEqual(
+      ArrayFunctionCall(nextName, List(UTSymbol("state", _)), iw1, dw1),
+      ArrayFunctionCall(name, List(UTSymbol("next_state", _)), iw2, dw2)) =>
+        assert(iw1 == iw2 && dw1 == dw2)
+        ArraySymbol(name, iw1, dw1) -> ArraySymbol(nextName, iw1, dw1)
+      case other => throw new RuntimeException(s"Unexpected entry in transition function: $other")
+    }
+    // add states to system, creating anonymous names for now
+    states
+  }
+
+  private def destructConjunction(e: BVExpr): List[BVExpr] = e match {
+    case BVAnd(a, b) => List(a,b).flatMap(destructConjunction)
+    case other => List(other)
+  }
+
+  private def parseSignals(desc: YosysSystemDescription, states: List[(SMTSymbol, SMTSymbol)]): Unit = {
     assert(sys.name.nonEmpty)
     val NextFun = sys.name + "_n"
     val TmpFun = sys.name + "#"
@@ -88,7 +120,13 @@ private class YosysSMTLibParser(lines: Iterable[String]) {
         }
       case YosysEntry(DefineFunction(sym, args, e), comments) =>
         val ds = parseYosysDescriptors(comments)
-        println(s"TODO: deal with DEFINITION $sym, $args, $e $comments,\n$ds")
+        ds.map(_.tpe).sorted match {
+          case List("output", "register") =>
+            println()
+          case _ =>
+            println(s"TODO: deal with DEFINITION $sym, $args, $e $comments,\n$ds")
+        }
+
 
       case YosysEntry(DeclareUninterpretedSort(_), _) => // ignored
       case other =>
@@ -338,7 +376,7 @@ class SMTLibParser {
     case ("=", List(a, b)) => Some(SMTEqual(a, b))
     case ("concat", List(a: BVExpr, b: BVExpr)) => Some(BVConcat(a, b))
     case ("bvadd", List(a: BVExpr, b: BVExpr)) => Some(BVOp(Op.Add, a, b))
-    case ("and", List(a: BVExpr, b: BVExpr)) => Some(BVAnd(a, b))
+    case ("and", args) => Some(BVAnd(args.map(_.asInstanceOf[BVExpr])))
     // ternary
     case ("ite", List(c: BVExpr, a, b)) => Some(SMTIte(c, a, b))
     case _ => None

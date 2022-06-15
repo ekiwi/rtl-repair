@@ -9,29 +9,29 @@ import org.scalatest.flatspec.AnyFlatSpec
 class YosysSMTLibParserSpec extends AnyFlatSpec {
   behavior of "YosysSMTLibParser"
 
-  it should "parse a simple decoder" ignore {
-    val dir = os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8"
-    val smtSys = YosysSMTLibParser.load(dir / "decoder_3_to_8_wadden_buggy1.smt")
-    val btorSys = Btor2.load(dir / "decoder_3_to_8_wadden_buggy1.btor")
-
-    println("SMT:")
-    println(smtSys.serialize)
-    println()
-    println()
+  private def loadAndCheck(dir: os.Path, smtName: String, btorName: String): Unit = {
+    val btorSys = Btor2.load(dir / btorName)
     println("Btor:")
     println(btorSys.serialize)
+
+    println("\n\n")
+    val smtSys = YosysSMTLibParser.load(dir / smtName)
+    println("\n\nSMT:")
+    println(smtSys.serialize)
+  }
+
+  it should "parse a simple decoder" ignore {
+    val dir = os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8"
+    loadAndCheck(dir, "decoder_3_to_8_wadden_buggy1.smt", "decoder_3_to_8_wadden_buggy1.btor")
   }
 
   it should "parse a simple counter" ignore {
     val dir = os.pwd / "benchmarks" / "cirfix" / "first_counter_overflow"
-    val smtSys = YosysSMTLibParser.load(dir / "first_counter_overflow.smt")
-    val btorSys = Btor2.load(dir / "first_counter_overflow.btor")
+    loadAndCheck(dir, "first_counter_overflow.smt", "first_counter_overflow.btor")
+  }
 
-    println("SMT:")
-    println(smtSys.serialize)
-    println()
-    println()
-    println("Btor:")
-    println(btorSys.serialize)
+  it should "parse a simple fsm" ignore {
+    val dir = os.pwd / "benchmarks" / "cirfix" / "fsm_full"
+    loadAndCheck(dir, "fsm_full.smt", "fsm_full.btor")
   }
 }
