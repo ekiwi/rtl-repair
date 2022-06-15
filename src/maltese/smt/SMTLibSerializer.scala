@@ -17,11 +17,13 @@ object SMTLibSerializer {
   def serialize(e: SMTExpr): String = e match {
     case b: BVExpr    => serialize(b)
     case a: ArrayExpr => serialize(a)
+    case u: UTSymbol  => escapeIdentifier(u.name)
   }
 
   def serialize(t: SMTType): String = t match {
     case BVType(width)                    => serializeBitVectorType(width)
     case ArrayType(indexWidth, dataWidth) => serializeArrayType(indexWidth, dataWidth)
+    case UninterpretedSort(name)          => escapeIdentifier(name)
   }
 
   private def serialize(e: BVExpr): String = e match {

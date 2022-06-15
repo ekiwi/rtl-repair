@@ -27,13 +27,14 @@ object Bugfixer {
     checkTestbenchSignals(sys, tb)
     val repaired = Simple.repair(design.baseName, sys, tb)
 
-
-    repaired.foreach { fixed =>
-      println("BEFORE:")
-      println(sys.serialize)
-      println("")
-      println("AFTER:")
-      println(fixed.serialize)
+    if(false) {
+      repaired.foreach { fixed =>
+        println("BEFORE:")
+        println(sys.serialize)
+        println("")
+        println("AFTER:")
+        println(fixed.serialize)
+      }
     }
 
     repaired

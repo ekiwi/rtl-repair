@@ -33,6 +33,8 @@ object Simple {
     val solver = if(true) { Z3SMTLib } else { OptiMathSatSMTLib }
     val ctx = solver.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
     ctx.setLogic("ALL")
+    // define synthesis constants
+    synSyms.foreach { case (sym, _) => ctx.runCommand(DeclareFunction(sym, Seq())) }
     encoding.defineHeader(ctx)
     encoding.init(ctx)
 
@@ -59,9 +61,9 @@ object Simple {
         val signal = encoding.getSignalAt(sym, ii)
         value match {
           case None if isInput(sym.name) => // assign random value if input is X
-            ctx.assert(BVEqual(sym, BVLiteral(BigInt(sym.width, rand), sym.width)))
+            ctx.assert(BVEqual(signal, BVLiteral(BigInt(sym.width, rand), sym.width)))
           case Some(num) =>
-            ctx.assert(BVEqual(sym, BVLiteral(num, sym.width)))
+            ctx.assert(BVEqual(signal, BVLiteral(num, sym.width)))
           case None => // ignore
         }
       }
@@ -97,11 +99,8 @@ object Simple {
 
   private def subBackConstants(sys: TransitionSystem, mapping: Map[String, BigInt]): TransitionSystem = {
     def onExpr(s: SMTExpr): SMTExpr = s match {
-      case call @ BVFunctionCall(name, List(), width)  =>
-        mapping.get(name) match {
-          case Some(value) => BVLiteral(value, width)
-          case None => call
-        }
+      case BVSymbol(name, width) if mapping.contains(name)  =>
+        BVLiteral(mapping(name), width)
       case other => SMTExprMap.mapExpr(other, onExpr)
     }
     val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
@@ -116,7 +115,7 @@ object Simple {
         val sym = BVSymbol(prefix + counter, width)
         counter += 1
         consts =  (sym, value) +: consts
-        BVFunctionCall(sym.name, List(), sym.width)
+        sym
       case other => SMTExprMap.mapExpr(other, onExpr)
     }
     val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))

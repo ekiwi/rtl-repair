@@ -12,7 +12,7 @@ class BugfixerTests extends AnyFlatSpec {
 
   private val CirFixDir = os.pwd / "benchmarks" / "cirfix"
 
-  it should "fix decoder_3_to_8_wadden_buggy1" ignore {
+  it should "fix decoder_3_to_8_wadden_buggy1" in {
     val dir = CirFixDir / "decoder_3_to_8"
     Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "orig_min_tb.csv")
   }
