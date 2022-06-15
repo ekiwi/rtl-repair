@@ -1,20 +1,16 @@
-// Copyright 2020 The Regents of the University of California
+// Copyright 2020-2022 The Regents of the University of California
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 package maltese.mc
 
-import java.io.File
-
 import maltese.mc
 import maltese.smt._
 
 import scala.collection.mutable
-import scala.io.Source
-import scala.util.matching.Regex
 
 object Btor2 {
-  def load(file: os.Path): TransitionSystem = load(file, false)
+  def load(file: os.Path): TransitionSystem = load(file, inlineSignals = false)
   def load(file: os.Path, inlineSignals: Boolean): TransitionSystem = {
     val defaultName = file.last.split('.').dropRight(1).mkString(".")
     Btor2Parser.read(os.read.lines(file), inlineSignals, defaultName)
@@ -82,7 +78,8 @@ private object Btor2Parser {
     val states = new mutable.HashMap[Int, State]()
     val inputs = new mutable.ArrayBuffer[BVSymbol]()
     val signals = new mutable.LinkedHashMap[Int, Signal]()
-    val yosysLabels = new mutable.HashMap[Int, String]()
+    val comments = new mutable.ArrayBuffer[(String, String)]()
+    var header = ""
     val namespace = Namespace()
 
     // unique name generator
@@ -105,29 +102,19 @@ private object Btor2Parser {
     }
 
     /** yosys sometimes provides comments with human readable names for i/o/ and state signals * */
-    def parseYosysComment(comment: String): Option[Tuple2[Int, String]] = {
+    def parseYosysComment(comment: String): Unit = {
       // yosys module name annotation
       if (comment.contains("Yosys") && comment.contains("for module ")) {
         val start = comment.indexOf("for module ")
         val mod_name = comment.substring(start + "for module ".length).dropRight(1)
         name = Some(mod_name)
-      }
-      val yosys_lbl: Regex = "\\s*;\\s*(\\d+) \\\\(\\w+)".r
-      yosys_lbl.findFirstMatchIn(comment) match {
-        case Some(m) => Some((Integer.parseInt(m.group(1)), m.group(2)))
-        case None    => None
-      }
-    }
-    def parseComment(comment: String): Unit = {
-      parseYosysComment(comment) match {
-        case Some((ii, lbl)) => yosysLabels(ii) = lbl
-        case None            => None
+        header = comment.trim
       }
     }
 
     def parseLine(line: String): Unit = {
       val (code, comment) = splitLine(line)
-      if (comment.nonEmpty) { parseComment(comment) }
+      if (comment.nonEmpty) { parseYosysComment(comment) }
       if (code.isEmpty) { return }
 
       val parts = code.split(" ")
@@ -258,6 +245,9 @@ private object Btor2Parser {
       new_expr match {
         case Some(expr) =>
           val n = name.getOrElse(namespace.newName("s" + id))
+          if(comment.nonEmpty) {
+            comments.append(n -> comment.trim)
+          }
           signals.put(id, mc.Signal(n, expr, label))
         case _ =>
       }
@@ -265,8 +255,6 @@ private object Btor2Parser {
 
     lines.foreach { ll => parseLine(ll.trim) }
 
-    //println(yosys_lables)
-    // TODO: use yosys_lables to fill in missing symbol names
 
     // we want to ignore state and input signals
     val isInputOrState = (inputs.map(_.name) ++ states.values.map(_.sym.name)).toSet
@@ -278,7 +266,8 @@ private object Btor2Parser {
     val finalSignals = signals.values.filter(keep).toList
 
     val sysName = name.getOrElse(defaultName)
-    TransitionSystem(sysName, inputs = inputs.toList, states = states.values.toList, signals = finalSignals)
+    TransitionSystem(sysName, inputs = inputs.toList, states = states.values.toList, signals = finalSignals,
+      comments = comments.toMap, header = header)
   }
 
   private def parseConst(format: String, str: String): BigInt = format match {
