@@ -5,68 +5,21 @@ import maltese.smt.{BVLiteral, _}
 
 // playing around with a simple repair
 object Simple {
-  def main(args: Array[String]): Unit = {
-    val circuits = Seq(
-      "decoder_3_to_8.btor",
-      // expected change for buggy1 (bug -> fix):
-      // 4'b1000 -> 4'b1010
-      // 8'b0111_1111 -> 8'b1111_1111
-      "decoder_3_to_8_wadden_buggy1.btor",
-      // expected change for buggy2 (bug -> fix):
-      // 8 constants should change (missing leading 1)
-      // However, there are some missing test cases, so that we do not actually need
-      // to change all the constants to pass the test bench.
-      // Missing cases (for ABC, with en=1): 001, 011, 101, 111
-      // TODO: how does CirFix deal with the fact that these are never covered by the TB?
-      "decoder_3_to_8_wadden_buggy2.btor",
-    )
+  def repair(name: String, sys: TransitionSystem, tb: Testbench): Option[TransitionSystem] = {
 
-    // define a testbench
-    //val tbSymbols = Seq("en", "A", "B", "C", "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7")
-    val tbSymbols = Seq("en", "A", "B", "C", "Y7", "Y6", "Y5", "Y4", "Y3", "Y2", "Y1", "Y0")
-      .map(name => BVSymbol(name, 1))
-    val tb = Seq(
-      //      en=0 ABC=000 Y=11111111
-      //      en=1 ABC=000 Y=11111110
-      //      en=1 ABC=010 Y=11111011
-      //      en=1 ABC=100 Y=11101111
-      //      en=1 ABC=110 Y=10111111
-      //      en=0 ABC=110 Y=11111111
-      Seq(0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-      Seq(1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0),
-      Seq(1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1),
-      Seq(1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1),
-      Seq(1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1),
-      Seq(0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-    )
+    println(s"Trying to repair: $name")
 
-    circuits.foreach { name =>
-      println(s"Trying to repair: $name")
-      // note: the btor was crated with yosys using:
-      // - read_verilog
-      // - proc -noopt
-      // - write_btor
-      val sys = Btor2.load(os.pwd / "benchmarks" / "cirfix" / "decoder_3_to_8" / name)
+    // try to synthesize a fix
+    val fixedSys = fixConstants(sys, tb)
 
-      // try to synthesize a fix
-      val fixedSys = fixConstants(sys, tbSymbols, tb)
-      // print repaired system
-      if(false) {
-        fixedSys.foreach { fixed =>
-          println("BEFORE:")
-          println(sys.serialize)
-          println("")
-          println("AFTER:")
-          println(fixed.serialize)
-        }
-      }
-      println()
-    }
+    fixedSys
   }
 
 
   // simple repair approach that tries to find a replacements for constants in the circuit
-  private def fixConstants(sys: TransitionSystem, tbSymbols: Seq[BVSymbol], tb: Seq[Seq[Int]]): Option[TransitionSystem] = {
+  private def fixConstants(sys: TransitionSystem, tb: Testbench, seed: Long = 0): Option[TransitionSystem] = {
+    val rand = new scala.util.Random(seed)
+
     // first inline constants which will have the effect of duplicating constants that are used more than once
     val sysInlineConst = inlineConstants(sys)
 
@@ -92,11 +45,25 @@ object Simple {
     println(s"${sys.name} contains ${synSyms.length} constants.")
     println(synSyms.map(_._2).map(_.toLong.toBinaryString).mkString(", "))
 
+    // get some meta data for testbench application
+    val signalWidth = (
+      sys.inputs.map(i => i.name -> i.width) ++
+        sys.signals.filter(_.lbl == IsOutput).map(s => s.name -> s.e.asInstanceOf[BVExpr].width)
+      ).toMap
+    val tbSymbols = tb.signals.map(name => BVSymbol(name, signalWidth(name)))
+    val isInput = sys.inputs.map(_.name).toSet
+
     // unroll and compare results
-    tb.zipWithIndex.foreach { case (values, ii) =>
+    tb.values.zipWithIndex.foreach { case (values, ii) =>
       values.zip(tbSymbols).foreach { case (value, sym) =>
         val signal = encoding.getSignalAt(sym, ii)
-        if(value == 1) { ctx.assert(signal) } else { ctx.assert(BVNot(signal)) }
+        value match {
+          case None if isInput(sym.name) => // assign random value if input is X
+            ctx.assert(BVEqual(sym, BVLiteral(BigInt(sym.width, rand), sym.width)))
+          case Some(num) =>
+            ctx.assert(BVEqual(sym, BVLiteral(num, sym.width)))
+          case None => // ignore
+        }
       }
       encoding.unroll(ctx)
     }
