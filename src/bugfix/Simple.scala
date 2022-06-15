@@ -5,19 +5,19 @@ import maltese.smt.{BVLiteral, _}
 
 // playing around with a simple repair
 object Simple {
-  def repair(name: String, sys: TransitionSystem, tb: Testbench): Option[TransitionSystem] = {
+  def repair(name: String, sys: TransitionSystem, tb: Testbench, verbose: Boolean): Option[TransitionSystem] = {
 
-    println(s"Trying to repair: $name")
+    if(verbose) println(s"Trying to repair: $name")
 
     // try to synthesize a fix
-    val fixedSys = fixConstants(sys, tb)
+    val fixedSys = fixConstants(sys, tb, verbose)
 
     fixedSys
   }
 
 
   // simple repair approach that tries to find a replacements for constants in the circuit
-  private def fixConstants(sys: TransitionSystem, tb: Testbench, seed: Long = 0): Option[TransitionSystem] = {
+  private def fixConstants(sys: TransitionSystem, tb: Testbench, verbose: Boolean, seed: Long = 0): Option[TransitionSystem] = {
     val rand = new scala.util.Random(seed)
 
     // first inline constants which will have the effect of duplicating constants that are used more than once
@@ -44,8 +44,10 @@ object Simple {
     }
 
     // print out constants
-    println(s"${sys.name} contains ${synSyms.length} constants.")
-    println(synSyms.map(_._2).map(_.toLong.toBinaryString).mkString(", "))
+    if(verbose) {
+      println(s"${sys.name} contains ${synSyms.length} constants.")
+      println(synSyms.map(_._2).map(_.toLong.toBinaryString).mkString(", "))
+    }
 
     // get some meta data for testbench application
     val signalWidth = (
@@ -72,7 +74,7 @@ object Simple {
 
     // try to synthesize constants
     ctx.check() match {
-      case IsSat => println("Solution found:")
+      case IsSat => if(verbose) println("Solution found:")
       case IsUnSat => throw new RuntimeException(s"No possible solution could be found")
       case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
     }
@@ -85,11 +87,11 @@ object Simple {
       if(oldValue != newValue) { Some((sym, oldValue, newValue)) } else { None }
     }
     if(changedConstants.isEmpty) {
-      println("Nothing needs to change. The circuit was already working correctly!")
+      if(verbose) println("Nothing needs to change. The circuit was already working correctly!")
       None
     } else {
       changedConstants.foreach { case (sym, oldValue, newValue) =>
-        println(s"${sym.name}: ${oldValue.toLong.toBinaryString} -> ${newValue.toLong.toBinaryString}")
+        if(verbose) println(s"${sym.name}: ${oldValue.toLong.toBinaryString} -> ${newValue.toLong.toBinaryString}")
       }
       // substitute constants
       val mapping = synSyms.zip(newConstants).map { case ((sym, _), newValue) => sym.name -> newValue }.toMap

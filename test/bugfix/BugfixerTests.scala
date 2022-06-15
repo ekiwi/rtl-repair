@@ -12,8 +12,18 @@ class BugfixerTests extends AnyFlatSpec {
 
   private val CirFixDir = os.pwd / "benchmarks" / "cirfix"
 
-  it should "fix decoder_3_to_8_wadden_buggy1" in {
+  it should "fix decoder_3_to_8_wadden_buggy1 with minimized testbench" in {
     val dir = CirFixDir / "decoder_3_to_8"
     Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "orig_min_tb.csv")
+  }
+
+  it should "fix decoder_3_to_8_wadden_buggy1 with original testbench" in {
+    val dir = CirFixDir / "decoder_3_to_8"
+    Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "orig_tb.csv")
+  }
+
+  it should "fix decoder_3_to_8_wadden_buggy1 with complete minimized testbench" in {
+    val dir = CirFixDir / "decoder_3_to_8"
+    Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "complete_min_tb.csv")
   }
 }

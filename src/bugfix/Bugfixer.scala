@@ -10,7 +10,7 @@ object Bugfixer {
   def main(args: Array[String]): Unit = {
     val parser = new ArgumentParser()
     val conf = parser.parse(args, Arguments(None, None)).get
-    val repaired = repair(conf.design.get, conf.testbench.get)
+    val repaired = repair(conf.design.get, conf.testbench.get, verbose = true)
     // print result
     repaired match {
       case Some(value) =>
@@ -20,12 +20,12 @@ object Bugfixer {
     }
   }
 
-  def repair(design: os.Path, testbench: os.Path): Option[TransitionSystem] = {
+  def repair(design: os.Path, testbench: os.Path, verbose: Boolean = false): Option[TransitionSystem] = {
     // load design and testbench
     val sys = Btor2.load(design)
-    val tb = loadTestbench(testbench)
+    val tb = removeRow("time", loadTestbench(testbench))
     checkTestbenchSignals(sys, tb)
-    val repaired = Simple.repair(design.baseName, sys, tb)
+    val repaired = Simple.repair(design.baseName, sys, tb, verbose)
 
     if(false) {
       repaired.foreach { fixed =>
@@ -64,6 +64,18 @@ object Bugfixer {
       v
     }.toSeq
     Testbench(signals, values)
+  }
+
+  def removeRow(name: String, tb: Testbench): Testbench = {
+    if(tb.signals.contains(name)) {
+      val pos = tb.signals.indexOf(name)
+      val values = tb.values.map { row =>
+        // remove pos
+        row.take(pos) ++ row.drop(pos + 1)
+      }
+      val signals = tb.signals.take(pos) ++ tb.signals.drop(pos + 1)
+      tb.copy(signals = signals, values = values)
+    } else { tb }
   }
 }
 
