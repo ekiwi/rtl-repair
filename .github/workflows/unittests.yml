@@ -21,10 +21,15 @@ jobs:
         wget -q https://optimathsat.disi.unitn.it/releases/optimathsat-1.7.3/optimathsat-1.7.3-linux-64-bit.tar.gz
         tar -xf optimathsat-1.7.3-linux-64-bit.tar.gz
         echo "${PWD}/optimathsat-1.7.3-linux-64-bit/bin" >> $GITHUB_PATH
-        optimathsat -version
 
     - name: Install CVC4
       run: sudo apt-get install -y cvc4
+
+    - name: Print Solver Versions
+      run: |
+        z3 -version
+        optimathsat -version
+        cvc4 --version
 
     - name: Install Scala
       uses: olafurpg/setup-scala@v10
