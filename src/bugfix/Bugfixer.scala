@@ -24,8 +24,8 @@ object Bugfixer {
   def repair(design: os.Path, testbench: os.Path, config: Config): RepairResult = {
     // load design and testbench and validate them
     val sys = Btor2.load(design)
-    val tb = Testbench.removeRow("time", Testbench.load(testbench))
-    Testbench.checkSignals(sys, tb)
+    val tbRaw = Testbench.removeRow("time", Testbench.load(testbench))
+    val tb = Testbench.checkSignals(sys, tbRaw, verbose = config.verbose)
 
     // do repair
     if (config.verbose) println(s"Trying to repair: ${design.baseName}")

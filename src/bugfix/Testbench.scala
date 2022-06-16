@@ -44,14 +44,31 @@ object Testbench {
     }
   }
 
-  /** makes sure that all inputs and outputs are defined in the tb */
-  def checkSignals(sys: TransitionSystem, tb: Testbench): Unit = {
+  /** makes sure that all inputs and outputs are defined in the tb and adds `X` for any undefined signals of the system */
+  def checkSignals(sys: TransitionSystem, tb: Testbench, verbose: Boolean): Testbench = {
     val inputs = sys.inputs.map(_.name).toSet
     val outputs = sys.signals.filter(_.lbl == IsOutput).map(_.name).toSet
     val tbSignals = tb.signals.toSet - "time"
     val unknownSignals = tbSignals.diff(inputs.union(outputs))
-    val missingSignals = (inputs.union(outputs)).diff(tbSignals)
+    val missingInputs = inputs.diff(tbSignals)
+    val missingOutputs = outputs.diff(tbSignals)
     assert(unknownSignals.isEmpty, "Testbench contains unknown signals: " + unknownSignals.mkString(", "))
-    assert(missingSignals.isEmpty, "Testbench is missing signals from the design: " + missingSignals.mkString(", "))
+    if (verbose) {
+      if (missingInputs.nonEmpty) {
+        println(s"Design inputs missing from the testbench: " + missingInputs.mkString(", "))
+      }
+      if (missingOutputs.nonEmpty) {
+        println(s"Design outputs missing from the testbench: " + missingOutputs.mkString(", "))
+      }
+    }
+    val missingSignals = missingInputs.toList ++ missingOutputs.toList
+    if (missingSignals.isEmpty) {
+      tb // no need to add anything to the testbench
+    } else {
+      val signals = tb.signals ++ missingSignals
+      val xs = missingSignals.map(_ => None)
+      val values = tb.values.map(row => row ++ xs)
+      tb.copy(signals = signals, values = values)
+    }
   }
 }
