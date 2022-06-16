@@ -36,18 +36,18 @@ begin: COUNTER //block name
     //At every rising edge of clock we check if reset is active
     //If active, we load the counter output with 4'b0000
     if(reset==1'b1) begin
-        counter_out <= #1 4'b0000;
-        overflow_out <= #1 1'b0;
+        counter_out <= 4'b0000;
+        overflow_out <= 1'b0;
     end
     //If enable is active, we increment the counter
     else if(enable == 1'b1) begin
-        counter_out <= #1 counter_out + 1;
+        counter_out <= counter_out + 1;
 
     end
     // if it overflows, set overflow_out to be 1
-    else if(counter_out == 4'b1111)
+    if(counter_out == 4'b1111)
     begin
-        overflow_out <= #1 1'b1;
+        overflow_out <= 1'b1;
     end
 end // End of block COUNTER
 
