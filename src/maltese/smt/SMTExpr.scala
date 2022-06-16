@@ -111,6 +111,30 @@ case class BVEqual(a: BVExpr, b: BVExpr) extends BVBinaryExpr {
   override def width: Int = 1
   override def reapply(nA: BVExpr, nB: BVExpr) = BVEqual(nA, nB)
 }
+
+object BVEqual {
+  def apply(a: BVExpr, b: BVExpr): BVExpr = {
+    if (a.width == 1) { // simplification for boolean comparisons
+      require(a.width == b.width, s"Both argument need to be the same width!")
+      (a, b) match {
+        case (BVLiteral(aVal, _), BVLiteral(bVal, _)) =>
+          if (aVal == bVal) {
+            True()
+          } else {
+            False()
+          }
+        case (True(), other)  => other
+        case (other, True())  => other
+        case (False(), other) => BVNot(other)
+        case (other, False()) => BVNot(other)
+        case (otherA, otherB) => new BVEqual(otherA, otherB)
+      }
+    } else {
+      new BVEqual(a, b)
+    }
+  }
+}
+
 // added as a separate node because it is used a lot in model checking and benefits from pretty printing
 class BVImplies(val a: BVExpr, val b: BVExpr) extends BVBinaryExpr {
   assert(a.width == 1, s"The antecedent needs to be a boolean expression!")
