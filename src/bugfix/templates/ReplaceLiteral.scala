@@ -6,17 +6,19 @@ package bugfix.templates
 import maltese.mc._
 import maltese.smt._
 
-case class ReplaceLiteralTemplateApplication(sys: TransitionSystem, synSymbols: Seq[(BVSymbol, BigInt)]) extends TemplateApplication {
+case class ReplaceLiteralTemplateApplication(synSymbols: Seq[(BVSymbol, BigInt)]) extends TemplateApplication {
   override def consts: Seq[BVSymbol] = synSymbols.map(_._1)
   // add soft constraints to change as few constants as possible
   override def softConstraints: Seq[BVExpr] = synSymbols.map { case (sym, value) =>
     BVEqual(sym, BVLiteral(value, sym.width))
   }
+  override def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): RepairResult =
+    ReplaceLiteral.repair(sys, synSymbols, results)
 }
 
 /** Allows the solver to replace any literal in the circuit. Tries to minimize the number of literals that are changed. */
-object ReplaceLiteral extends Template {
-  override def apply(sys: TransitionSystem, namespace: Namespace): ReplaceLiteralTemplateApplication = {
+object ReplaceLiteral extends RepairTemplate {
+  override def apply(sys: TransitionSystem, namespace: Namespace): (TransitionSystem, TemplateApplication) = {
     // first inline constants which will have the effect of duplicating constants that are used more than once
     val sysInlineConst = inlineConstants(sys)
 
@@ -29,18 +31,10 @@ object ReplaceLiteral extends Template {
       println(synSyms.map(_._2).map(_.toLong.toBinaryString).mkString(", "))
     }
 
-    ReplaceLiteralTemplateApplication(synSys, synSyms)
+    (synSys, ReplaceLiteralTemplateApplication(synSyms))
   }
 
-  override def repair(app: TemplateApplication, results: Map[String, BigInt]): RepairResult = {
-    app match {
-      case ReplaceLiteralTemplateApplication(sys, synSymbols) => doRepair(sys, synSymbols, results)
-      case other =>
-        throw new RuntimeException(s"Incompatible template application. Expected ReplaceLiteralTemplateApplication, not: $other")
-    }
-  }
-
-  private def doRepair(sys: TransitionSystem, synSymbols: Seq[(BVSymbol, BigInt)], results: Map[String, BigInt]): RepairResult = {
+  def repair(sys: TransitionSystem, synSymbols: Seq[(BVSymbol, BigInt)], results: Map[String, BigInt]): RepairResult = {
     val changedConstants = synSymbols.flatMap { case (sym, oldValue) =>
       val newValue = results(sym.name)
       if(oldValue != newValue) { Some((sym, oldValue, newValue)) } else { None }
