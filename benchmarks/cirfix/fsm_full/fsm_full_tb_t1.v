@@ -11,13 +11,13 @@ integer f;
 initial begin
   f = $fopen("output_fsm_full_tb_t1.txt");
   $display("time\t    req_0 req_1 req_2 req_3 gnt_0 gnt_1 gnt_2 gnt_3");
-  $fwrite(f, "time,gnt_0,gnt_1,gnt_2,gnt_3\n");
+  $fwrite(f, "time,gnt_0,gnt_1,gnt_2,gnt_3,req_0,req_1,req_2,req_3,reset,clock\n");
   $monitor("%g\t    %b  %b  %b  %b  %b  %b  %b  %b", 
     $time, req_0, req_1, req_2, req_3, gnt_0, gnt_1, gnt_2, gnt_3);
   forever begin
     @(posedge clock);
-    $fwrite(f, "%g,%b,%b,%b,%b\n", 
-     $time, gnt_0, gnt_1, gnt_2, gnt_3);
+    $fwrite(f, "%g,%b,%b,%b,%b,%b,%b,%b,%b,%b,%b\n", 
+     $time, gnt_0, gnt_1, gnt_2, gnt_3, req_0, req_1, req_2, req_3, reset, clock);
   end
 end
 
