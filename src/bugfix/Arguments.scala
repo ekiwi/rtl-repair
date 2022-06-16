@@ -4,6 +4,7 @@
 
 package bugfix
 
+import bugfix.templates.{RepairTemplate, ReplaceLiteral}
 import maltese.smt.{Solver, Z3SMTLib}
 import scopt.OptionParser
 
@@ -14,6 +15,7 @@ case class Arguments(
 )
 
 case class Config(
+  templates: Seq[RepairTemplate] = Seq(ReplaceLiteral),
   solver: Solver = Z3SMTLib,
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,

@@ -9,8 +9,8 @@ import maltese.smt._
 case object IdentityTemplateApplication extends TemplateApplication {
   override def consts: Seq[BVSymbol] = Seq()
   override def softConstraints: Seq[BVExpr] = Seq()
-  override def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): RepairResult =
-    RepairResult(sys, changed = false)
+  override def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): TemplateRepairResult =
+    TemplateRepairResult(sys, changed = false)
 
 }
 

@@ -12,7 +12,7 @@ case class ReplaceLiteralTemplateApplication(synSymbols: Seq[(BVSymbol, BigInt)]
   override def softConstraints: Seq[BVExpr] = synSymbols.map { case (sym, value) =>
     BVEqual(sym, BVLiteral(value, sym.width))
   }
-  override def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): RepairResult =
+  override def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): TemplateRepairResult =
     ReplaceLiteral.repair(sys, synSymbols, results)
 }
 
@@ -34,14 +34,14 @@ object ReplaceLiteral extends RepairTemplate {
     (synSys, ReplaceLiteralTemplateApplication(synSyms))
   }
 
-  def repair(sys: TransitionSystem, synSymbols: Seq[(BVSymbol, BigInt)], results: Map[String, BigInt]): RepairResult = {
+  def repair(sys: TransitionSystem, synSymbols: Seq[(BVSymbol, BigInt)], results: Map[String, BigInt]): TemplateRepairResult = {
     val changedConstants = synSymbols.flatMap { case (sym, oldValue) =>
       val newValue = results(sym.name)
       if(oldValue != newValue) { Some((sym, oldValue, newValue)) } else { None }
     }
     val mapping = synSymbols.map { case (sym, _) => sym.name -> results(sym.name) }.toMap
     val repairedSys = subBackConstants(sys, mapping)
-    RepairResult(repairedSys, changed = changedConstants.nonEmpty)
+    TemplateRepairResult(repairedSys, changed = changedConstants.nonEmpty)
   }
 
 

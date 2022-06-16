@@ -19,9 +19,9 @@ trait TemplateApplication {
   /// synthesis soft constraints
   def softConstraints: Seq[BVExpr]
   /// handle to the template used to generate this application
-  def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): RepairResult
+  def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): TemplateRepairResult
   // sanity check
   assert(softConstraints.forall(_.width == 1), "all soft constraints must be boolean formulas")
 }
 
-case class RepairResult(sys: TransitionSystem, changed: Boolean)
+case class TemplateRepairResult(sys: TransitionSystem, changed: Boolean)
