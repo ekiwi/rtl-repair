@@ -13,9 +13,11 @@ class BugfixerFirstCounterOverflowTests extends AnyFlatSpec {
 
   private val Dir = os.pwd / "benchmarks" / "cirfix" / "first_counter_overflow"
   private val DefaultConfig = Config()
+  private val VerboseConfig = DefaultConfig.copy(verbose = true, debugSolver = true)
 
-  it should "fix first_counter_overflow_kgoliya_buggy1 with original testbench" ignore { // TODO: currently cannot fix!
-    val res = Bugfixer.repair(Dir / "first_counter_overflow_kgoliya_buggy1.btor", Dir / "orig_tb.csv", DefaultConfig)
+  it should "fix first_counter_overflow_kgoliya_buggy1 with original testbench" in {
+    // TODO: this erroneously completes because we do not properly deal with uninitialized state (or inputs)
+    val res = Bugfixer.repair(Dir / "first_counter_overflow_kgoliya_buggy1.btor", Dir / "orig_tb.csv", VerboseConfig)
     assert(res.nonEmpty)
   }
 }
