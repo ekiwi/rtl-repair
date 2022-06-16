@@ -11,8 +11,8 @@ import maltese.smt._
 object Bugfixer {
   def main(args: Array[String]): Unit = {
     val parser = new ArgumentParser()
-    val conf = parser.parse(args, Arguments(None, None)).get
-    val repaired = repair(conf.design.get, conf.testbench.get, verbose = true)
+    val arguments = parser.parse(args, Arguments(None, None)).get
+    val repaired = repair(arguments.design.get, arguments.testbench.get, arguments.config)
     // print result
     repaired match {
       case Some(value) =>
@@ -22,16 +22,16 @@ object Bugfixer {
     }
   }
 
-  def repair(design: os.Path, testbench: os.Path, verbose: Boolean = false): Option[TransitionSystem] = {
+  def repair(design: os.Path, testbench: os.Path, config: Config): Option[TransitionSystem] = {
     // load design and testbench and validate them
     val sys = Btor2.load(design)
     val tb = Testbench.removeRow("time", Testbench.load(testbench))
     Testbench.checkSignals(sys, tb)
 
     // do repair
-    if (verbose) println(s"Trying to repair: ${design.baseName}")
+    if (config.verbose) println(s"Trying to repair: ${design.baseName}")
     val templates = Seq(ReplaceLiteral)
-    val repaired = doRepair(sys, tb, templates, verbose)
+    val repaired = doRepair(sys, tb, templates, config)
 
 
     // print out results
@@ -46,8 +46,8 @@ object Bugfixer {
     Some(repaired)
   }
 
-  private def doRepair(sys: TransitionSystem, tb: Testbench, templates: Seq[RepairTemplate], verbose: Boolean, seed: Long = 0): TransitionSystem = {
-    val rand = new scala.util.Random(seed)
+  private def doRepair(sys: TransitionSystem, tb: Testbench, templates: Seq[RepairTemplate], config: Config): TransitionSystem = {
+    val rand = new scala.util.Random(config.seed)
     val namespace = Namespace(sys)
 
     // apply repair templates
@@ -59,12 +59,8 @@ object Bugfixer {
     // load system and communicate to solver
     val encoding = new CompactEncoding(transformedSys)
     // select solver
-    val solver = if (true) {
-      Z3SMTLib
-    } else {
-      OptiMathSatSMTLib
-    }
-    val ctx = solver.createContext(debugOn = false) // set debug to true to see commands sent to SMT solver
+    val solver = config.solver
+    val ctx = solver.createContext(debugOn = config.debugSolver)
     ctx.setLogic("ALL")
     // define synthesis constants
     synthesisConstants.foreach(c => ctx.runCommand(DeclareFunction(c, Seq())))
@@ -99,7 +95,7 @@ object Bugfixer {
 
     // try to synthesize constants
     ctx.check() match {
-      case IsSat => if (verbose) println("Solution found:")
+      case IsSat => if (config.verbose) println("Solution found:")
       case IsUnSat => throw new RuntimeException(s"No possible solution could be found")
       case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
     }
@@ -111,7 +107,7 @@ object Bugfixer {
     val repaired = repairWithTemplates(transformedSys, results, templateApplications)
     if (repaired.changed) {
     } else {
-      if (verbose) println("No change necessary")
+      if (config.verbose) println("No change necessary")
     }
 
     repaired.sys
