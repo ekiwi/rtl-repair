@@ -19,11 +19,14 @@ case class FreeVars(stateInit: Seq[(String, SMTSymbol)], inputs: Seq[((String, I
 
 object FreeVars {
 
+  // note: this suffix cannot be "_init" since that would clash with a built-in name used in the TransitionSystem encoding
+  val InitSuffix = "_init_val"
+
   /** Looks at the Transition System and Testbench to figure out what free variables are needed. */
   def findFreeVars(sys: TransitionSystem, tb: Testbench, namespace: Namespace): FreeVars = {
     val stateInit = sys.states.flatMap {
       case State(sym, None, _) =>
-        val v = sym.rename(namespace.newName(sym.name + "_init"))
+        val v = sym.rename(namespace.newName(sym.name + InitSuffix))
         Some(sym.name -> v)
       case _ => None
     }

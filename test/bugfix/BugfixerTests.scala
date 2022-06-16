@@ -18,16 +18,14 @@ class BugfixerFirstCounterOverflowTests extends BugFixerSpec {
   private val Dir = CirFixDir / "first_counter_overflow"
 
   it should "find that no repair is necessary for first_counter_overflow" ignore {
-    val res = Bugfixer.repair(Dir / "first_counter_overflow.btor", Dir / "orig_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "first_counter_overflow.btor", Dir / "orig_tb.csv", VerboseConfig)
     assert(res.noRepairNecessary, res.toString)
   }
 
-  it should "fix first_counter_overflow_kgoliya_buggy1 with original testbench" ignore {
+  it should "fix first_counter_overflow_kgoliya_buggy1 with original testbench" in {
     // TODO: this erroneously completes because we do not properly deal with uninitialized state (or inputs)
-    val e = intercept[RuntimeException] {
-      val res = Bugfixer.repair(Dir / "first_counter_overflow_kgoliya_buggy1.btor", Dir / "orig_tb.csv", VerboseConfig)
-      assert(res.isSuccess, res.toString)
-    }
+    val res = Bugfixer.repair(Dir / "first_counter_overflow_kgoliya_buggy1.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.cannotRepair, res.toString) // cannet be repaired since we do not have the right template yet
   }
 }
 
