@@ -42,10 +42,9 @@ begin: COUNTER //block name
     //If enable is active, we increment the counter
     else if(enable == 1'b1) begin
         counter_out <= counter_out + 1;
-
     end
     // if it overflows, set overflow_out to be 1
-    else if(counter_out == 4'b1111)
+    if(!reset & counter_out == 4'b1111)
     begin
         overflow_out <= 1'b1;
     end

@@ -45,7 +45,7 @@ begin: COUNTER //block name
 
     end
     // if it overflows, set overflow_out to be 1
-    if(counter_out == 4'b1111)
+    else if(!reset & counter_out == 4'b1111)
     begin
         overflow_out <= 1'b1;
     end
