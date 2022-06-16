@@ -224,11 +224,14 @@ object Bugfixer {
 }
 
 sealed trait RepairResult {
-  def isSuccess: Boolean = false
+  def isSuccess:         Boolean = false
+  def noRepairNecessary: Boolean = false
 }
 
 /** indicates that the provided system and testbench pass for all possible unconstraint inputs and initial states */
-case object NoRepairNecessary extends RepairResult
+case object NoRepairNecessary extends RepairResult {
+  override def noRepairNecessary: Boolean = true
+}
 
 /** indicates that no repair was found, this probably due to constraints in our repair templates */
 case object CannotRepair extends RepairResult

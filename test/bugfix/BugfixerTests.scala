@@ -17,6 +17,11 @@ class BugfixerFirstCounterOverflowTests extends BugFixerSpec {
   behavior.of("Bugfixer on FirstCounterOverflow")
   private val Dir = CirFixDir / "first_counter_overflow"
 
+  it should "find that no repair is necessary for first_counter_overflow" ignore {
+    val res = Bugfixer.repair(Dir / "first_counter_overflow.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.noRepairNecessary, res.toString)
+  }
+
   it should "fix first_counter_overflow_kgoliya_buggy1 with original testbench" ignore {
     // TODO: this erroneously completes because we do not properly deal with uninitialized state (or inputs)
     val e = intercept[RuntimeException] {
@@ -28,6 +33,12 @@ class BugfixerFirstCounterOverflowTests extends BugFixerSpec {
 
 class BugfixerDecoderTests extends BugFixerSpec {
   behavior.of("Bugfixer on Decoder")
+
+  it should "find that no repair is necessary for decoder3_to_8" in {
+    val dir = CirFixDir / "decoder_3_to_8"
+    val res = Bugfixer.repair(dir / "decoder_3_to_8.btor", dir / "orig_min_tb.csv", DefaultConfig)
+    assert(res.noRepairNecessary, res.toString)
+  }
 
   it should "fix decoder_3_to_8_wadden_buggy1 with minimized testbench" in {
     val dir = CirFixDir / "decoder_3_to_8"
