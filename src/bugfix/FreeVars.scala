@@ -18,6 +18,7 @@ case class FreeVars(stateInit: Seq[(String, SMTSymbol)], inputs: Seq[((String, I
 }
 
 object FreeVars {
+
   /** Looks at the Transition System and Testbench to figure out what free variables are needed. */
   def findFreeVars(sys: TransitionSystem, tb: Testbench, namespace: Namespace): FreeVars = {
     val stateInit = sys.states.flatMap {
@@ -29,7 +30,7 @@ object FreeVars {
     val inputs = tb.values.zipWithIndex.flatMap { case (row, ii) =>
       val isDefined = row.zip(tb.signals).filter(_._1.isDefined).map(_._2).toSet
       // create free var for each undefined input
-      sys.inputs.filterNot(i => isDefined(i.name)).map{ i =>
+      sys.inputs.filterNot(i => isDefined(i.name)).map { i =>
         (i.name, ii) -> i.rename(namespace.newName(i.name + "_at_" + ii))
       }
     }

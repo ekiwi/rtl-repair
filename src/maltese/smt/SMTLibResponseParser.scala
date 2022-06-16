@@ -84,7 +84,7 @@ object SExprParser {
   def parse(line: String): SExpr = {
     val tokens = tokenize(line)
 
-    if(tokens.isEmpty) {
+    if (tokens.isEmpty) {
       SExprLeaf("")
     } else if (tokens.head == "(") {
       parseSExpr(tokens.tail)._1
@@ -100,8 +100,8 @@ object SExprParser {
     line.foreach {
       case '(' if !inEscape => count += 1
       case ')' if !inEscape => count -= 1
-      case '|' => inEscape = !inEscape
-      case _ => // ignore
+      case '|'              => inEscape = !inEscape
+      case _                => // ignore
     }
     count == 0
   }
@@ -112,18 +112,18 @@ object SExprParser {
     var inEscape = false
     var tmp = ""
     def finish(): Unit = {
-      if(tmp.nonEmpty) {
+      if (tmp.nonEmpty) {
         tokens = tokens :+ tmp
         tmp = ""
       }
     }
     line.foreach {
-      case '(' => finish() ; tokens = tokens :+ "("
-      case ')' => finish() ; tokens = tokens :+ ")"
-      case '|' if inEscape => tmp += '|' ; finish() ; inEscape = false
-      case '|' if !inEscape => finish() ; inEscape = true ; tmp = "|"
+      case '('                                   => finish(); tokens = tokens :+ "("
+      case ')'                                   => finish(); tokens = tokens :+ ")"
+      case '|' if inEscape                       => tmp += '|'; finish(); inEscape = false
+      case '|' if !inEscape                      => finish(); inEscape = true; tmp = "|"
       case ' ' | '\t' | '\r' | '\n' if !inEscape => finish()
-      case other => tmp += other
+      case other                                 => tmp += other
     }
     finish()
     tokens

@@ -24,9 +24,9 @@ object SMTSymbol {
   }
 
   def fromType(name: String, tpe: SMTType): SMTSymbol = tpe match {
-    case BVType(width) => BVSymbol(name, width)
+    case BVType(width)                    => BVSymbol(name, width)
     case ArrayType(indexWidth, dataWidth) => ArraySymbol(name, indexWidth, dataWidth)
-    case UninterpretedSort(tpeName) => UTSymbol(name, tpeName)
+    case UninterpretedSort(tpeName)       => UTSymbol(name, tpeName)
   }
 }
 sealed trait SMTNullaryExpr extends SMTExpr {
@@ -234,8 +234,7 @@ case class BVFunctionCall(name: String, args: List[SMTExpr], width: Int) extends
 }
 
 /** apply arguments to a function which returns a result of array type */
-case class ArrayFunctionCall(name: String, args: List[SMTExpr], indexWidth: Int, dataWidth: Int)
-    extends ArrayExpr {
+case class ArrayFunctionCall(name: String, args: List[SMTExpr], indexWidth: Int, dataWidth: Int) extends ArrayExpr {
   require(args.nonEmpty, "for 0-arity functions, please use an ArraySymbol")
   override def children = args
 }

@@ -4,7 +4,7 @@ import maltese.smt._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class SExprParserSpec extends AnyFlatSpec {
-  behavior of "SExprParser"
+  behavior.of("SExprParser")
 
   it should "deal with escaped identifiers and internal spaces correctly" in {
     val str = "(define-fun |decoder_3to8_n en| ((state |decoder_3to8_s|)) Bool (|decoder_3to8#0| state))"

@@ -9,19 +9,17 @@ import maltese.smt.{Solver, Z3SMTLib}
 import scopt.OptionParser
 
 case class Arguments(
-  design: Option[os.Path], // path to design btor
+  design:    Option[os.Path], // path to design btor
   testbench: Option[os.Path], // path to testbench CSV
-  config: Config = Config(),
-)
+  config:    Config = Config())
 
 case class Config(
   templates: Seq[RepairTemplate] = Seq(ReplaceLiteral),
-  solver: Solver = Z3SMTLib,
+  solver:    Solver = Z3SMTLib,
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
-  verbose: Boolean = false,
-  seed: Long = 0,
-)
+  verbose:     Boolean = false,
+  seed:        Long = 0)
 
 class ArgumentParser extends OptionParser[Arguments]("bugfixer") {
   head("bugfixer", "0.x")

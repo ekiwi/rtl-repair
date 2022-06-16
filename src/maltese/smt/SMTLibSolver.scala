@@ -82,9 +82,9 @@ private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: 
   override def runCommand(cmd: SMTCommand): Unit = cmd match {
     case Comment(_)      => // ignore comments
     case SetLogic(logic) => setLogic(logic)
-    case c: DefineFunction             => writeCommand(serialize(c))
-    case c: DeclareFunction            => writeCommand(serialize(c))
-    case c: DeclareUninterpretedSort   => writeCommand(serialize(c))
+    case c: DefineFunction           => writeCommand(serialize(c))
+    case c: DeclareFunction          => writeCommand(serialize(c))
+    case c: DeclareUninterpretedSort => writeCommand(serialize(c))
   }
 
   /** releases all native resources */

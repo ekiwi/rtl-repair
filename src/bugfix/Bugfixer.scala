@@ -16,8 +16,8 @@ object Bugfixer {
     // print result
     repaired match {
       case NoRepairNecessary => println("Nothing to repair.")
-      case CannotRepair =>      println("FAILED to repair.")
-      case RepairSuccess(_) =>  println("Repaired!")
+      case CannotRepair      => println("FAILED to repair.")
+      case RepairSuccess(_)  => println("Repaired!")
     }
   }
 
@@ -31,11 +31,10 @@ object Bugfixer {
     if (config.verbose) println(s"Trying to repair: ${design.baseName}")
     val repaired = doRepair(sys, tb, config)
 
-
     // print out results
     repaired match {
       case NoRepairNecessary =>
-      case CannotRepair =>
+      case CannotRepair      =>
       case RepairSuccess(repairedSys) =>
         if (false) {
           println("BEFORE:")
@@ -63,7 +62,7 @@ object Bugfixer {
     // find assignments to free variables that will make the testbench fail
     val freeVarAssignment = findFreeVarAssignment(ctx, sys, tb, freeVars, config) match {
       case Some(value) => value
-      case None => return NoRepairNecessary // testbench does not in fact fail
+      case None        => return NoRepairNecessary // testbench does not in fact fail
     }
 
     // use the failing assignment for free vars
@@ -95,8 +94,7 @@ object Bugfixer {
 
     // do repair
     val repaired = repairWithTemplates(transformedSys, results, templateApplications)
-    if (repaired.changed) {
-    } else {
+    if (repaired.changed) {} else {
       if (config.verbose) println("No change necessary")
     }
 
@@ -104,20 +102,27 @@ object Bugfixer {
   }
 
   /** find assignments to free variables that will make the testbench fail */
-  private def findFreeVarAssignment(ctx: SolverContext, sys: TransitionSystem, tb: Testbench, freeVars: FreeVars, config: Config): Option[Seq[(String, BigInt)]] = {
+  private def findFreeVarAssignment(
+    ctx:      SolverContext,
+    sys:      TransitionSystem,
+    tb:       Testbench,
+    freeVars: FreeVars,
+    config:   Config
+  ): Option[Seq[(String, BigInt)]] = {
     ctx.push()
     instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = true)
     ctx.check() match {
       case IsSat => // OK
       case IsUnSat =>
-        if(config.verbose) println(s"Original system is correct for all starting states and undefined inputs. Nothing to do.")
+        if (config.verbose)
+          println(s"Original system is correct for all starting states and undefined inputs. Nothing to do.")
         return None
       case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
     }
     val freeVarAssignment = freeVars.readValues(ctx)
     if (config.verbose) {
       println("Assignment for free variables which makes the testbench fail:")
-      freeVarAssignment.foreach{ case (name, value) => println(s" - $name = $value") }
+      freeVarAssignment.foreach { case (name, value) => println(s" - $name = $value") }
     }
     ctx.pop()
     Some(freeVarAssignment)
@@ -125,12 +130,12 @@ object Bugfixer {
 
   /** Unrolls the system and adds all testbench constraints. Returns symbols for all undefined initial states and inputs. */
   private def instantiateTestbench(
-      ctx: SolverContext,
-      sys: TransitionSystem,
-      tb: Testbench,
-      freeVars: FreeVars,
-      assertDontAssumeOutputs: Boolean,
-      ): Unit = {
+    ctx:                     SolverContext,
+    sys:                     TransitionSystem,
+    tb:                      Testbench,
+    freeVars:                FreeVars,
+    assertDontAssumeOutputs: Boolean
+  ): Unit = {
     val sysWithInitVars = FreeVars.addStateInitFreeVars(sys, freeVars)
 
     // load system and communicate to solver
@@ -144,7 +149,7 @@ object Bugfixer {
     val signalWidth = (
       sysWithInitVars.inputs.map(i => i.name -> i.width) ++
         sysWithInitVars.signals.filter(_.lbl == IsOutput).map(s => s.name -> s.e.asInstanceOf[BVExpr].width)
-      ).toMap
+    ).toMap
     val tbSymbols = tb.signals.map(name => BVSymbol(name, signalWidth(name)))
     val isInput = sysWithInitVars.inputs.map(_.name).toSet
     val getFreeInputVar = freeVars.inputs.toMap
@@ -154,41 +159,46 @@ object Bugfixer {
 
     // collect input assumption and assert them
     val inputAssumptions = tb.values.zipWithIndex.flatMap { case (values, ii) =>
-      values.zip(tbSymbols).flatMap { case (value, sym) if isInput(sym.name) =>
-        val signal = encoding.getSignalAt(sym, ii)
-        value match {
-          case None => // assign arbitrary value if input is X
-            val freeVar = getFreeInputVar(sym.name -> ii)
-            Some(BVEqual(signal, freeVar))
-          case Some(num) =>
-            Some(BVEqual(signal, BVLiteral(num, sym.width)))
-        }
-      case _ => None
+      values.zip(tbSymbols).flatMap {
+        case (value, sym) if isInput(sym.name) =>
+          val signal = encoding.getSignalAt(sym, ii)
+          value match {
+            case None => // assign arbitrary value if input is X
+              val freeVar = getFreeInputVar(sym.name -> ii)
+              Some(BVEqual(signal, freeVar))
+            case Some(num) =>
+              Some(BVEqual(signal, BVLiteral(num, sym.width)))
+          }
+        case _ => None
       }
     }.toList
     ctx.assert(BVAnd(inputAssumptions))
 
     // collect output constraints and either assert or assume them
     val outputAssertions = tb.values.zipWithIndex.flatMap { case (values, ii) =>
-      values.zip(tbSymbols).flatMap { case (value, sym) if !isInput(sym.name) =>
-        val signal = encoding.getSignalAt(sym, ii)
-        value match {
-          case Some(num) =>
-            Some(BVEqual(signal, BVLiteral(num, sym.width)))
-          case None => None // no constraint
-        }
-      case _ => None
+      values.zip(tbSymbols).flatMap {
+        case (value, sym) if !isInput(sym.name) =>
+          val signal = encoding.getSignalAt(sym, ii)
+          value match {
+            case Some(num) =>
+              Some(BVEqual(signal, BVLiteral(num, sym.width)))
+            case None => None // no constraint
+          }
+        case _ => None
       }
     }.toList
-    if(assertDontAssumeOutputs) {
+    if (assertDontAssumeOutputs) {
       ctx.assert(BVNot(BVAnd(outputAssertions)))
     } else {
       ctx.assert(BVAnd(outputAssertions))
     }
   }
 
-
-  private def applyTemplates(sys: TransitionSystem, namespace: Namespace, templates: Seq[RepairTemplate]): (TransitionSystem, Seq[TemplateApplication]) = {
+  private def applyTemplates(
+    sys:       TransitionSystem,
+    namespace: Namespace,
+    templates: Seq[RepairTemplate]
+  ): (TransitionSystem, Seq[TemplateApplication]) = {
     val base = IdentityTemplate.apply(sys, namespace)
     val transformed = templates.scanLeft[(TransitionSystem, TemplateApplication)](base) { case (prev, template) =>
       template.apply(prev._1, namespace)
@@ -198,7 +208,11 @@ object Bugfixer {
     (transformedSys, applications)
   }
 
-  private def repairWithTemplates(transformedSys: TransitionSystem, results: Map[String, BigInt], applications: Seq[TemplateApplication]): TemplateRepairResult = {
+  private def repairWithTemplates(
+    transformedSys: TransitionSystem,
+    results:        Map[String, BigInt],
+    applications:   Seq[TemplateApplication]
+  ): TemplateRepairResult = {
     val base = TemplateRepairResult(transformedSys, changed = false)
     val res = applications.scanRight[TemplateRepairResult](base) { case (app, prev) =>
       app.performRepair(prev.sys, results)
@@ -212,10 +226,13 @@ object Bugfixer {
 sealed trait RepairResult {
   def isSuccess: Boolean = false
 }
+
 /** indicates that the provided system and testbench pass for all possible unconstraint inputs and initial states */
 case object NoRepairNecessary extends RepairResult
+
 /** indicates that no repair was found, this probably due to constraints in our repair templates */
 case object CannotRepair extends RepairResult
+
 /** indicates that the repair was successful and provides the repaired system */
 case class RepairSuccess(sys: TransitionSystem) extends RepairResult {
   override def isSuccess: Boolean = true

@@ -245,7 +245,7 @@ private object Btor2Parser {
       new_expr match {
         case Some(expr) =>
           val n = name.getOrElse(namespace.newName("s" + id))
-          if(comment.nonEmpty) {
+          if (comment.nonEmpty) {
             comments.append(n -> comment.trim)
           }
           signals.put(id, mc.Signal(n, expr, label))
@@ -254,7 +254,6 @@ private object Btor2Parser {
     }
 
     lines.foreach { ll => parseLine(ll.trim) }
-
 
     // we want to ignore state and input signals
     val isInputOrState = (inputs.map(_.name) ++ states.values.map(_.sym.name)).toSet
@@ -266,8 +265,14 @@ private object Btor2Parser {
     val finalSignals = signals.values.filter(keep).toList
 
     val sysName = name.getOrElse(defaultName)
-    TransitionSystem(sysName, inputs = inputs.toList, states = states.values.toList, signals = finalSignals,
-      comments = comments.toMap, header = header)
+    TransitionSystem(
+      sysName,
+      inputs = inputs.toList,
+      states = states.values.toList,
+      signals = finalSignals,
+      comments = comments.toMap,
+      header = header
+    )
   }
 
   private def parseConst(format: String, str: String): BigInt = format match {

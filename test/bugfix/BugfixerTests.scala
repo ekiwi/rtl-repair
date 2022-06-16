@@ -2,7 +2,6 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
-
 package bugfix
 
 import maltese.smt.OptiMathSatSMTLib
@@ -15,7 +14,7 @@ abstract class BugFixerSpec extends AnyFlatSpec {
 }
 
 class BugfixerFirstCounterOverflowTests extends BugFixerSpec {
-  behavior of "Bugfixer on FirstCounterOverflow"
+  behavior.of("Bugfixer on FirstCounterOverflow")
   private val Dir = CirFixDir / "first_counter_overflow"
 
   it should "fix first_counter_overflow_kgoliya_buggy1 with original testbench" ignore {
@@ -27,9 +26,8 @@ class BugfixerFirstCounterOverflowTests extends BugFixerSpec {
   }
 }
 
-
 class BugfixerDecoderTests extends BugFixerSpec {
-  behavior of "Bugfixer on Decoder"
+  behavior.of("Bugfixer on Decoder")
 
   it should "fix decoder_3_to_8_wadden_buggy1 with minimized testbench" in {
     val dir = CirFixDir / "decoder_3_to_8"

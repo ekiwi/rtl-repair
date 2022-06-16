@@ -20,6 +20,7 @@ class Namespace private (names: mutable.HashSet[String]) {
   }
   def newName: String = newName(Namespace.TempNamePrefix)
   def contains(name: String): Boolean = names.contains(name)
+
   /** ensures that [[name]] will never be used */
   def reserve(name: String): Unit = names.add(name)
 }

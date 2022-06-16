@@ -88,12 +88,12 @@ object SMTLibSerializer {
   }
 
   def serialize(e: ArrayExpr): String = e match {
-    case ArraySymbol(name, _, _)             => escapeIdentifier(name)
-    case ArrayStore(array, index, data)      => s"(store ${serialize(array)} ${serialize(index)} ${serialize(data)})"
-    case ArrayIte(cond, tru, fals)           => s"(ite ${serialize(cond)} ${serialize(tru)} ${serialize(fals)})"
-    case c @ ArrayConstant(e, _)             => s"((as const ${serializeArrayType(c.indexWidth, c.dataWidth)}) ${serialize(e)})"
-    case ArrayFunctionCall(name, List(), _,_) => escapeIdentifier(name)
-    case ArrayFunctionCall(name, args, _, _) => args.map(serialize).mkString(s"($name ", " ", ")")
+    case ArraySymbol(name, _, _)               => escapeIdentifier(name)
+    case ArrayStore(array, index, data)        => s"(store ${serialize(array)} ${serialize(index)} ${serialize(data)})"
+    case ArrayIte(cond, tru, fals)             => s"(ite ${serialize(cond)} ${serialize(tru)} ${serialize(fals)})"
+    case c @ ArrayConstant(e, _)               => s"((as const ${serializeArrayType(c.indexWidth, c.dataWidth)}) ${serialize(e)})"
+    case ArrayFunctionCall(name, List(), _, _) => escapeIdentifier(name)
+    case ArrayFunctionCall(name, args, _, _)   => args.map(serialize).mkString(s"($name ", " ", ")")
   }
 
   def serialize(c: SMTCommand): String = c match {
@@ -146,7 +146,7 @@ object SMTLibSerializer {
     case _        => if (name.startsWith("|") && name.endsWith("|")) name else s"|$name|"
   }
   def unescapeIdentifier(escaped: String): String = {
-    val name = if(escaped.startsWith("|")) {
+    val name = if (escaped.startsWith("|")) {
       assert(escaped.endsWith("|"), s"improperly escaped identifier: $escaped")
       escaped.drop(1).dropRight(1)
     } else { escaped }

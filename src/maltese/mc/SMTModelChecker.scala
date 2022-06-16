@@ -296,7 +296,8 @@ object SMTTransitionSystemEncoder {
     // assertions and assumptions
     val assertions = sys.signals.filter(_.lbl == IsBad).map(a => replaceSymbols(SignalSuffix, State, isSignal)(a.sym))
     defineConjunction(assertions.map(_.asInstanceOf[BVExpr]), AssertionSuffix)
-    val assumptions = sys.signals.filter(_.lbl == IsConstraint).map(a => replaceSymbols(SignalSuffix, State, isSignal)(a.sym))
+    val assumptions =
+      sys.signals.filter(_.lbl == IsConstraint).map(a => replaceSymbols(SignalSuffix, State, isSignal)(a.sym))
     defineConjunction(assumptions.map(_.asInstanceOf[BVExpr]), AssumptionSuffix)
 
     cmds
@@ -325,12 +326,19 @@ object SMTTransitionSystemEncoder {
   }
   // All signals are modelled with functions that need to be called with the state as argument,
   // this replaces all Symbols with function applications to the state.
-  private def replaceSymbols(suffix: String, arg: SMTSymbol, isSignal: Set[String], vars: Set[String] = Set())(e: SMTExpr): SMTExpr =
+  private def replaceSymbols(
+    suffix:   String,
+    arg:      SMTSymbol,
+    isSignal: Set[String],
+    vars:     Set[String] = Set()
+  )(e:        SMTExpr
+  ): SMTExpr =
     e match {
       case BVSymbol(name, width) if isSignal(name) && !vars(name) => BVFunctionCall(id(name + suffix), List(arg), width)
       case ArraySymbol(name, indexWidth, dataWidth) if isSignal(name) && !vars(name) =>
         ArrayFunctionCall(id(name + suffix), List(arg), indexWidth, dataWidth)
-      case fa @ BVForall(variable, _) => SMTExprMap.mapExpr(fa, replaceSymbols(suffix, arg, isSignal, vars + variable.name))
-      case other                      => SMTExprMap.mapExpr(other, replaceSymbols(suffix, arg, isSignal, vars))
+      case fa @ BVForall(variable, _) =>
+        SMTExprMap.mapExpr(fa, replaceSymbols(suffix, arg, isSignal, vars + variable.name))
+      case other => SMTExprMap.mapExpr(other, replaceSymbols(suffix, arg, isSignal, vars))
     }
 }

@@ -40,21 +40,21 @@ object SMTExprSerializer {
     case BVIte(cond, tru, fals) => s"ite(${serialize(cond)}, ${serialize(tru)}, ${serialize(fals)})"
     // n-ary
     case BVFunctionCall(name, List(), _) => name // for 0-ary functions we just print the name
-    case BVFunctionCall(name, args, _) => name + args.map(serialize).mkString("(", ",", ")")
+    case BVFunctionCall(name, args, _)   => name + args.map(serialize).mkString("(", ",", ")")
   }
 
   def serialize(expr: ArrayExpr): String = expr match {
-    case ArraySymbol(name, _, _)             => name
-    case ArrayConstant(e, indexWidth)        => s"([${serialize(e)}] x ${(BigInt(1) << indexWidth)})"
-    case ArrayStore(array, index, data)      => s"${serialize(array)}[${serialize(index)} := ${serialize(data)}]"
-    case ArrayIte(cond, tru, fals)           => s"ite(${serialize(cond)}, ${serialize(tru)}, ${serialize(fals)})"
+    case ArraySymbol(name, _, _)               => name
+    case ArrayConstant(e, indexWidth)          => s"([${serialize(e)}] x ${(BigInt(1) << indexWidth)})"
+    case ArrayStore(array, index, data)        => s"${serialize(array)}[${serialize(index)} := ${serialize(data)}]"
+    case ArrayIte(cond, tru, fals)             => s"ite(${serialize(cond)}, ${serialize(tru)}, ${serialize(fals)})"
     case ArrayFunctionCall(name, List(), _, _) => name // for 0-ary functions we just print the name
-    case ArrayFunctionCall(name, args, _, _) => name + args.map(serialize).mkString("(", ",", ")")
+    case ArrayFunctionCall(name, args, _, _)   => name + args.map(serialize).mkString("(", ",", ")")
   }
 
   def serialize(expr: SMTExpr): String = expr match {
     case a: ArrayExpr => serialize(a)
-    case b: BVExpr => serialize(b)
+    case b: BVExpr    => serialize(b)
     case UTSymbol(name, _) => name
   }
 }
