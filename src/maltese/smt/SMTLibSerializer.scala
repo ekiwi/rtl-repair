@@ -82,21 +82,19 @@ object SMTLibSerializer {
     case BVForall(variable, e)              => s"(forall ((${variable.name} ${serialize(variable.tpe)})) ${serialize(e)})"
   }
 
-
   // takes care if serializing potentially long and chains without recursion
   private def serializeAnd(a: BVExpr, b: BVExpr): String = {
     require(a.width == 1 && b.width == 1)
     val todo = mutable.Stack[BVExpr](a, b)
     var out = "(and"
-    while(todo.nonEmpty) {
+    while (todo.nonEmpty) {
       todo.pop() match {
-        case BVAnd(a, b) => todo.push(a) ; todo.push(b)
-        case other => out += " " + serialize(other)
+        case BVAnd(a, b) => todo.push(a); todo.push(b)
+        case other       => out += " " + serialize(other)
       }
     }
     out + ")"
   }
-
 
   private def serializeVariadic(op: String, terms: List[BVExpr]): String = terms match {
     case Seq() | Seq(_) => throw new RuntimeException(s"expected at least two elements in variadic op $op")

@@ -93,7 +93,7 @@ object Bugfixer {
     ctx.close()
 
     // do repair
-    val repaired = repairWithTemplates(transformedSys, results, templateApplications)
+    val repaired = repairWithTemplates(transformedSys, results, templateApplications, verbose = config.verbose)
     if (repaired.changed) {} else {
       if (config.verbose) println("No change necessary")
     }
@@ -211,11 +211,12 @@ object Bugfixer {
   private def repairWithTemplates(
     transformedSys: TransitionSystem,
     results:        Map[String, BigInt],
-    applications:   Seq[TemplateApplication]
+    applications:   Seq[TemplateApplication],
+    verbose:        Boolean
   ): TemplateRepairResult = {
     val base = TemplateRepairResult(transformedSys, changed = false)
     val res = applications.scanRight[TemplateRepairResult](base) { case (app, prev) =>
-      app.performRepair(prev.sys, results)
+      app.performRepair(prev.sys, results, verbose = verbose)
     }
     val anyChanged = res.exists(_.changed)
     val repairedSys = res.head.sys

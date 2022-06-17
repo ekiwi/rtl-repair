@@ -27,9 +27,15 @@ class BugfixerFsmFullTests extends BugFixerSpec {
     assert(res.cannotRepair, res.toString) // cannot be repaired since we do not have the right template yet
   }
 
-  it should "fail to fix fsm_full_ssscrazy_buggy2 with original testbench" ignore { // TODO: it seems like this can actually be solved by twiddeling with constants ...?
-    val res = Bugfixer.repair(Dir / "fsm_full_ssscrazy_buggy2.btor", Dir / "orig_tb.csv", DefaultConfig.copy(solver = OptiMathSatSMTLib))
-    assert(res.cannotRepair, res.toString) // cannot be repaired since we do not have the right template yet
+  it should "fail to fix fsm_full_ssscrazy_buggy2 with original testbench" in {
+    val res = Bugfixer.repair(
+      Dir / "fsm_full_ssscrazy_buggy2.btor",
+      Dir / "orig_tb.csv",
+      DefaultConfig.copy(solver = OptiMathSatSMTLib)
+    )
+    // somehow it is possible to repair this bug by changing a lot of constants (38 in fact!)
+    // this is not what we are really going for, but it is a repair non the less
+    assert(res.isSuccess, res.toString)
   }
 }
 

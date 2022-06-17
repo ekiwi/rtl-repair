@@ -12,8 +12,12 @@ case class ReplaceLiteralTemplateApplication(synSymbols: Seq[(BVSymbol, BigInt)]
   override def softConstraints: Seq[BVExpr] = synSymbols.map { case (sym, value) =>
     BVEqual(sym, BVLiteral(value, sym.width))
   }
-  override def performRepair(sys: TransitionSystem, results: Map[String, BigInt]): TemplateRepairResult =
-    ReplaceLiteral.repair(sys, synSymbols, results)
+  override def performRepair(
+    sys:     TransitionSystem,
+    results: Map[String, BigInt],
+    verbose: Boolean
+  ): TemplateRepairResult =
+    ReplaceLiteral.repair(sys, synSymbols, results, verbose = verbose)
 }
 
 /** Allows the solver to replace any literal in the circuit. Tries to minimize the number of literals that are changed. */
@@ -37,12 +41,18 @@ object ReplaceLiteral extends RepairTemplate {
   def repair(
     sys:        TransitionSystem,
     synSymbols: Seq[(BVSymbol, BigInt)],
-    results:    Map[String, BigInt]
+    results:    Map[String, BigInt],
+    verbose:    Boolean
   ): TemplateRepairResult = {
     val changedConstants = synSymbols.flatMap { case (sym, oldValue) =>
       val newValue = results(sym.name)
       if (oldValue != newValue) { Some((sym, oldValue, newValue)) }
       else { None }
+    }
+    if (verbose) {
+      changedConstants.foreach { case (sym, oldValue, newValue) =>
+        println(s"${sym.name}: ${oldValue.toLong.toBinaryString} -> ${newValue.toLong.toBinaryString}")
+      }
     }
     val mapping = synSymbols.map { case (sym, _) => sym.name -> results(sym.name) }.toMap
     val repairedSys = subBackConstants(sys, mapping)
