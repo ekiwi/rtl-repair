@@ -278,6 +278,8 @@ end
 always @(*)
 begin
    state_cnt_nxt = 4'd0;
+   // NOTE: we added a default here because otherwise the user would get a LATCH warning from a linter
+   next = 5'b11111;
    command_nxt = CMD_NOP;
    if (state == IDLE)
         // Monitor for refresh or hold
