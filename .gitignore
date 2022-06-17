@@ -31,3 +31,6 @@ target/
 
 # py verilog generated parser
 /.pyverilog/
+
+# Python
+__pycache__/
