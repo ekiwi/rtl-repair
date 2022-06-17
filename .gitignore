@@ -28,3 +28,6 @@ target/
 
 # system debug output
 /*.sys
+
+# py verilog generated parser
+/.pyverilog/
