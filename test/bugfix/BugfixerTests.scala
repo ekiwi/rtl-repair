@@ -13,6 +13,44 @@ abstract class BugFixerSpec extends AnyFlatSpec {
   val VerboseConfig = DefaultConfig.copy(verbose = true, debugSolver = true)
 }
 
+class BugfixerMuxTests extends BugFixerSpec {
+  behavior.of("Bugfixer on Mux 4 1")
+  private val Dir = CirFixDir / "mux_4_1"
+
+  it should "find that no repair is necessary for mux_4_1" in {
+    val res = Bugfixer.repair(Dir / "mux_4_1.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.noRepairNecessary, res.toString)
+  }
+
+  it should "find that no repair is necessary for mux_4_1 with minimized testbench" in {
+    val res = Bugfixer.repair(Dir / "mux_4_1.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.noRepairNecessary, res.toString)
+  }
+
+  it should "fail to fix mux_4_1_kgoliya_buggy1 with original testbench" in {
+    // currently this throws an assertion error because the testbench value does not fit the size of the `out`
+    // signal which has erroneously been reduced from 4-bit to 1-bit
+    val e = intercept[AssertionError] {
+      val res = Bugfixer.repair(Dir / "mux_4_1_kgoliya_buggy1.btor", Dir / "orig_tb.csv", DefaultConfig)
+      assert(res.cannotRepair, res.toString) // cannot be repaired since we do not have the right template yet
+    }
+  }
+
+  it should "fail to fix mux_4_1_wadden_buggy2 with original testbench" in {
+    // TODO: this should actually be repairable by changing constants, however, things get optimized too much
+    //       by the interning in the btor2 conversion and thus it isn't possible to repair with the ReplaceLiteral template
+    val res = Bugfixer.repair(Dir / "mux_4_1_wadden_buggy2.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.cannotRepair, res.toString) // cannot be repaired since we do not have the right template yet
+  }
+
+  it should "fail to fix mux_4_1_wadden_buggy1 with original testbench" in {
+    // TODO: this should actually be repairable by changing constants, however, things get optimized too much
+    //       by the interning in the btor2 conversion and thus it isn't possible to repair with the ReplaceLiteral template
+    val res = Bugfixer.repair(Dir / "mux_4_1_wadden_buggy1.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.cannotRepair, res.toString) // cannot be repaired since we do not have the right template yet
+  }
+}
+
 class BugfixerShiftRegTests extends BugFixerSpec {
   behavior.of("Bugfixer on ShiftReg")
   private val Dir = CirFixDir / "lshift_reg"
