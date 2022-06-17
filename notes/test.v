@@ -1,7 +1,8 @@
 module test(input in, output out);
 
-// needs `rand const` for yosys to treat it as a synthesis constant
-reg __synth_change_1;
+// the $anhyconst ensures that yosys treats
+// this as a never changing but uninitialized state
+reg __synth_change_1 = $anyconst;
 
 assign out = __synth_change_1? !in : in;
 
