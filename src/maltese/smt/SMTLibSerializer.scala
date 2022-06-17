@@ -1,11 +1,12 @@
 // Copyright 2020 SiFive, Inc.
-// Copyright 2020 The Regents of the University of California
+// Copyright 2020-2022 The Regents of the University of California
 // released under BSD 3-Clause License and Apache 2.0
 // author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 package maltese.smt
 
 import scala.util.matching.Regex
+import scala.collection.mutable
 
 /** Converts STM Expressions to a SMTLib compatible string representation.
   *  See http://smtlib.cs.uiowa.edu/
@@ -68,7 +69,7 @@ object SMTLibSerializer {
     case BVComparison(Compare.Greater, a, b, true)       => s"(bvsgt ${asBitVector(a)} ${asBitVector(b)})"
     case BVComparison(Compare.GreaterEqual, a, b, true)  => s"(bvsge ${asBitVector(a)} ${asBitVector(b)})"
     // boolean operations get a special treatment for 1-bit vectors aka bools
-    case BVAnd(a, b) if a.width == 1        => s"(and ${serialize(a)} ${serialize(b)})"
+    case BVAnd(a, b) if a.width == 1        => serializeAnd(a, b)
     case BVOr(a, b) if a.width == 1         => s"(or ${serialize(a)} ${serialize(b)})"
     case BVOp(Op.Xor, a, b) if a.width == 1 => s"(xor ${serialize(a)} ${serialize(b)})"
     case BVOp(op, a, b) if a.width == 1     => toBool(s"(${serialize(op)} ${asBitVector(a)} ${asBitVector(b)})")
@@ -80,6 +81,22 @@ object SMTLibSerializer {
     case BVFunctionCall(name, args, _)      => args.map(serialize).mkString(s"($name ", " ", ")")
     case BVForall(variable, e)              => s"(forall ((${variable.name} ${serialize(variable.tpe)})) ${serialize(e)})"
   }
+
+
+  // takes care if serializing potentially long and chains without recursion
+  private def serializeAnd(a: BVExpr, b: BVExpr): String = {
+    require(a.width == 1 && b.width == 1)
+    val todo = mutable.Stack[BVExpr](a, b)
+    var out = "(and"
+    while(todo.nonEmpty) {
+      todo.pop() match {
+        case BVAnd(a, b) => todo.push(a) ; todo.push(b)
+        case other => out += " " + serialize(other)
+      }
+    }
+    out + ")"
+  }
+
 
   private def serializeVariadic(op: String, terms: List[BVExpr]): String = terms match {
     case Seq() | Seq(_) => throw new RuntimeException(s"expected at least two elements in variadic op $op")

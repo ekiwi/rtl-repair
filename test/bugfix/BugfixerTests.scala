@@ -13,6 +13,26 @@ abstract class BugFixerSpec extends AnyFlatSpec {
   val VerboseConfig = DefaultConfig.copy(verbose = true, debugSolver = true)
 }
 
+class BugfixerFsmFullTests extends BugFixerSpec {
+  behavior.of("Bugfixer on FsmFull")
+  private val Dir = CirFixDir / "fsm_full"
+
+  it should "find that no repair is necessary for fsm_full" in {
+    val res = Bugfixer.repair(Dir / "fsm_full.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.noRepairNecessary, res.toString)
+  }
+
+  it should "fail to fix fsm_full_wadden_buggy1 with original testbench" in {
+    val res = Bugfixer.repair(Dir / "fsm_full_wadden_buggy1.btor", Dir / "orig_tb.csv", DefaultConfig)
+    assert(res.cannotRepair, res.toString) // cannot be repaired since we do not have the right template yet
+  }
+
+  it should "fail to fix fsm_full_ssscrazy_buggy2 with original testbench" ignore { // TODO: it seems like this can actually be solved by twiddeling with constants ...?
+    val res = Bugfixer.repair(Dir / "fsm_full_ssscrazy_buggy2.btor", Dir / "orig_tb.csv", DefaultConfig.copy(solver = OptiMathSatSMTLib))
+    assert(res.cannotRepair, res.toString) // cannot be repaired since we do not have the right template yet
+  }
+}
+
 class BugfixerFlipFlopTests extends BugFixerSpec {
   behavior.of("Bugfixer on FlipFlop")
   private val Dir = CirFixDir / "flip_flop"
