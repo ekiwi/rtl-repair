@@ -8,6 +8,8 @@ module mux_4to1_case ( input [3:0] a,                 // 4-bit input called a
    // This always block gets executed whenever a/b/c/d/sel changes value
    // When that happens, based on value in sel, output is assigned to either a/b/c/d
    always @ (a or b or c or d or sel) begin
+      // NOTE: we added a default here because otherwise the user would get a LATCH warning from a linter
+      out <= 'd0;
       case (sel)
          2'b00 : out <= a;
          2'b00 : out <= b;
