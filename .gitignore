@@ -34,3 +34,6 @@ target/
 
 # Python
 __pycache__/
+
+# working directory for testing the python code
+/working-dir/
