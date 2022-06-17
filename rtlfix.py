@@ -4,11 +4,12 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import argparse
-from rtlfix.visitor import AstVisitor
+from rtlfix import RepairTemplate, Namespace
 from pathlib import Path
 from pyverilog.vparser.parser import parse
 from pyverilog.vparser.ast import Source, IntConst
 from pyverilog.ast_code_generator.codegen import ASTCodeGenerator
+import pyverilog.vparser.ast as vast
 
 _script_dir = Path(__file__).parent.resolve()
 _parser_tmp_dir = _script_dir / ".pyverilog"
@@ -24,12 +25,15 @@ def parse_args():
 def main():
     filename = parse_args()
     ast = parse_verilog(filename)
-    modified = replace_literals(ast)
-    # print(serialize(modified))
+    replace_literals(ast)
+    print(serialize(ast))
 
 
 def parse_verilog(filename: Path) -> Source:
-    ast, directives = parse([filename], preprocess_include=[], preprocess_define=[], outputdir=_parser_tmp_dir,
+    ast, directives = parse([filename],
+                            preprocess_include=[],
+                            preprocess_define=[],
+                            outputdir=_parser_tmp_dir,
                             debug=False)
     return ast
 
@@ -40,10 +44,10 @@ def serialize(ast: Source) -> str:
     return source
 
 
-def replace_literals(ast: Source) -> Source:
+def replace_literals(ast: Source):
+    namespace = Namespace(ast)
     repl = LiteralReplacer()
-    repl.visit(ast)
-    return ast
+    repl.apply(namespace, ast)
 
 
 _bases = {'b': 2, 'o': 8, 'h': 16, 'd': 10}
@@ -61,30 +65,15 @@ def parse_verilog_int_literal(value: str) -> (int, int):
     return value, width
 
 
-_synth_var_prefix = "__synth_"
-_synth_change_prefix = "__synth_change_"
-
-
-class Namespace:
+class LiteralReplacer(RepairTemplate):
     def __init__(self):
-        self._names = set()
-
-    def new_name(self, name):
-        if name not in self._names:
-            pass
-        return name
-
-
-class LiteralReplacer(AstVisitor):
-    def __init__(self):
-        super().__init__()
-        self.constants = []
+        super().__init__(name="literal")
 
     def visit_IntConst(self, node: IntConst):
         value, bits = parse_verilog_int_literal(node.value)
-
-        print(node.value, value, bits)
-        return node
+        new_const = vast.Identifier(self.make_synth_var(bits))
+        choice = self.make_change(new_const, node)
+        return choice
 
 
 if __name__ == '__main__':
