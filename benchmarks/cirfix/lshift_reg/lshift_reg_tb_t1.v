@@ -20,11 +20,12 @@ module tb;
   integer f;
   initial begin
     f = $fopen("output_lshift_reg_tb_t1.txt");
-    $fwrite(f,"time,op[7],op[6],op[5],op[4],op[3],op[2],op[1],op[0]\n");
+    //$fwrite(f,"time,op[7],op[6],op[5],op[4],op[3],op[2],op[1],op[0]\n");
+    $fwrite(f,"time,clk,rstn,load_val,load_en,op\n");
     $monitor("%g, \t%b, \t%b, \t%b, \t%d, \t\t%b", $time, clk, rstn, load_val, load_en, op);
     forever begin
       @(posedge clk);
-      $fwrite(f,"%g,%b,%b,%b,%b,%b,%b,%b,%b\n",$time,op[7],op[6],op[5],op[4],op[3],op[2],op[1],op[0]);
+      $fwrite(f,"%g,%b,%b,%d,%b,%d\n",$time,clk,rstn,load_val,load_en,op);
     end
   end
  
