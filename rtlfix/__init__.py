@@ -34,7 +34,7 @@ def parse_verilog(filename: Path) -> vast.Source:
                             preprocess_include=[],
                             preprocess_define=[],
                             outputdir=_parser_tmp_dir,
-                            debug=False)
+                            debug=True)
     return ast
 
 
