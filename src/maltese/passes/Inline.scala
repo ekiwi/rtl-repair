@@ -15,15 +15,15 @@ import scala.collection.mutable
   * This pass does not remove any symbols.
   * Use DeadCodeElimination to get rid of any unused signals after inlining.
   */
-class Inline(inlineEverything: Boolean = false) extends Pass {
+class Inline(inlineEverything: Boolean = false, conservative: Boolean = false) extends Pass {
   override def name: String = "Inline"
 
   // some setting to play around with
   private val InlineUseMax = 1
   private val InlineLeaves = true
   private val InlineIteInIte = false
-  private val InlineConcatInSlice = true
-  private val InlineIteInSlice = true
+  private val InlineConcatInSlice = !conservative
+  private val InlineIteInSlice = !conservative
 
   override def run(sys: TransitionSystem): TransitionSystem = {
     val doInline = if (inlineEverything) {

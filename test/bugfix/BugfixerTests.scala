@@ -178,8 +178,8 @@ class BugfixerDecoderTests extends BugFixerSpec {
     assert(res.isSuccess, res.toString)
   }
 
-  // WARN: with z3 this test takes around 40s!
-  it should "fix decoder_3_to_8_wadden_buggy2 with complete minimized testbench" in {
+  // currently ignored because z3 takes around 30-40s to solve this and it gets annoying
+  it should "fix decoder_3_to_8_wadden_buggy2 with complete minimized testbench" ignore {
     val dir = CirFixDir / "decoder_3_to_8"
     val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy2.btor", dir / "complete_min_tb.csv", DefaultConfig)
     assert(res.isSuccess, res.toString)
