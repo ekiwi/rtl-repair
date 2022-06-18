@@ -169,6 +169,15 @@ private object Btor2Parser {
           namespace.newName(comment.split('@').head.trim)
         } else { nameFromPrefix(prefix) }
 
+      // expressions might be trailed by a name that can be used as node name, the position depends on
+      // the number of arguments taken by the expression
+      def getNodeName(pos: Int): String =
+        if (parts.length > pos) {
+          // yosys likes to use a lot of $ and . in the signal names, we want to avoid that for readability reasons
+          val name = parts(pos).replace('$', '_').replace('.', '_')
+          namespace.newName(name)
+        } else { namespace.newName("s" + id) }
+
       def toSymbolOrExpr(name: String, e: SMTExpr): SMTExpr = if (inlineSignals) e else SMTSymbol.fromExpr(name, e)
 
       def isArray: Boolean = arraySorts.contains(sortId)
@@ -209,34 +218,46 @@ private object Btor2Parser {
           states.put(stateId, state.copy(init = Some(toSymbolOrExpr(name.get, initExpr))))
           Some(initExpr)
         case format @ ("const" | "constd" | "consth" | "zero" | "one") =>
+          name = Some(getNodeName(4))
           val value = if (format == "zero") { BigInt(0) }
           else if (format == "one") { BigInt(1) }
           else { parseConst(format, parts(3)) }
           checkSort(BVLiteral(value, width))
         case "ones" =>
+          name = Some(getNodeName(3))
           checkSort(BVLiteral((BigInt(1) << width) - 1, width))
         case ext @ ("uext" | "sext") =>
+          name = Some(getNodeName(5))
           val by = Integer.parseInt(parts(4))
           checkSort(BVExtend(bvExpr(0), by, signed = ext.startsWith("s")))
         case "slice" =>
+          name = Some(getNodeName(6))
           val msb = Integer.parseInt(parts(4))
           val lsb = Integer.parseInt(parts(5))
           checkSort(BVSlice(bvExpr(0), msb, lsb))
         case op if unary.contains(op) =>
+          name = Some(getNodeName(4))
           checkSort(parseUnary(op, bvExpr(0)))
         case "eq" =>
+          name = Some(getNodeName(5))
           checkSort(SMTEqual(expr(0), expr(1)))
         case "neq" =>
+          name = Some(getNodeName(5))
           checkSort(BVNot(SMTEqual(expr(0), expr(1))))
         case "concat" =>
+          name = Some(getNodeName(5))
           checkSort(BVConcat(bvExpr(0), bvExpr(1)))
         case op if binary.contains(op) =>
+          name = Some(getNodeName(5))
           checkSort(parseBinary(op, bvExpr(0), bvExpr(1)))
         case "read" =>
+          name = Some(getNodeName(5))
           checkSort(ArrayRead(arrayExpr(0), bvExpr(1)))
         case "write" =>
+          name = Some(getNodeName(6))
           checkSort(ArrayStore(arrayExpr(0), bvExpr(1), bvExpr(2)))
         case "ite" =>
+          name = Some(getNodeName(6))
           checkSort(SMTIte(bvExpr(0), expr(1), expr(2)))
         case other =>
           throw new RuntimeException(s"Unknown command: $other")
