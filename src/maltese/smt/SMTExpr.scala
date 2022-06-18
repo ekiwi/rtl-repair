@@ -28,6 +28,8 @@ object SMTSymbol {
     case ArrayType(indexWidth, dataWidth) => ArraySymbol(name, indexWidth, dataWidth)
     case UninterpretedSort(tpeName)       => UTSymbol(name, tpeName)
   }
+
+  def unapply(sym: SMTSymbol): Some[String] = Some(sym.name)
 }
 sealed trait SMTNullaryExpr extends SMTExpr {
   override def children: List[SMTExpr] = List()

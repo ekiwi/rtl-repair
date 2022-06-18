@@ -13,11 +13,13 @@ object Btor2 {
   def load(file: os.Path): TransitionSystem = load(file, inlineSignals = false)
   def load(file: os.Path, inlineSignals: Boolean): TransitionSystem = {
     val defaultName = file.last.split('.').dropRight(1).mkString(".")
-    Btor2Parser.read(os.read.lines(file), inlineSignals, defaultName)
+    val sys = Btor2Parser.read(os.read.lines(file), inlineSignals, defaultName)
+    FindStateNames.run(sys)
   }
   def read(src: String, inlineSignals: Boolean = false, defaultName: String = "Unknown"): TransitionSystem = {
     val lines = src.split('\n')
-    Btor2Parser.read(lines, inlineSignals, defaultName)
+    val sys = Btor2Parser.read(lines, inlineSignals, defaultName)
+    FindStateNames.run(sys)
   }
 }
 
@@ -353,5 +355,68 @@ private object Btor2Parser {
   private def iff(a: BVExpr, b: BVExpr): BVExpr = {
     assert(a.width == 1 && b.width == 1, s"Both arguments need to be 1-bit!")
     BVEqual(a, b)
+  }
+}
+
+/** When Yosys emits a btor file, it often will not actually name the states correctly.
+  * Instead it creates nodes that just point to the state and carry its name. This pass searches
+  * for these nodes and tried to rename the states. It should be run directly after parsing, prior to any other
+  * passes.
+  */
+object FindStateNames {
+  def run(sys: TransitionSystem): TransitionSystem = {
+    val namespace = Namespace(sys)
+    // find state "label" nodes
+    val isState = sys.states.map(_.name).toSet
+    val renames = sys.signals.flatMap { signal =>
+      val e = SMTSimplifier.simplify(signal.e)
+      e match {
+        case SMTSymbol(oldStateName) if isState(oldStateName) =>
+          // if the node is actually an output, it gets to keep the name and the state will get a suffix
+          if (signal.lbl == IsOutput) {
+            val newStateName = namespace.newName(signal.name + "_state")
+            List(oldStateName -> newStateName, (oldStateName + ".next") -> (newStateName + ".next"))
+          }
+          // otherwise we rename the signal and the state
+          else {
+            val newSignalName = namespace.newName(signal.name)
+            val newStateName = signal.name
+            List(
+              oldStateName -> newStateName,
+              (oldStateName + ".next") -> (newStateName + ".next"),
+              signal.name -> newSignalName
+            )
+          }
+        case _ => None
+      }
+    }.toMap
+
+    // perform the actual renames
+    rename(renames, sys)
+  }
+
+  private def rename(renames: Map[String, String], sys: TransitionSystem): TransitionSystem = {
+    val signals = sys.signals.map { sig =>
+      val name = renames.getOrElse(sig.name, sig.name)
+      val e = rename(renames, sig.e)
+      sig.copy(name = name, e = e)
+    }
+    val inputs = sys.inputs.map(rename(renames, _)).map(_.asInstanceOf[BVSymbol])
+    val states = sys.states.map { state =>
+      val sym = rename(renames, state.sym).asInstanceOf[SMTSymbol]
+      val init = state.init.map(rename(renames, _))
+      val next = state.next.map(rename(renames, _))
+      state.copy(sym = sym, init = init, next = next)
+    }
+    sys.copy(inputs = inputs, signals = signals, states = states)
+  }
+
+  private def rename(map: Map[String, String], e: SMTExpr): SMTExpr = e match {
+    case sym: SMTSymbol =>
+      map.get(sym.name) match {
+        case Some(value) => sym.rename(value)
+        case None        => sym
+      }
+    case other => SMTExprMap.mapExpr(other, rename(map, _))
   }
 }
