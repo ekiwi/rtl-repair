@@ -1,12 +1,47 @@
 # Copyright 2022 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
+
+import subprocess
+from pathlib import Path
 import rtlfix.visitor
 import pyverilog.vparser.ast as vast
 from pyverilog.utils.identifiervisitor import getIdentifiers
+from pyverilog.vparser.parser import parse
+from pyverilog.ast_code_generator.codegen import ASTCodeGenerator
 
+_script_dir = Path(__file__).parent.resolve()
+_root_dir = _script_dir.parent.resolve()
+_parser_tmp_dir = _root_dir / ".pyverilog"
 _synth_var_prefix = "__synth_"
 _synth_change_prefix = "__synth_change_"
+
+
+def to_btor(filename: Path):
+    cwd = filename.parent
+    assert cwd.exists(), f"directory {cwd} does not exist"
+    r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
+    assert r.returncode == 0, f"failed to find yosys {r}"
+    btor_name = filename.stem + ".btor"
+    yosys_cmd = f"read_verilog {filename.name} ; proc ; write_btor -x {btor_name}"
+    subprocess.run(["yosys", "-p", yosys_cmd], check=True, cwd=cwd, stdout=subprocess.PIPE)
+    assert (cwd / btor_name).exists()
+    return cwd / btor_name
+
+
+def parse_verilog(filename: Path) -> vast.Source:
+    ast, directives = parse([filename],
+                            preprocess_include=[],
+                            preprocess_define=[],
+                            outputdir=_parser_tmp_dir,
+                            debug=False)
+    return ast
+
+
+def serialize(ast: vast.Source) -> str:
+    codegen = ASTCodeGenerator()
+    source = codegen.visit(ast)
+    return source
 
 
 class Namespace:

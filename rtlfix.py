@@ -5,16 +5,9 @@
 
 import argparse
 import os
-import subprocess
 from pathlib import Path
-from pyverilog.vparser.parser import parse
-from pyverilog.vparser.ast import Source
-from pyverilog.ast_code_generator.codegen import ASTCodeGenerator
-
 from rtlfix.literalrepl import replace_literals
-
-_script_dir = Path(__file__).parent.resolve()
-_parser_tmp_dir = _script_dir / ".pyverilog"
+from rtlfix import parse_verilog, serialize, to_btor
 
 
 def parse_args():
@@ -31,19 +24,6 @@ def create_working_dir(working_dir: Path):
         os.mkdir(working_dir)
 
 
-def to_btor(filename: Path):
-    cwd = filename.parent
-    assert cwd.exists(), f"directory {cwd} does not exist"
-    r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
-    assert r.returncode == 0, f"failed to find yosys {r}"
-    btor_name = filename.stem + ".btor"
-    yosys_cmd = f"read_verilog {filename.name} ; proc ; write_btor -x {btor_name}"
-    subprocess.run(["yosys", "-p", yosys_cmd], check=True, cwd=cwd, stdout=subprocess.PIPE)
-    assert (cwd / btor_name).exists()
-    return cwd / btor_name
-
-
-
 def main():
     filename, working_dir = parse_args()
     create_working_dir(working_dir)
@@ -54,21 +34,6 @@ def main():
         f.write(serialize(ast))
     btor_filename = to_btor(synth_filename)
     print(btor_filename)
-
-
-def parse_verilog(filename: Path) -> Source:
-    ast, directives = parse([filename],
-                            preprocess_include=[],
-                            preprocess_define=[],
-                            outputdir=_parser_tmp_dir,
-                            debug=False)
-    return ast
-
-
-def serialize(ast: Source) -> str:
-    codegen = ASTCodeGenerator()
-    source = codegen.visit(ast)
-    return source
 
 
 if __name__ == '__main__':
