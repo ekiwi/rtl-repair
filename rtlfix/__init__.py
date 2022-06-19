@@ -3,6 +3,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import subprocess
+import json
 from pathlib import Path
 import rtlfix.visitor
 import pyverilog.vparser.ast as vast
@@ -33,7 +34,7 @@ def parse_verilog(filename: Path) -> vast.Source:
     ast, directives = parse([filename],
                             preprocess_include=[],
                             preprocess_define=[],
-                            outputdir=_parser_tmp_dir,
+                            outputdir=".",
                             debug=True)
     return ast
 
@@ -63,13 +64,13 @@ class Namespace:
 
 def _make_any_const(name: str, width: int) -> vast.Decl:
     assert width >= 1
-    width_node = None if width == 1 else vast.Width(vast.IntConst(str(width-1)), vast.IntConst("0"))
+    width_node = None if width == 1 else vast.Width(vast.IntConst(str(width - 1)), vast.IntConst("0"))
     return vast.Decl((
-      vast.Reg(name, width=width_node),
-      vast.Assign(
-          left=vast.Lvalue(vast.Identifier(name)),
-          right=vast.Rvalue(vast.SystemCall("anyconst", []))
-      )
+        vast.Reg(name, width=width_node),
+        vast.Assign(
+            left=vast.Lvalue(vast.Identifier(name)),
+            right=vast.Rvalue(vast.SystemCall("anyconst", []))
+        )
     ))
 
 
@@ -109,3 +110,22 @@ class RepairTemplate(visitor.AstVisitor):
         name = self._namespace.new_name(_synth_var_prefix + self.name)
         self.synth_vars.append((name, width))
         return name
+
+
+# the synthesizer is written in Scala, the source code lives in src
+_jar_rel = Path("target") / "scala-2.13" / "bug-fix-assembly-0.1.jar"
+_jar = _root_dir / _jar_rel
+
+
+def check_jar():
+    assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
+
+
+def run_synthesizer(design: Path, testbench: Path):
+    assert design.exists(), f"{design=} does not exist"
+    assert testbench.exists(), f"{testbench=} does not exist"
+    check_jar()
+    args = ["--design", str(design), "--testbench", str(testbench)]
+    cmd = ["java", "-cp", _jar_rel, "synth.Synthesizer"] + args
+    r = subprocess.run(cmd, cwd=_root_dir, check=True, stdout=subprocess.PIPE)
+    return json.loads(r.stdout.decode('utf-8'))
