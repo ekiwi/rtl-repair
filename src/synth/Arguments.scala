@@ -4,7 +4,7 @@
 
 package synth
 
-import maltese.smt.{Solver, Z3SMTLib}
+import maltese.smt.{OptiMathSatSMTLib, Solver, Z3SMTLib}
 import scopt.OptionParser
 
 case class Arguments(
@@ -28,4 +28,13 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     .required()
     .action((a, config) => config.copy(testbench = Some(os.Path(a, os.pwd))))
     .text("the testbench in CSV format")
+  opt[String]("solver").action { (a, config) =>
+    val solver = a match {
+      case "z3"          => Z3SMTLib
+      case "optimathsat" => OptiMathSatSMTLib
+      case other         => throw new RuntimeException(s"Unknown solver $other")
+    }
+    config.copy(config = config.config.copy(solver = solver))
+  }
+    .text("z3 or optimathsat")
 }

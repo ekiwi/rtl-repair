@@ -190,11 +190,11 @@ def check_jar():
     assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
 
 
-def run_synthesizer(design: Path, testbench: Path):
+def run_synthesizer(design: Path, testbench: Path, solver: str):
     assert design.exists(), f"{design=} does not exist"
     assert testbench.exists(), f"{testbench=} does not exist"
     check_jar()
-    args = ["--design", str(design), "--testbench", str(testbench)]
+    args = ["--design", str(design), "--testbench", str(testbench), "--solver", solver]
     cmd = ["java", "-cp", _jar_rel, "synth.Synthesizer"] + args
     r = subprocess.run(cmd, cwd=_root_dir, check=True, stdout=subprocess.PIPE)
     return json.loads(r.stdout.decode('utf-8'))

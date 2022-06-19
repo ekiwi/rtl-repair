@@ -16,8 +16,10 @@ def parse_args():
     parser.add_argument('--testbench', dest='testbench', help='Testbench in CSV format', required=True)
     parser.add_argument('--working-dir', dest='working_dir', help='Working directory, files might be overwritten!',
                         required=True)
+    parser.add_argument('--solver', dest='solver', help='z3 or optimathsat', default="z3")
     args = parser.parse_args()
-    return Path(args.source), Path(args.testbench), Path(args.working_dir)
+    assert args.solver in {'z3', 'optimathsat'}
+    return Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver
 
 
 def create_working_dir(working_dir: Path):
@@ -26,20 +28,30 @@ def create_working_dir(working_dir: Path):
 
 
 def main():
-    filename, testbench, working_dir = parse_args()
+    filename, testbench, working_dir, solver = parse_args()
     create_working_dir(working_dir)
+
+    # instantiate repair templates
     ast = parse_verilog(filename)
     replace_literals(ast)
     synth_filename = working_dir / filename.name
     with open(synth_filename, "w") as f:
         f.write(serialize(ast))
+
+    # convert file and run synthesizer
     btor_filename = to_btor(synth_filename)
-    result = run_synthesizer(btor_filename, testbench)
-    assert result["status"] == "success", result["status"]
-    do_repair(ast, result["assignment"])
-    repaired_filename = working_dir / (filename.stem + ".repaired.v")
-    with open(repaired_filename, "w") as f:
-        f.write(serialize(ast))
+    result = run_synthesizer(btor_filename, testbench, solver)
+    status = result["status"]
+    with open(working_dir / "status", "w") as f:
+        f.write(status + "\n")
+
+    if status == "success":
+        # execute synthesized repair
+        do_repair(ast, result["assignment"])
+        repaired_filename = working_dir / (filename.stem + ".repaired.v")
+        with open(repaired_filename, "w") as f:
+            f.write(serialize(ast))
+    print(status)
 
 
 if __name__ == '__main__':
