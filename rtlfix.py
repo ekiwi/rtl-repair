@@ -47,7 +47,11 @@ def main():
 
     if status == "success":
         # execute synthesized repair
-        do_repair(ast, result["assignment"])
+        changes = do_repair(ast, result["assignment"])
+        with open(working_dir / "changes.txt", "w") as f:
+            f.write(f"{len(changes)}\n")
+            f.write('\n'.join(f"{line}: {a} -> {b}" for line, a, b in changes))
+            f.write('\n')
         repaired_filename = working_dir / (filename.stem + ".repaired.v")
         with open(repaired_filename, "w") as f:
             f.write(serialize(ast))
