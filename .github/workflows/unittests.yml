@@ -75,7 +75,7 @@ jobs:
       run: |
         python3 -m venv venv
         source venv/bin/activate
-        pip install requirements.txt
+        pip install -r requirements.txt
 
     - name: Run Python Unittests
       timeout-minutes: 3

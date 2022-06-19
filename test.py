@@ -42,6 +42,13 @@ class TestDecoder(SynthesisTest):
     def test_wadden_buggy1_orig_min_tb(self):
         self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy1.v", "orig_min_tb.csv")
 
+    def test_wadden_buggy1_complete_min_tb(self):
+        self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy1.v", "complete_min_tb.csv")
+
+    def test_wadden_buggy2_complete_min_tb(self):
+        # this would take a lot longer if using z3
+        self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy2.v", "complete_min_tb.csv", "optimathsat")
+
 
 if __name__ == '__main__':
     unittest.main()
