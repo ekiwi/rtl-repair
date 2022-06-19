@@ -6,7 +6,7 @@
 import argparse
 import os
 from pathlib import Path
-from rtlfix.literalrepl import replace_literals
+from rtlfix.literal_replacer import replace_literals
 from rtlfix import parse_verilog, serialize, to_btor, run_synthesizer, do_repair
 
 

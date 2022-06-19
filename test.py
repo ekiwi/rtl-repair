@@ -36,8 +36,14 @@ class SynthesisTest(unittest.TestCase):
     def synth_success(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
         self.assertEqual(run_synth(dir / design, dir / testbench, solver), "success")
 
+    def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
+        self.assertEqual(run_synth(dir / design, dir / testbench, solver), "no-repair")
+
 
 class TestDecoder(SynthesisTest):
+
+    def test_orig_orig_tb(self):
+        self.synth_no_repair(decoder_dir, "decoder_3_to_8.v", "orig_tb.csv")
 
     def test_wadden_buggy1_orig_tb(self):
         self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy1.v", "orig_tb.csv")
@@ -57,7 +63,8 @@ class TestDecoder(SynthesisTest):
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_num.v", "orig_tb.csv")
 
     def test_buggy_var_complete_min_tb(self):
-        # this should not be fixable with the current literal replacement template...
+        # this one actually works even just with the literal replacer template, but requires quite some changes
+        # since this is not the way this bug is meant to be fixed
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", "optimathsat")
 
 
