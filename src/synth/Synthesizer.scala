@@ -51,6 +51,7 @@ object Synthesizer {
     }
     ctx.pop()
 
+    ctx.push()
     // use the failing assignment for free vars
     freeVars.addConstraints(ctx, freeVarAssignment)
 
@@ -69,8 +70,20 @@ object Synthesizer {
         ctx.close()
         throw new RuntimeException(s"Unknown result from solver.")
     }
-
     val results = synthVars.readAssignment(ctx)
+    ctx.pop()
+
+    // check to see if the synthesized constants work
+    ctx.push()
+    synthVars.assumeAssignment(ctx, results.toMap)
+    findFreeVarAssignment(ctx, sys, tb, freeVars, config) match {
+      case Some(value) =>
+        throw new RuntimeException(
+          s"TODO: the solution we found does not in fact work for all possible free variable assignments :("
+        )
+      case None => // all good, no more failure
+    }
+    ctx.pop()
     ctx.close()
     RepairSuccess(results)
   }
