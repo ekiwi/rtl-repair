@@ -4,6 +4,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import unittest
+import os
 import subprocess
 from pathlib import Path
 
@@ -14,6 +15,8 @@ decoder_dir = benchmark_dir / "cirfix" / "decoder_3_to_8"
 
 
 def run_synth(source: Path, testbench: Path, solver='z3') -> str:
+    if not working_dir.exists():
+        os.mkdir(working_dir)
     dir_name = source.stem + "_" + testbench.stem
     out_dir = working_dir / dir_name
     args = [
@@ -48,6 +51,14 @@ class TestDecoder(SynthesisTest):
     def test_wadden_buggy2_complete_min_tb(self):
         # this would take a lot longer if using z3
         self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy2.v", "complete_min_tb.csv", "optimathsat")
+
+    def test_buggy_num_orig_tb(self):
+        # this is not mentioned in the paper result, but essentially we just need to change one constant
+        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_num.v", "orig_tb.csv")
+
+    def test_buggy_var_complete_min_tb(self):
+        # this should not be fixable with the current literal replacement template...
+        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", "optimathsat")
 
 
 if __name__ == '__main__':
