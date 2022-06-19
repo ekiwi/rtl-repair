@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  test-scala:
     runs-on: ubuntu-latest
 
     steps:
@@ -36,9 +36,49 @@ jobs:
       with:
         java-version: openjdk@1.11
 
-    - name: Compile
-      run: sbt compile
-
-    - name: Run Unittests
+    - name: Run Scala Unittests
       timeout-minutes: 3
       run: sbt test
+
+  test-python:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Tabby OSS Cad Suite (from YosysHQ)
+      uses: YosysHQ/setup-oss-cad-suite@v1
+      with:
+        osscadsuite-version: '2021-11-09'
+
+    - name: Install OptiMathSAT
+      run: |
+        wget -q https://optimathsat.disi.unitn.it/releases/optimathsat-1.7.3/optimathsat-1.7.3-linux-64-bit.tar.gz
+        tar -xf optimathsat-1.7.3-linux-64-bit.tar.gz
+        echo "${PWD}/optimathsat-1.7.3-linux-64-bit/bin" >> $GITHUB_PATH
+
+    - name: Install CVC4
+      run: sudo apt-get install -y cvc4
+
+    - name: Print Solver Versions
+      run: |
+        z3 -version
+        optimathsat -version
+        cvc4 --version
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+
+    - name: Create Virtual Environment and Install Requirements
+      run: |
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install requirements.txt
+
+    - name: Run Python Unittests
+      timeout-minutes: 3
+      run: |
+        source venv/bin/activate
+        ./test.py
