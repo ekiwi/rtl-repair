@@ -14,7 +14,24 @@ object Synthesizer {
   val SynthVarPrefix = "__synth_"
   val SynthChangePrefix = "__synth_change_"
 
-  def main(args: Array[String]): Unit = {}
+  def main(args: Array[String]): Unit = {
+    val parser = new ArgumentParser()
+    val arguments = parser.parse(args, Arguments(None, None)).get
+    val result = run(arguments.design.get, arguments.testbench.get, arguments.config)
+    // print result
+    result match {
+      case NoRepairNecessary => println("""{"status":"no-repair"}""")
+      case CannotRepair      => println("""{"status":"cannot-repair"}""")
+      case RepairSuccess(assignments) =>
+        println("""{"status":"success",""")
+        println(""" "assignment": {""")
+        println(assignments.map { case (name, value) =>
+          s"""   "$name": $value"""
+        }.mkString(",\n"))
+        println(" }")
+        println("}")
+    }
+  }
 
   def run(design: os.Path, testbench: os.Path, config: Config): RepairResult = {
     // load design and testbench and validate them
