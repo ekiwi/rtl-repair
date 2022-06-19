@@ -7,7 +7,7 @@ import argparse
 import os
 from pathlib import Path
 from rtlfix.literalrepl import replace_literals
-from rtlfix import parse_verilog, serialize, to_btor, run_synthesizer
+from rtlfix import parse_verilog, serialize, to_btor, run_synthesizer, do_repair
 
 
 def parse_args():
@@ -35,7 +35,11 @@ def main():
         f.write(serialize(ast))
     btor_filename = to_btor(synth_filename)
     result = run_synthesizer(btor_filename, testbench)
-    print(result)
+    assert result["status"] == "success", result["status"]
+    do_repair(ast, result["assignment"])
+    repaired_filename = working_dir / (filename.stem + ".repaired.v")
+    with open(repaired_filename, "w") as f:
+        f.write(serialize(ast))
 
 
 if __name__ == '__main__':
