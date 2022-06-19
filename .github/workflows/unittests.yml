@@ -66,6 +66,14 @@ jobs:
         optimathsat -version
         cvc4 --version
 
+    - name: Install Scala
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: openjdk@1.11
+
+    - name: Compile Synthesizer to JAR
+      run: sbt assembly
+
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
