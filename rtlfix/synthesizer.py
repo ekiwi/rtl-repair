@@ -24,9 +24,14 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str):
     assert testbench.exists(), f"{testbench=} does not exist"
     _check_jar()
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", solver]
-    cmd = ["java", "-cp", _jar_rel, "synth.Synthesizer"] + args
-    r = subprocess.run(cmd, cwd=_synthesizer_dir, check=True, stdout=subprocess.PIPE)
+    cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
+    r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
     return json.loads(r.stdout.decode('utf-8'))
+
+
+_btor_conversion = [
+    "proc"  # "proc -noopt"
+]
 
 
 def _to_btor(filename: Path):
@@ -35,8 +40,9 @@ def _to_btor(filename: Path):
     r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
     assert r.returncode == 0, f"failed to find yosys {r}"
     btor_name = filename.stem + ".btor"
-    yosys_cmd = f"read_verilog {filename.name} ; proc ; write_btor -x {btor_name}"
-    subprocess.run(["yosys", "-p", yosys_cmd], check=True, cwd=cwd, stdout=subprocess.PIPE)
+    yosys_cmd = [f"read_verilog {filename.name}"] + _btor_conversion + [f"write_btor -x {btor_name}"]
+    cmd = ["yosys", "-p", " ; ".join(yosys_cmd)]
+    subprocess.run(cmd, check=True, cwd=cwd, stdout=subprocess.PIPE)
     assert (cwd / btor_name).exists()
     return cwd / btor_name
 
