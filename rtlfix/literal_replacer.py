@@ -16,16 +16,24 @@ def replace_literals(ast: vast.Source):
 _bases = {'b': 2, 'o': 8, 'h': 16, 'd': 10}
 
 
+def _find_min_width(value: int) -> int:
+    assert value >= 0
+    return len(f"{value:b}")
+
+
 def parse_verilog_int_literal(value: str) -> (int, int):
-    assert "'" in value, f"unsupported integer constant format: {value}"
-    parts = value.split("'")
-    width = int(parts[0])
-    prefix = parts[1][0]
-    if prefix in _bases:
-        value = int(parts[1][1:], _bases[prefix])
+    if "'" in value:
+        parts = value.split("'")
+        width = int(parts[0])
+        prefix = parts[1][0]
+        if prefix in _bases:
+            value = int(parts[1][1:], _bases[prefix])
+        else:
+            value = int(parts[1])
+        return value, width
     else:
-        value = int(parts[1])
-    return value, width
+        value = int(value)
+        return value, _find_min_width(value)
 
 
 class LiteralReplacer(RepairTemplate):
@@ -37,4 +45,3 @@ class LiteralReplacer(RepairTemplate):
         new_const = vast.Identifier(self.make_synth_var(bits))
         choice = self.make_change(new_const, node)
         return choice
-
