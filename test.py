@@ -46,6 +46,9 @@ class SynthesisTest(unittest.TestCase):
     def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
         self.assertEqual(run_synth(dir / design, dir / testbench, solver)[0], "no-repair")
 
+    def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
+        self.assertEqual(run_synth(dir / design, dir / testbench, solver)[0], "cannot-repair")
+
 
 class TestDecoder(SynthesisTest):
 
@@ -72,12 +75,8 @@ class TestDecoder(SynthesisTest):
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_num.v", "orig_tb.csv")
 
     def test_buggy_var_complete_min_tb(self):
-        # this one actually works even just with the literal replacer template, but requires 3 changes
-        # since this is not the way this bug is meant to be fixed
-        # NOTE: this benchmark completes a lot faster using optimathsat, but the result is wrong, using more changes
-        #       than necessary!
-        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv",
-                           solver="optimathsat", max_changes=3)
+        # we cannot repair this one with the current repair templates since we would need to replace a variable
+        self.synth_cannot_repair(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="optimathsat")
 
 
 if __name__ == '__main__':
