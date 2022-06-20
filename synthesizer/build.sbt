@@ -16,8 +16,8 @@ lazy val main = (project in file("."))
   .settings(
     // BDD library
     libraryDependencies += "com.github.com-github-javabdd" % "com.github.javabdd" % "2.0.0",
-    // treadle is used to create VCDs
-    libraryDependencies += "edu.berkeley.cs" %% "treadle" % "1.5.1",
+    // command line argument parser
+    libraryDependencies += "com.github.scopt" %% "scopt" % "4.0.1",
     // lib os for file system access
     libraryDependencies += "com.lihaoyi" %% "os-lib" % "0.8.0",
   )
