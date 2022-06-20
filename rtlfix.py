@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import subprocess
 from pathlib import Path
 from rtlfix.literal_replacer import replace_literals
 from rtlfix import parse_verilog, serialize, to_btor, run_synthesizer, do_repair
@@ -52,6 +53,9 @@ def main():
             f.write(f"{len(changes)}\n")
             f.write('\n'.join(f"{line}: {a} -> {b}" for line, a, b in changes))
             f.write('\n')
+        with open(working_dir / "solver", "w") as f:
+            r = subprocess.run([solver, "-version"], check=True, stdout=subprocess.PIPE)
+            f.write(r.stdout.decode('utf-8').strip() + "\n")
         repaired_filename = working_dir / (filename.stem + ".repaired.v")
         with open(repaired_filename, "w") as f:
             f.write(serialize(ast))

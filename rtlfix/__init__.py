@@ -194,8 +194,9 @@ class RepairPass(visitor.AstVisitor):
 
 
 # the synthesizer is written in Scala, the source code lives in src
-_jar_rel = Path("target") / "scala-2.13" / "bug-fix-assembly-0.1.jar"
-_jar = _root_dir / _jar_rel
+_jar_rel = Path("target") / "scala-2.13" / "bug-fix-synthesizer-assembly-0.1.jar"
+_synthesizer_dir = _root_dir / "synthesizer"
+_jar = _synthesizer_dir / _jar_rel
 
 
 def check_jar():
@@ -208,5 +209,5 @@ def run_synthesizer(design: Path, testbench: Path, solver: str):
     check_jar()
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", solver]
     cmd = ["java", "-cp", _jar_rel, "synth.Synthesizer"] + args
-    r = subprocess.run(cmd, cwd=_root_dir, check=True, stdout=subprocess.PIPE)
+    r = subprocess.run(cmd, cwd=_synthesizer_dir, check=True, stdout=subprocess.PIPE)
     return json.loads(r.stdout.decode('utf-8'))

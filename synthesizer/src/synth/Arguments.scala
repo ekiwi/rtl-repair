@@ -19,7 +19,7 @@ case class Config(
   verbose:     Boolean = false)
 
 class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
-  head("synthesizer", "0.x")
+  head("synthesizer", "0.2")
   opt[String]("design")
     .required()
     .action((a, config) => config.copy(design = Some(os.Path(a, os.pwd))))
@@ -28,6 +28,9 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     .required()
     .action((a, config) => config.copy(testbench = Some(os.Path(a, os.pwd))))
     .text("the testbench in CSV format")
+  opt[Unit]("debug-solver")
+    .action((_, args) => args.copy(config = args.config.copy(debugSolver = true)))
+    .text("print out stdlib commands that are sent to solver")
   opt[String]("solver").action { (a, config) =>
     val solver = a match {
       case "z3"          => Z3SMTLib
