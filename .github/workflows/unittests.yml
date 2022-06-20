@@ -38,6 +38,7 @@ jobs:
 
     - name: Run Scala Unittests
       timeout-minutes: 3
+      working-directory: synthesizer
       run: sbt test
 
   test-python:
@@ -72,6 +73,7 @@ jobs:
         java-version: openjdk@1.11
 
     - name: Compile Synthesizer to JAR
+      working-directory: synthesizer
       run: sbt assembly
 
     - name: Set up Python
