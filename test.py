@@ -64,10 +64,8 @@ class TestDecoder(SynthesisTest):
     def test_wadden_buggy2_complete_min_tb(self):
         # this would take a lot longer if using z3
         # should be do-able by changing 8 constants
-        # NOTE: this benchmark completes a lot faster using optimathsat, but the result is wrong, using more changes
-        #       than necessary!
         self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy2.v", "complete_min_tb.csv",
-                           solver="z3", max_changes=8)
+                           solver="optimathsat", max_changes=8)
 
     def test_buggy_num_orig_tb(self):
         # this is not mentioned in the paper result, but essentially we just need to change one constant
