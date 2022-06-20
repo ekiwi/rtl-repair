@@ -5,7 +5,7 @@
 import subprocess
 import json
 from pathlib import Path
-from rtlfix import _root_dir, serialize
+from rtlfix.utils import _root_dir, serialize
 import pyverilog.vparser.ast as vast
 
 

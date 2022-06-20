@@ -6,10 +6,9 @@
 import argparse
 import os
 import subprocess
+import time
 from pathlib import Path
-from rtlfix.literal_replacer import replace_literals
-from rtlfix import parse_verilog, serialize, do_repair
-from rtlfix.synthesizer import Synthesizer
+from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, replace_literals
 
 
 def parse_args():
@@ -30,6 +29,7 @@ def create_working_dir(working_dir: Path):
 
 
 def main():
+    start_time = time.monotonic()
     filename, testbench, working_dir, solver = parse_args()
     create_working_dir(working_dir)
 
@@ -55,6 +55,9 @@ def main():
         with open(repaired_filename, "w") as f:
             f.write(serialize(ast))
     print(status)
+    delta_time = time.monotonic() - start_time
+    with open(working_dir / "time", "w") as f:
+        f.write(f"{delta_time}s\n")
 
 
 if __name__ == '__main__':

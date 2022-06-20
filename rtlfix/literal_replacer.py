@@ -2,7 +2,8 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
-from rtlfix import RepairTemplate, Namespace
+from rtlfix.repair import RepairTemplate
+from rtlfix.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
