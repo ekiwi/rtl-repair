@@ -8,7 +8,7 @@ import maltese.smt.OptiMathSatSMTLib
 import org.scalatest.flatspec.AnyFlatSpec
 
 abstract class BugFixerSpec extends AnyFlatSpec {
-  val CirFixDir = os.pwd / "benchmarks" / "cirfix"
+  val CirFixDir = os.pwd / os.up / "benchmarks" / "cirfix"
   val DefaultConfig = Config()
   val VerboseConfig = DefaultConfig.copy(verbose = true, debugSolver = true)
 }

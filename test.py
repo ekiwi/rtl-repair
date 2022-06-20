@@ -79,7 +79,7 @@ class TestDecoder(SynthesisTest):
         # NOTE: this benchmark completes a lot faster using optimathsat, but the result is wrong, using more changes
         #       than necessary!
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv",
-                           solver="z3", max_changes=3)
+                           solver="optimathsat", max_changes=3)
 
 
 if __name__ == '__main__':

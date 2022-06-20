@@ -37,7 +37,20 @@ object OptiMathSatSMTLib extends Solver {
   override def supportsConstArrays = true
   override def supportsUninterpretedFunctions = true
   override def supportsQuantifiers = true
-  override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
+  override def createContext(debugOn: Boolean = false): SolverContext = new OptiMathSatContext(cmd, debugOn)
+}
+
+private class OptiMathSatContext(cmd: List[String], debug: Boolean)
+    extends SMTLibSolverContext(cmd, OptiMathSatSMTLib, debug) {
+  override protected def doCheck(produceModel: Boolean): SolverResult = {
+    // optimathsat does not actually optimize anything unless we tell it to
+    // (this is different from how z3, our other optimizing solver works)
+    // by default all `assert-soft` command are added to objective `I` and thus it should be enough to tell optimathsat
+    // to minimize that objective
+    // TODO: find out when we should use this...
+    // writeCommand("(minimize I)")
+    super.doCheck(produceModel)
+  }
 }
 
 /** provides basic facilities to interact with any SMT solver that supports a SMTLib base textual interface */

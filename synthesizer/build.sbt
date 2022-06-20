@@ -11,7 +11,7 @@ val commonSettings = Seq(
 
 
 lazy val main = (project in file("."))
-  .settings(name := "bug-fix")
+  .settings(name := "bug-fix-synthesizer")
   .settings(commonSettings)
   .settings(
     // BDD library

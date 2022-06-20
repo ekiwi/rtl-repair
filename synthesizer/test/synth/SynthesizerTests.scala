@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 abstract class SynthesizerSpec extends AnyFlatSpec {
   val BenchmarkDir = os.pwd / "test" / "synth" / "benchmarks"
-  val CirFixDir = os.pwd / "benchmarks" / "cirfix"
+  val CirFixDir = os.pwd / os.up / "benchmarks" / "cirfix"
   val DefaultConfig = Config()
 }
 
