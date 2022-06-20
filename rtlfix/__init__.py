@@ -3,7 +3,6 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import subprocess
-import json
 from pathlib import Path
 import rtlfix.visitor
 import pyverilog.vparser.ast as vast
@@ -16,18 +15,6 @@ _root_dir = _script_dir.parent.resolve()
 _parser_tmp_dir = _root_dir / ".pyverilog"
 _synth_var_prefix = "__synth_"
 _synth_change_prefix = "__synth_change_"
-
-
-def to_btor(filename: Path):
-    cwd = filename.parent
-    assert cwd.exists(), f"directory {cwd} does not exist"
-    r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
-    assert r.returncode == 0, f"failed to find yosys {r}"
-    btor_name = filename.stem + ".btor"
-    yosys_cmd = f"read_verilog {filename.name} ; proc ; write_btor -x {btor_name}"
-    subprocess.run(["yosys", "-p", yosys_cmd], check=True, cwd=cwd, stdout=subprocess.PIPE)
-    assert (cwd / btor_name).exists()
-    return cwd / btor_name
 
 
 def parse_verilog(filename: Path) -> vast.Source:
@@ -192,22 +179,3 @@ class RepairPass(visitor.AstVisitor):
         prefix = "" if width is None else str(width)
         return vast.IntConst(f"{prefix}'b{value:b}")
 
-
-# the synthesizer is written in Scala, the source code lives in src
-_jar_rel = Path("target") / "scala-2.13" / "bug-fix-synthesizer-assembly-0.1.jar"
-_synthesizer_dir = _root_dir / "synthesizer"
-_jar = _synthesizer_dir / _jar_rel
-
-
-def check_jar():
-    assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
-
-
-def run_synthesizer(design: Path, testbench: Path, solver: str):
-    assert design.exists(), f"{design=} does not exist"
-    assert testbench.exists(), f"{testbench=} does not exist"
-    check_jar()
-    args = ["--design", str(design), "--testbench", str(testbench), "--solver", solver]
-    cmd = ["java", "-cp", _jar_rel, "synth.Synthesizer"] + args
-    r = subprocess.run(cmd, cwd=_synthesizer_dir, check=True, stdout=subprocess.PIPE)
-    return json.loads(r.stdout.decode('utf-8'))

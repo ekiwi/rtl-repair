@@ -8,7 +8,8 @@ import os
 import subprocess
 from pathlib import Path
 from rtlfix.literal_replacer import replace_literals
-from rtlfix import parse_verilog, serialize, to_btor, run_synthesizer, do_repair
+from rtlfix import parse_verilog, serialize, do_repair
+from rtlfix.synthesizer import Synthesizer
 
 
 def parse_args():
@@ -35,16 +36,10 @@ def main():
     # instantiate repair templates
     ast = parse_verilog(filename)
     replace_literals(ast)
-    synth_filename = working_dir / filename.name
-    with open(synth_filename, "w") as f:
-        f.write(serialize(ast))
 
-    # convert file and run synthesizer
-    btor_filename = to_btor(synth_filename)
-    result = run_synthesizer(btor_filename, testbench, solver)
+    synth = Synthesizer()
+    result = synth.run(filename.name, working_dir, ast, testbench, solver)
     status = result["status"]
-    with open(working_dir / "status", "w") as f:
-        f.write(status + "\n")
 
     if status == "success":
         # execute synthesized repair
