@@ -4,6 +4,8 @@
 
 package maltese.smt
 
+import scala.collection.mutable
+
 object Yices2SMTLib extends Solver {
   private val cmd = List("yices-smt2", "--incremental")
   override def name = "yices2-smtlib"
@@ -42,13 +44,36 @@ object OptiMathSatSMTLib extends Solver {
 
 private class OptiMathSatContext(cmd: List[String], debug: Boolean)
     extends SMTLibSolverContext(cmd, OptiMathSatSMTLib, debug) {
+
+  // tracks if we currently have any soft asserts
+  private val hasSoftAssert = mutable.Stack[Boolean]()
+  hasSoftAssert.push(false)
+
+  override def push(): Unit = {
+    hasSoftAssert.push(false)
+    super.push()
+  }
+
+  override def pop(): Unit = {
+    hasSoftAssert.pop()
+    super.pop()
+  }
+
+  override def softAssert(expr: BVExpr, weight: Int): Unit = {
+    if (!hasSoftAssert.top) {
+      hasSoftAssert.pop(); hasSoftAssert.push(true)
+    }
+    super.softAssert(expr, weight)
+  }
+
   override protected def doCheck(produceModel: Boolean): SolverResult = {
     // optimathsat does not actually optimize anything unless we tell it to
     // (this is different from how z3, our other optimizing solver works)
     // by default all `assert-soft` command are added to objective `I` and thus it should be enough to tell optimathsat
     // to minimize that objective
-    // TODO: find out when we should use this...
-    // writeCommand("(minimize I)")
+    if (hasSoftAssert.contains(true)) { // only add the minimize command if we have at least one soft assert active
+      writeCommand("(minimize I)")
+    }
     super.doCheck(produceModel)
   }
 }

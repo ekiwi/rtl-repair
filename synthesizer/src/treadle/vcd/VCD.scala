@@ -8,7 +8,6 @@ import java.text.SimpleDateFormat
 import collection._
 import java.util.{Date, TimeZone}
 
-
 import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
 
@@ -52,11 +51,11 @@ object VCD {
   val TimeStamp:          Regex = """\s*#(\d+)\s*""".r
 
   def apply(
-             moduleName:           String,
-             timeScale:            String = "1ns",
-             comment:              String = "",
-             showUnderscoredNames: Boolean = false
-           ): VCD = {
+    moduleName:           String,
+    timeScale:            String = "1ns",
+    comment:              String = "",
+    showUnderscoredNames: Boolean = false
+  ): VCD = {
 
     val tz = TimeZone.getTimeZone("UTC")
     val df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mmZ")
@@ -113,7 +112,6 @@ object VCD {
   private def debug(msg: => String): Unit = {}
   private def warn(msg: => String): Unit = {}
 
-
   //scalastyle:off cyclomatic.complexity method.length
   /** Read and parse the specified vcd file, producing a VCD data structure
     *
@@ -122,12 +120,12 @@ object VCD {
     * @return a populated VCD class
     */
   def read(
-            vcdFile:          os.Path,
-            startScope:       String = "",
-            renameStartScope: String = "",
-            varPrefix:        String = "",
-            newVarPrefix:     String = ""
-          ): VCD = {
+    vcdFile:          os.Path,
+    startScope:       String = "",
+    renameStartScope: String = "",
+    varPrefix:        String = "",
+    newVarPrefix:     String = ""
+  ): VCD = {
     val words = new WordIterator(vcdFile)
 
     val dateHeader = new StringBuilder
@@ -445,13 +443,12 @@ object VCD {
   * @param scope Not really used here except as the name of the top level module
   */
 case class VCD(
-                date:                   String,
-                version:                String,
-                comment:                String,
-                timeScale:              String,
-                scope:                  String,
-                ignoreUnderscoredNames: Boolean)
-   {
+  date:                   String,
+  version:                String,
+  comment:                String,
+  timeScale:              String,
+  scope:                  String,
+  ignoreUnderscoredNames: Boolean) {
   var currentIdNumber = 0
   var timeStamp = 0L
   val lastValues = new mutable.HashMap[String, Change]
@@ -735,4 +732,3 @@ case class Scope(name: String, parent: Option[Scope] = None) {
     subScopes += Scope(subScopeName)
   }
 }
-
