@@ -121,11 +121,12 @@ class TestTypeInference(unittest.TestCase):
 
     def test_flip_flop_types(self):
         from rtlfix import parse_verilog
-        from rtlfix.types import infer_types
+        from rtlfix.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
-        ast.show()
-        infer_types(ast)
-
+        widths = infer_widths(ast)
+        self.assertEqual(len(widths), 5)
+        for node, width in widths.items():
+            self.assertEqual(width, 1, str(node))
 
 
 if __name__ == '__main__':

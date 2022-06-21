@@ -7,6 +7,7 @@
 # License: Apache 2.0
 
 from pyverilog.utils.identifierreplace import children_items
+import pyverilog.vparser.ast as vast
 
 
 class AstVisitor:
@@ -24,7 +25,17 @@ class AstVisitor:
         return ret
 
     def generic_visit(self, node):
-        for name, child in children_items(node):
+        if isinstance(node, vast.ModuleDef):
+            # make sure we visit children in order
+            children = children_items(node)
+            # put items to the back so that we visit the port declarations first
+            assert children[2][0] == "items"
+            children = children[0:2] + children[3:] + [children[2]]
+            print()
+        else:
+            children = children_items(node)
+
+        for name, child in children:
             if child is None:
                 continue
             if isinstance(child, list) or isinstance(child, tuple):

@@ -3,7 +3,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import pyverilog.vparser.ast as vast
-from rtlfix.utils import Namespace, serialize
+from rtlfix.utils import Namespace, serialize, parse_width
 from rtlfix.visitor import AstVisitor
 
 _synth_var_prefix = "__synth_"
@@ -20,16 +20,6 @@ def _make_any_const(name: str, width: int) -> vast.Decl:
             right=vast.Rvalue(vast.SystemCall("anyconst", []))
         )
     ))
-
-
-def _parse_width(width) -> int:
-    if width is None:
-        return 1
-    assert isinstance(width, vast.Width)
-    msb = int(width.msb.value)
-    lsb = int(width.lsb.value)
-    assert msb >= lsb
-    return msb - lsb + 1
 
 
 class RepairTemplate(AstVisitor):
@@ -104,7 +94,7 @@ class RepairPass(AstVisitor):
             if is_synth_var:
                 assert len(entry.list) == 2
                 reg = entry.list[0]
-                width[reg.name] = _parse_width(reg.width)
+                width[reg.name] = parse_width(reg.width)
             else:
                 items.append(entry)
         mod_def.items = tuple(items)

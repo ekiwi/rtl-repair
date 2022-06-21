@@ -49,3 +49,12 @@ class Namespace:
         return final_name
 
 
+def parse_width(width) -> int:
+    if width is None:
+        return 1
+    assert isinstance(width, vast.Width)
+    msb = int(width.msb.value)
+    lsb = int(width.lsb.value)
+    assert msb >= lsb
+    return msb - lsb + 1
+
