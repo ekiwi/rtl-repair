@@ -65,11 +65,11 @@ class TestFlipFlop(SynthesisTest):
 
     def test_wadden_buggy1_orig_tb(self):
         # cannot be repaired with just literal replacement
-        self.synth_cannot_repair(flip_flop_dir, "tff_wadden_buggy1.v", "orig_tb.csv")
+        self.synth_success(flip_flop_dir, "tff_wadden_buggy1.v", "orig_tb.csv")
 
     def test_wadden_buggy2_orig_tb(self):
         # cannot be repaired with just literal replacement
-        self.synth_cannot_repair(flip_flop_dir, "tff_wadden_buggy2.v", "orig_tb.csv")
+        self.synth_success(flip_flop_dir, "tff_wadden_buggy2.v", "orig_tb.csv")
 
 
 class TestFirstCounter(SynthesisTest):
@@ -131,6 +131,13 @@ class TestTypeInference(unittest.TestCase):
         from rtlfix import parse_verilog
         from rtlfix.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
+        widths = infer_widths(ast)
+        self.assertEqual({1: 5}, _make_histogram(widths))
+
+    def test_flip_flop_buggy1_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(flip_flop_dir / "tff_wadden_buggy1.v")
         widths = infer_widths(ast)
         self.assertEqual({1: 5}, _make_histogram(widths))
 

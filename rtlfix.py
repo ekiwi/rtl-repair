@@ -9,6 +9,8 @@ import subprocess
 import time
 from pathlib import Path
 from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, replace_literals
+from rtlfix.inverter import add_inversions
+from rtlfix.types import infer_widths
 
 
 def parse_args():
@@ -37,9 +39,11 @@ def main():
 
     # instantiate repair templates
     ast = parse_verilog(filename)
+    widths = infer_widths(ast)
     if show_ast:
         ast.show()
-    replace_literals(ast)
+    replace_literals(ast, widths)
+    add_inversions(ast, widths)
 
     synth = Synthesizer()
     result = synth.run(filename.name, working_dir, ast, testbench, solver)

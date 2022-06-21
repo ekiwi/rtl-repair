@@ -7,10 +7,10 @@ from rtlfix.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
-def replace_literals(ast: vast.Source):
+def replace_literals(ast: vast.Source, widths: dict):
     namespace = Namespace(ast)
     repl = LiteralReplacer()
-    repl.apply(namespace, ast)
+    repl.apply(namespace, ast, widths)
 
 
 _bases = {'b': 2, 'o': 8, 'h': 16, 'd': 10}
@@ -47,7 +47,3 @@ class LiteralReplacer(RepairTemplate):
         new_const = vast.Identifier(self.make_synth_var(bits))
         choice = self.make_change(new_const, node)
         return choice
-
-    def visit_Decl(self, node: vast.Decl):
-        # ignore any declarations as not to instrument the integers of the width declaration
-        return node

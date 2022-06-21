@@ -7,21 +7,29 @@ from rtlfix.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
-def add_inversions(ast: vast.Source):
+def add_inversions(ast: vast.Source, widths: dict):
     namespace = Namespace(ast)
-    Inverter().apply(namespace, ast)
+    Inverter().apply(namespace, ast, widths)
+
+
+_skip_nodes = {vast.Lvalue, vast.Decl, vast.SensList, vast.Portlist}
 
 
 class Inverter(RepairTemplate):
     def __init__(self):
         super().__init__(name="invert")
 
-    def visit_IntConst(self, node: vast.IntConst):
-        value, bits = parse_verilog_int_literal(node.value)
-        new_const = vast.Identifier(self.make_synth_var(bits))
-        choice = self.make_change(new_const, node)
-        return choice
-
-    def visit_Decl(self, node: vast.Decl):
-        # ignore any declarations as not to instrument the integers of the width declaration
+    def generic_visit(self, node):
+        # skip nodes that contain declarations or senselists
+        if type(node) in _skip_nodes:
+            return node
+        # ignore constants as they are already covered by the literal replacer template
+        if isinstance(node, vast.Constant):
+            return node
+        # visit children
+        node = super().generic_visit(node)
+        # if it is a 1-bit node, add the possibility to invert
+        if node in self.widths and self.widths[node] == 1:
+            # add possibility to invert boolean expression
+            node = self.make_change(vast.Ulnot(node), node)
         return node

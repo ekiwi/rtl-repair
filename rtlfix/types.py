@@ -100,6 +100,10 @@ class InferWidths(AstVisitor):
             # check the lhs first because it might influence the lhs
             lhs_width = self._get_width(node.left.var, None)
             rhs_width = self._get_width(node.right.var, lhs_width)
+        elif isinstance(node, vast.IfStatement):
+            self._get_width(node.cond, 1)
+            self.visit(node.true_statement)
+            self.visit(node.false_statement)
         elif isinstance(node, vast.Value) or isinstance(node, vast.Operator):
             self._get_width(node, None)
         else:
