@@ -12,6 +12,7 @@ root_dir = Path(__file__).parent.resolve()
 working_dir = root_dir / "working-dir"
 benchmark_dir = root_dir / "benchmarks"
 decoder_dir = benchmark_dir / "cirfix" / "decoder_3_to_8"
+flip_flop_dir = benchmark_dir / "cirfix" / "flip_flop"
 
 
 def run_synth(source: Path, testbench: Path, solver='z3'):
@@ -48,6 +49,20 @@ class SynthesisTest(unittest.TestCase):
 
     def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
         self.assertEqual(run_synth(dir / design, dir / testbench, solver)[0], "cannot-repair")
+
+
+class TestFlipFlop(SynthesisTest):
+
+    def test_orig_orig_tb(self):
+        self.synth_no_repair(flip_flop_dir, "tff.v", "orig_tb.csv")
+
+    def test_wadden_buggy1_orig_tb(self):
+        # cannot be repaired with just literal replacement
+        self.synth_cannot_repair(flip_flop_dir, "tff_wadden_buggy1.v", "orig_tb.csv")
+
+    def test_wadden_buggy2_orig_tb(self):
+        # cannot be repaired with just literal replacement
+        self.synth_cannot_repair(flip_flop_dir, "tff_wadden_buggy2.v", "orig_tb.csv")
 
 
 class TestDecoder(SynthesisTest):
