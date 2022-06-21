@@ -112,15 +112,18 @@ class RepairPass(AstVisitor):
         """ implement synthesizer choice (implement decision created by make_change) """
         if not isinstance(node.cond, vast.Identifier):
             return self.generic_visit(node)
-        if not node.cond.name.startswith(_synth_change_prefix):
+        is_change_var = node.cond.name.startswith(_synth_change_prefix)
+        is_synth_var = node.cond.name.startswith(_synth_var_prefix)
+        if not (is_change_var or is_synth_var):
             return self.generic_visit(node)
         # we found a synthesis change, now we need to plug in the original or the old expression
         value = self.assignment[node.cond.name]
         if value == 1:
-            # record the change
             changed = self.visit(node.true_value)
-            line = str(node.false_value.lineno)
-            self.changes.append((line, serialize(node.false_value), changed))
+            # record the change if we are dealing with a change var
+            if is_change_var:
+                line = str(node.false_value.lineno)
+                self.changes.append((line, serialize(node.false_value), changed))
             return changed
         else:
             return self.visit(node.false_value)
