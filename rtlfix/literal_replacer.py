@@ -33,6 +33,8 @@ def parse_verilog_int_literal(value: str) -> (int, int):
         return value, width
     else:
         value = int(value)
+        # TODO: should this be a 32 (the integer default size in verilog) or
+        #       the minimum width needed to hold the literal?
         return value, _find_min_width(value)
 
 
@@ -45,3 +47,7 @@ class LiteralReplacer(RepairTemplate):
         new_const = vast.Identifier(self.make_synth_var(bits))
         choice = self.make_change(new_const, node)
         return choice
+
+    def visit_Decl(self, node: vast.Decl):
+        # ignore any declarations as not to instrument the integers of the width declaration
+        return node
