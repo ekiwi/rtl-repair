@@ -112,7 +112,6 @@ class TestDecoder(SynthesisTest):
         # this is not mentioned in the paper result, but essentially we just need to change one constant
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_num.v", "orig_tb.csv")
 
-    @unittest.skip("taking too long right now")
     def test_buggy_var_complete_min_tb(self):
         # we cannot repair this one with the current repair templates since we would need to replace a variable
         self.synth_cannot_repair(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="optimathsat")
