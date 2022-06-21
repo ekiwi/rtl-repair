@@ -32,22 +32,33 @@ def create_working_dir(working_dir: Path):
         os.mkdir(working_dir)
 
 
+_templates = [replace_literals, add_inversions]
+
+
 def main():
     start_time = time.monotonic()
     filename, testbench, working_dir, solver, show_ast = parse_args()
     create_working_dir(working_dir)
 
-    # instantiate repair templates
+    status = "cannot-repair"
+    result = []
     ast = parse_verilog(filename)
-    widths = infer_widths(ast)
     if show_ast:
         ast.show()
-    replace_literals(ast, widths)
-    add_inversions(ast, widths)
 
-    synth = Synthesizer()
-    result = synth.run(filename.name, working_dir, ast, testbench, solver)
-    status = result["status"]
+    # instantiate repair templates, one after another
+    # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
+    for template in _templates:
+        widths = infer_widths(ast)
+        template(ast, widths)
+        synth = Synthesizer()
+        result = synth.run(filename.name, working_dir, ast, testbench, solver)
+        status = result["status"]
+        if status == "success":
+            result["template"] = template.__name__
+            break
+        # recreate AST since we destroyed (mutated) the old one
+        ast = parse_verilog(filename)
 
     if status == "success":
         # execute synthesized repair
@@ -59,6 +70,8 @@ def main():
         with open(working_dir / "solver", "w") as f:
             r = subprocess.run([solver, "-version"], check=True, stdout=subprocess.PIPE)
             f.write(r.stdout.decode('utf-8').strip() + "\n")
+        with open(working_dir / "template", "w") as f:
+            f.write(result["template"] + "\n")
         repaired_filename = working_dir / (filename.stem + ".repaired.v")
         with open(repaired_filename, "w") as f:
             f.write(serialize(ast))
