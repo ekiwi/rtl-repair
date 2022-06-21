@@ -116,5 +116,17 @@ class TestDecoder(SynthesisTest):
         self.synth_cannot_repair(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="optimathsat")
 
 
+class TestTypeInference(unittest.TestCase):
+    """ actual unittests for code in rtlfix/types.py """
+
+    def test_flip_flop_types(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_types
+        ast = parse_verilog(flip_flop_dir / "tff.v")
+        ast.show()
+        infer_types(ast)
+
+
+
 if __name__ == '__main__':
     unittest.main()
