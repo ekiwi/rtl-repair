@@ -29,8 +29,23 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str):
     return json.loads(r.stdout.decode('utf-8'))
 
 
+_minimal_btor_conversion = [
+    "proc -noopt"
+]
+# inspired by the commands used by SymbiYosys
 _btor_conversion = [
-    "proc"  # "proc -noopt"
+    "proc",
+    # common prep
+    "async2sync",
+    "opt_clean",
+    "setundef -anyseq",
+    "opt -keepdc -fast",
+    "check",
+    # "hierarchy -simcheck",
+    # btor
+    "flatten",
+    "setundef -undriven -anyseq",
+    "dffunmap",
 ]
 
 
@@ -40,7 +55,8 @@ def _to_btor(filename: Path):
     r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
     assert r.returncode == 0, f"failed to find yosys {r}"
     btor_name = filename.stem + ".btor"
-    yosys_cmd = [f"read_verilog {filename.name}"] + _btor_conversion + [f"write_btor -x {btor_name}"]
+    conversion = _minimal_btor_conversion
+    yosys_cmd = [f"read_verilog {filename.name}"] + conversion + [f"write_btor -x {btor_name}"]
     cmd = ["yosys", "-p", " ; ".join(yosys_cmd)]
     subprocess.run(cmd, check=True, cwd=cwd, stdout=subprocess.PIPE)
     assert (cwd / btor_name).exists()
