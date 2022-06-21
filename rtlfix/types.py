@@ -11,6 +11,10 @@ def infer_widths(ast: vast.Source) -> dict:
     return InferWidths().run(ast)
 
 
+_cmp_op = {vast.LessThan, vast.GreaterThan, vast.LessEq, vast.GreaterEq, vast.Eq, vast.NotEq, vast.Eql, vast.NotEql}
+_context_dep_bops = {vast.Plus, vast.Minus, vast.Times, vast.Divide, vast.Mod, vast.And, vast.Or, vast.Xor, vast.Xnor}
+
+
 class ExpressionWidthChecker:
     def __init__(self, symbols: dict):
         self.symbols = symbols
@@ -34,10 +38,28 @@ class ExpressionWidthChecker:
                 width = self.visit(node.right, env_width)
             #                        |           &         !            ~&         ~|         ^          ~^
             elif type(node) in {vast.Uor, vast.Uand, vast.Ulnot, vast.Unand, vast.Unor, vast.Uxor, vast.Uxnor}:
-                self.visit(node.right, 1)
+                self.visit(node.right, None)
                 width = 1
             else:
                 raise NotImplementedError(f"TODO: deal with unary op {node} : {type(node)}")
+        elif isinstance(node, vast.Cond):  # ite / (...)? (..) : (..)
+            self.visit(node.cond, 1)
+            width_left = self.visit(node.true_value, env_width)
+            width_right = self.visit(node.false_value, env_width)
+            width = max(width_left, width_right)
+        elif isinstance(node, vast.Concat):
+            widths = [self.visit(cc, None) for cc in node.list]
+            width = max(widths)
+        elif type(node) in _context_dep_bops:
+            width_left = self.visit(node.left, env_width)
+            width_right = self.visit(node.right, env_width)
+            width = max(width_left, width_right)
+            if env_width is not None and env_width > width:
+                width = env_width
+        elif type(node) in _cmp_op:
+            width_left = self.visit(node.left, None)
+            width_right = self.visit(node.right, None)
+            width = max(width_left, width_right)
         else:
             raise NotImplementedError(f"TODO: deal with {node} : {type(node)}")
         self.widths[node] = width

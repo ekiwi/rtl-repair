@@ -6,6 +6,7 @@
 import unittest
 import os
 import subprocess
+from collections import defaultdict
 from pathlib import Path
 
 root_dir = Path(__file__).parent.resolve()
@@ -47,14 +48,14 @@ class SynthesisTest(unittest.TestCase):
 
     def synth_success(self, dir: Path, design: str, testbench: str, solver: str = 'z3', max_changes: int = 2):
         status, changes = run_synth(dir / design, dir / testbench, solver)
-        self.assertEqual(status, "success")
+        self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
 
     def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
-        self.assertEqual(run_synth(dir / design, dir / testbench, solver)[0], "no-repair")
+        self.assertEqual("no-repair", run_synth(dir / design, dir / testbench, solver)[0])
 
     def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
-        self.assertEqual(run_synth(dir / design, dir / testbench, solver)[0], "cannot-repair")
+        self.assertEqual("cannot-repair", run_synth(dir / design, dir / testbench, solver)[0])
 
 
 class TestFlipFlop(SynthesisTest):
@@ -116,17 +117,38 @@ class TestDecoder(SynthesisTest):
         self.synth_cannot_repair(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="optimathsat")
 
 
+def _make_histogram(widths: dict) -> dict:
+    hist = defaultdict(int)
+    for _, w in widths.items():
+        hist[w] += 1
+    return dict(hist)
+
+
 class TestTypeInference(unittest.TestCase):
     """ actual unittests for code in rtlfix/types.py """
 
-    def test_flip_flop_types(self):
+    def test_flip_flop_widths(self):
         from rtlfix import parse_verilog
         from rtlfix.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
         widths = infer_widths(ast)
-        self.assertEqual(len(widths), 5)
-        for node, width in widths.items():
-            self.assertEqual(width, 1, str(node))
+        self.assertEqual({1: 5}, _make_histogram(widths))
+
+    def test_decoder_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        self.assertEqual({1: 5, 4: 16, 8: 17}, hist)
+
+    def test_counter_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(counter_dir / "first_counter_overflow.v")
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        self.assertEqual({1: 8, 4: 7}, hist)
 
 
 if __name__ == '__main__':
