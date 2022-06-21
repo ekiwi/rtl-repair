@@ -7,10 +7,10 @@ from rtlfix.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
-def replace_literals(ast: vast.Source, widths: dict):
+def replace_literals(ast: vast.Source):
     namespace = Namespace(ast)
     repl = LiteralReplacer()
-    repl.apply(namespace, ast, widths)
+    repl.apply(namespace, ast)
 
 
 _bases = {'b': 2, 'o': 8, 'h': 16, 'd': 10}

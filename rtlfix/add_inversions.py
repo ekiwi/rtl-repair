@@ -3,21 +3,24 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 from rtlfix.repair import RepairTemplate
+from rtlfix.types import infer_widths
 from rtlfix.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
-def add_inversions(ast: vast.Source, widths: dict):
+def add_inversions(ast: vast.Source):
     namespace = Namespace(ast)
-    Inverter().apply(namespace, ast, widths)
+    widths = infer_widths(ast)
+    Inverter(widths).apply(namespace, ast)
 
 
 _skip_nodes = {vast.Lvalue, vast.Decl, vast.SensList, vast.Portlist}
 
 
 class Inverter(RepairTemplate):
-    def __init__(self):
+    def __init__(self, widths: dict):
         super().__init__(name="invert")
+        self.widths = widths
 
     def generic_visit(self, node):
         # skip nodes that contain declarations or senselists

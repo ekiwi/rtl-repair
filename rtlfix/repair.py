@@ -28,12 +28,10 @@ class RepairTemplate(AstVisitor):
         self.name = name
         self.changed = []
         self.synth_vars = []
-        self.widths = dict()
         self._namespace = None
 
-    def apply(self, namespace: Namespace, ast: vast.Source, widths: dict):
+    def apply(self, namespace: Namespace, ast: vast.Source):
         """ warn: modified in place! """
-        self.widths = widths
         # reset variables
         self.changed = []
         self.synth_vars = []
@@ -65,7 +63,7 @@ class RepairTemplate(AstVisitor):
         # by default we ignore any declarations
         return node
 
-    def visit_LValue(self, node: vast.Decl):
+    def visit_Lvalue(self, node: vast.Lvalue):
         # by default we ignore any lvalues
         return node
 

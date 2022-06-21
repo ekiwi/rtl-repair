@@ -9,8 +9,8 @@ import subprocess
 import time
 from pathlib import Path
 from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, replace_literals
-from rtlfix.inverter import add_inversions
-from rtlfix.types import infer_widths
+from rtlfix.add_inversions import add_inversions
+from rtlfix.replace_variables import replace_variables
 
 
 def parse_args():
@@ -32,7 +32,7 @@ def create_working_dir(working_dir: Path):
         os.mkdir(working_dir)
 
 
-_templates = [replace_literals, add_inversions]
+_templates = [replace_literals, add_inversions, replace_variables]
 
 
 def main():
@@ -49,8 +49,7 @@ def main():
     # instantiate repair templates, one after another
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
     for template in _templates:
-        widths = infer_widths(ast)
-        template(ast, widths)
+        template(ast)
         synth = Synthesizer()
         result = synth.run(filename.name, working_dir, ast, testbench, solver)
         status = result["status"]
