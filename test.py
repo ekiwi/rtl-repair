@@ -13,6 +13,7 @@ working_dir = root_dir / "working-dir"
 benchmark_dir = root_dir / "benchmarks"
 decoder_dir = benchmark_dir / "cirfix" / "decoder_3_to_8"
 flip_flop_dir = benchmark_dir / "cirfix" / "flip_flop"
+counter_dir = benchmark_dir / "cirfix" / "first_counter_overflow"
 
 
 def run_synth(source: Path, testbench: Path, solver='z3'):
@@ -26,7 +27,12 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
         "--solver", solver,
         "--working-dir", str(out_dir.resolve())
     ]
-    r = subprocess.run(["./rtlfix.py"] + args, stdout=subprocess.PIPE, check=True, cwd=root_dir)
+    cmd = ["./rtlfix.py"] + args
+    try:
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, check=True, cwd=root_dir)
+    except subprocess.CalledProcessError as r:
+        print(f"Failed to execute command: {' '.join(cmd)}")
+        raise r
     with open(out_dir / "status") as f:
         status = f.read().strip()
     if status == "success":
@@ -63,6 +69,22 @@ class TestFlipFlop(SynthesisTest):
     def test_wadden_buggy2_orig_tb(self):
         # cannot be repaired with just literal replacement
         self.synth_cannot_repair(flip_flop_dir, "tff_wadden_buggy2.v", "orig_tb.csv")
+
+
+class TestFirstCounter(SynthesisTest):
+
+    def test_orig_orig_tb(self):
+        self.synth_no_repair(counter_dir, "first_counter_overflow.v", "orig_tb.csv")
+
+    # wadden_buggy1 is a sens list bug and thus won't be solvable by our approach
+
+    def test_wadden_buggy2_orig_tb(self):
+        # cannot be repaired with just literal replacement
+        self.synth_cannot_repair(counter_dir, "first_counter_overflow_wadden_buggy2.v", "orig_tb.csv")
+
+    def test_kgoliya_buggy1_orig_tb(self):
+        # cannot be repaired with just literal replacement
+        self.synth_cannot_repair(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "orig_tb.csv")
 
 
 class TestDecoder(SynthesisTest):

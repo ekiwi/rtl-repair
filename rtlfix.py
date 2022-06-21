@@ -18,9 +18,11 @@ def parse_args():
     parser.add_argument('--working-dir', dest='working_dir', help='Working directory, files might be overwritten!',
                         required=True)
     parser.add_argument('--solver', dest='solver', help='z3 or optimathsat', default="z3")
+    parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
+                        action='store_true')
     args = parser.parse_args()
     assert args.solver in {'z3', 'optimathsat'}
-    return Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver
+    return Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast
 
 
 def create_working_dir(working_dir: Path):
@@ -30,11 +32,13 @@ def create_working_dir(working_dir: Path):
 
 def main():
     start_time = time.monotonic()
-    filename, testbench, working_dir, solver = parse_args()
+    filename, testbench, working_dir, solver, show_ast = parse_args()
     create_working_dir(working_dir)
 
     # instantiate repair templates
     ast = parse_verilog(filename)
+    if show_ast:
+        ast.show()
     replace_literals(ast)
 
     synth = Synthesizer()
