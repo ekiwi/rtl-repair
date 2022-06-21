@@ -8,9 +8,9 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, replace_literals
-from rtlfix.add_inversions import add_inversions
-from rtlfix.replace_variables import replace_variables
+from rtlfix import parse_verilog, serialize, do_repair, Synthesizer
+from rtlfix.templates import *
+
 
 
 def parse_args():

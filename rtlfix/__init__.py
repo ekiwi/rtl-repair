@@ -3,7 +3,6 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 # export for outside world
-from rtlfix.replace_literals import replace_literals
 from rtlfix.repair import do_repair
 from rtlfix.synthesizer import Synthesizer
 from rtlfix.utils import parse_verilog, serialize
