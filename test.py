@@ -70,6 +70,17 @@ class TestLeftShiftReg(SynthesisTest):
         self.synth_cannot_repair(left_shift_dir, "lshift_reg_wadden_buggy1.v", "orig_tb.csv")
 
 
+    def test_buggy_num(self):
+        # wrong number in a _for loop_
+        # only way to repair this would be to synthesize the following:
+        # q[1] <= q[0]
+        # q[2] <= q[1]
+        self.synth_cannot_repair(left_shift_dir, "lshift_reg_buggy_num.v", "orig_tb.csv")
+
+    def test_buggy_var(self):
+        self.synth_success(left_shift_dir, "lshift_reg_buggy_var.v", "orig_tb.csv")
+
+
 class TestFsmFull(SynthesisTest):
 
     def test_orig_orig_tb(self):
@@ -93,6 +104,19 @@ class TestFsmFull(SynthesisTest):
     def test_ssscrazy_buggy1(self):
         # might not be able to fix
         self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy1.v", "orig_tb.csv")
+
+    def test_buggy_num(self):
+        self.synth_success(fsm_dir, "fsm_full_buggy_num.v", "orig_tb.csv")
+
+    @unittest.skip("taking too long")
+    def test_buggy_var(self):
+        # should be solvable by replacing a single variable
+        self.synth_success(fsm_dir, "fsm_full_buggy_var.v", "orig_tb.csv", "optimathsat")
+
+    @unittest.skip("taking too long")
+    def test_super_buggy(self):
+        # this one contains a sens list bug which might be impossible to repair
+        self.synth_success(fsm_dir, "fsm_full_super_buggy.v", "orig_tb.csv")
 
 
 class TestFlipFlop(SynthesisTest):
