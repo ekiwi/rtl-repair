@@ -16,6 +16,7 @@ decoder_dir = benchmark_dir / "cirfix" / "decoder_3_to_8"
 flip_flop_dir = benchmark_dir / "cirfix" / "flip_flop"
 counter_dir = benchmark_dir / "cirfix" / "first_counter_overflow"
 fsm_dir = benchmark_dir / "cirfix" / "fsm_full"
+left_shift_dir = benchmark_dir / "cirfix" / "lshift_reg"
 
 
 def run_synth(source: Path, testbench: Path, solver='z3'):
@@ -57,6 +58,16 @@ class SynthesisTest(unittest.TestCase):
 
     def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
         self.assertEqual("cannot-repair", run_synth(dir / design, dir / testbench, solver)[0])
+
+
+class TestLeftShiftReg(SynthesisTest):
+
+    def test_orig_orig_tb(self):
+        self.synth_no_repair(left_shift_dir, "lshift_reg.v", "orig_tb.csv")
+
+    def test_wadden_buggy1_orig_tb(self):
+        # blocking vs. non-blocking
+        self.synth_cannot_repair(left_shift_dir, "lshift_reg_wadden_buggy1.v", "orig_tb.csv")
 
 
 class TestFsmFull(SynthesisTest):
