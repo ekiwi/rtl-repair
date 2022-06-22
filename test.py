@@ -148,8 +148,8 @@ class TestDecoder(SynthesisTest):
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_num.v", "orig_tb.csv")
 
     def test_buggy_var_complete_min_tb(self):
-        # we cannot repair this one with the current repair templates since we would need to replace a variable
-        self.synth_cannot_repair(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="optimathsat")
+        # can be repaired with the replace variable template
+        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="optimathsat")
 
 
 def _make_histogram(widths: dict) -> dict:
