@@ -6,5 +6,5 @@
 from rtlfix.repair import do_repair
 from rtlfix.synthesizer import Synthesizer
 from rtlfix.utils import parse_verilog, serialize
-
+from rtlfix.preprocess import preprocess
 

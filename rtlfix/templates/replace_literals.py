@@ -3,13 +3,16 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 from rtlfix.repair import RepairTemplate
+from rtlfix.types import InferWidths
 from rtlfix.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
 def replace_literals(ast: vast.Source):
     namespace = Namespace(ast)
-    repl = LiteralReplacer()
+    infer = InferWidths()
+    infer.run(ast)
+    repl = LiteralReplacer(infer.widths)
     repl.apply(namespace, ast)
 
 
@@ -22,9 +25,11 @@ def _find_min_width(value: int) -> int:
 
 
 def parse_verilog_int_literal(value: str) -> (int, int):
+    width = None
     if "'" in value:
         parts = value.split("'")
-        width = int(parts[0])
+        if len(parts[0].strip()) > 0:
+            width = int(parts[0])
         prefix = parts[1][0]
         if prefix in _bases:
             value = int(parts[1][1:], _bases[prefix])
@@ -33,17 +38,16 @@ def parse_verilog_int_literal(value: str) -> (int, int):
         return value, width
     else:
         value = int(value)
-        # TODO: should this be a 32 (the integer default size in verilog) or
-        #       the minimum width needed to hold the literal?
-        return value, _find_min_width(value)
+        return value, width
 
 
 class LiteralReplacer(RepairTemplate):
-    def __init__(self):
+    def __init__(self, widths):
         super().__init__(name="literal")
+        self.widths = widths
 
     def visit_IntConst(self, node: vast.IntConst):
-        value, bits = parse_verilog_int_literal(node.value)
+        bits = self.widths[node]
         new_const = vast.Identifier(self.make_synth_var(bits))
         choice = self.make_change(new_const, node)
         return choice

@@ -32,7 +32,7 @@ class ExpressionWidthChecker:
             # visit the index (named ptr here for some reason?!)
             self.visit(node.ptr, None)
         elif isinstance(node, vast.IntConst):
-            if "'" in node.value:
+            if "'" in node.value and not node.value.startswith("'"):
                 width = int(node.value.split("'")[0])
             else:
                 width = 32 if env_width is None else env_width

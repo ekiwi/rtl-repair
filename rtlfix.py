@@ -8,7 +8,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from rtlfix import parse_verilog, serialize, do_repair, Synthesizer
+from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, preprocess
 from rtlfix.templates import *
 
 
@@ -37,7 +37,11 @@ _templates = [replace_literals, add_inversions, replace_variables]
 def main():
     start_time = time.monotonic()
     filename, testbench, working_dir, solver, show_ast = parse_args()
+    name = filename.name
     create_working_dir(working_dir)
+
+    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
+    filename = preprocess(filename, working_dir)
 
     status = "cannot-repair"
     result = []
@@ -50,7 +54,7 @@ def main():
     for template in _templates:
         template(ast)
         synth = Synthesizer()
-        result = synth.run(filename.name, working_dir, ast, testbench, solver)
+        result = synth.run(name, working_dir, ast, testbench, solver)
         status = result["status"]
         if status == "success":
             result["template"] = template.__name__

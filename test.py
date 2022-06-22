@@ -100,7 +100,7 @@ class TestFsmFull(SynthesisTest):
         # cannot be repaired, creates a latch!
         self.synth_cannot_repair(fsm_dir, "fsm_full_wadden_buggy2.v", "orig_tb.csv")
 
-    @unittest.skip("creates a latch, makes yosys crash")
+    #@unittest.skip("creates a latch, makes yosys crash")
     def test_ssscrazy_buggy1(self):
         # might not be able to fix
         self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy1.v", "orig_tb.csv")
@@ -234,4 +234,5 @@ class TestTypeInference(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # ignore warnings because pyverilog is not good about closing some files it opens
+    unittest.main(warnings='ignore')
