@@ -95,15 +95,17 @@ class TestFsmFull(SynthesisTest):
         # blocking vs. non-blocking, probably won't be able to fix
         self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy2.v", "orig_tb.csv", "optimathsat")
 
-    @unittest.skip("creates a latch, makes yosys crash")
     def test_wadden_buggy2_orig_tb(self):
-        # cannot be repaired, creates a latch!
-        self.synth_cannot_repair(fsm_dir, "fsm_full_wadden_buggy2.v", "orig_tb.csv")
+        # latch bug
+        # this is repaired (by accident) by our linter based preprocessing
+        # TODO: this should not return "no-repair"
+        self.synth_no_repair(fsm_dir, "fsm_full_wadden_buggy2.v", "orig_tb.csv")
 
-    #@unittest.skip("creates a latch, makes yosys crash")
     def test_ssscrazy_buggy1(self):
-        # might not be able to fix
-        self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy1.v", "orig_tb.csv")
+        # latch bug
+        # this is repaired (by accident) by our linter based preprocessing
+        # TODO: this should not return "no-repair"
+        self.synth_no_repair(fsm_dir, "fsm_full_ssscrazy_buggy1.v", "orig_tb.csv")
 
     def test_buggy_num(self):
         self.synth_success(fsm_dir, "fsm_full_buggy_num.v", "orig_tb.csv")
