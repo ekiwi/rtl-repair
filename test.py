@@ -15,6 +15,7 @@ benchmark_dir = root_dir / "benchmarks"
 decoder_dir = benchmark_dir / "cirfix" / "decoder_3_to_8"
 flip_flop_dir = benchmark_dir / "cirfix" / "flip_flop"
 counter_dir = benchmark_dir / "cirfix" / "first_counter_overflow"
+fsm_dir = benchmark_dir / "cirfix" / "fsm_full"
 
 
 def run_synth(source: Path, testbench: Path, solver='z3'):
@@ -58,17 +59,40 @@ class SynthesisTest(unittest.TestCase):
         self.assertEqual("cannot-repair", run_synth(dir / design, dir / testbench, solver)[0])
 
 
+class TestFsmFull(SynthesisTest):
+
+    def test_orig_orig_tb(self):
+        self.synth_no_repair(fsm_dir, "fsm_full.v", "orig_tb.csv")
+
+    def test_wadden_buggy1_orig_tb(self):
+        # missing case
+        self.synth_cannot_repair(fsm_dir, "fsm_full_wadden_buggy1.v", "orig_tb.csv")
+
+    @unittest.skip("currently taking too long")
+    def test_ssscrazy_buggy2_orig_tb(self):
+        # blocking vs. non-blocking, probably won't be able to fix
+        self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy2.v", "orig_tb.csv", "optimathsat")
+
+    @unittest.skip("creates a latch, makes yosys crash")
+    def test_wadden_buggy2_orig_tb(self):
+        # cannot be repaired, creates a latch!
+        self.synth_cannot_repair(fsm_dir, "fsm_full_wadden_buggy2.v", "orig_tb.csv")
+
+    @unittest.skip("creates a latch, makes yosys crash")
+    def test_ssscrazy_buggy1(self):
+        # might not be able to fix
+        self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy1.v", "orig_tb.csv")
+
+
 class TestFlipFlop(SynthesisTest):
 
     def test_orig_orig_tb(self):
         self.synth_no_repair(flip_flop_dir, "tff.v", "orig_tb.csv")
 
     def test_wadden_buggy1_orig_tb(self):
-        # cannot be repaired with just literal replacement
         self.synth_success(flip_flop_dir, "tff_wadden_buggy1.v", "orig_tb.csv")
 
     def test_wadden_buggy2_orig_tb(self):
-        # cannot be repaired with just literal replacement
         self.synth_success(flip_flop_dir, "tff_wadden_buggy2.v", "orig_tb.csv")
 
 
@@ -156,6 +180,14 @@ class TestTypeInference(unittest.TestCase):
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         self.assertEqual({1: 8, 4: 7}, hist)
+
+    def test_fsm_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(fsm_dir / "fsm_full.v")
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        self.assertEqual({1: 19, 3: 8}, hist)
 
 
 if __name__ == '__main__':

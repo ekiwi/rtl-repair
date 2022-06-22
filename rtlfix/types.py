@@ -94,6 +94,8 @@ class InferWidths(AstVisitor):
     def generic_visit(self, node):
         if isinstance(node, vast.Variable):
             self.vars[node.name] = parse_width(node.width)
+        elif isinstance(node, vast.Parameter):
+            self.vars[node.name] = parse_width(node.width)
         elif isinstance(node, vast.Substitution):
             assert isinstance(node.left, vast.Lvalue)
             assert isinstance(node.right, vast.Rvalue)

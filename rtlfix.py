@@ -12,7 +12,6 @@ from rtlfix import parse_verilog, serialize, do_repair, Synthesizer
 from rtlfix.templates import *
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Repair Verilog file')
     parser.add_argument('--source', dest='source', help='Verilog source file', required=True)
@@ -55,6 +54,9 @@ def main():
         status = result["status"]
         if status == "success":
             result["template"] = template.__name__
+            break
+        # nothing to repair, no need to try other templates
+        if status == "no-repair":
             break
         # recreate AST since we destroyed (mutated) the old one
         ast = parse_verilog(filename)
