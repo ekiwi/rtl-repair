@@ -27,6 +27,10 @@ class ExpressionWidthChecker:
 
         if isinstance(node, vast.Identifier):
             width = self.symbols[node.name]
+        elif isinstance(node, vast.Pointer):
+            width = self.visit(node.var, env_width)
+            # visit the index (named ptr here for some reason?!)
+            self.visit(node.ptr, None)
         elif isinstance(node, vast.IntConst):
             if "'" in node.value:
                 width = int(node.value.split("'")[0])

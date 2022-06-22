@@ -200,6 +200,14 @@ class TestTypeInference(unittest.TestCase):
         hist = _make_histogram(widths)
         self.assertEqual({1: 19, 3: 8}, hist)
 
+    def test_left_shift_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(left_shift_dir / "lshift_reg.v")
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        self.assertEqual({1: 3, 8: 6, 32: 7}, hist)
+
 
 if __name__ == '__main__':
     unittest.main()
