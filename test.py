@@ -46,7 +46,8 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
     return status, changes
 
 
-_default_solver = 'bitwuzla'
+_default_solver = 'yices2'
+# _default_solver = 'bitwuzla'
 _print_time = False
 
 
