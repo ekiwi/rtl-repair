@@ -26,7 +26,13 @@ class SMTModelChecker(
   override val prefix:        String = solver.name
   override val fileExtension: String = ".smt2"
 
-  override def check(sys: TransitionSystem, kMax: Int, fileName: Option[String] = None): ModelCheckResult = {
+  override def check(
+    sys:      TransitionSystem,
+    kMax:     Int,
+    fileName: Option[String] = None,
+    kMin:     Int = -1
+  ): ModelCheckResult = {
+    require(kMin == -1, "variable kMin currently not supported")
     require(kMax > 0 && kMax <= 2000, s"unreasonable kMax=$kMax")
     if (fileName.nonEmpty) println("WARN: dumping to file is not supported at the moment.")
 

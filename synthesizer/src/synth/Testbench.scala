@@ -6,7 +6,9 @@ package synth
 
 import maltese.mc.{IsOutput, TransitionSystem}
 
-case class Testbench(signals: Seq[String], values: Seq[Seq[Option[BigInt]]])
+case class Testbench(signals: Seq[String], values: Seq[Seq[Option[BigInt]]]) {
+  def length: Int = values.length
+}
 
 object Testbench {
   def load(filename: os.Path): Testbench = {

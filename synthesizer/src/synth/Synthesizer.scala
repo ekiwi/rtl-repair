@@ -198,7 +198,10 @@ object Synthesizer {
     }
   }
 
-  private def collectSynthesisVars(sys: TransitionSystem): (TransitionSystem, SynthVars) = {
+  def isSynthName(name: String): Boolean =
+    name.startsWith(SynthVarPrefix) || name.startsWith(SynthChangePrefix)
+
+  def collectSynthesisVars(sys: TransitionSystem): (TransitionSystem, SynthVars) = {
     val changed = sys.states.map(_.sym).filter(_.name.startsWith(SynthChangePrefix)).map(_.asInstanceOf[BVSymbol])
     val free =
       sys.states.map(_.sym).filter(s => s.name.startsWith(SynthVarPrefix) && !s.name.startsWith(SynthChangePrefix))
@@ -210,7 +213,7 @@ object Synthesizer {
     (noSynthVarSys, vars)
   }
 
-  private def inlineAndRemoveDeadCode(sys: TransitionSystem): TransitionSystem =
+  def inlineAndRemoveDeadCode(sys: TransitionSystem): TransitionSystem =
     PassManager(Seq(new Inline(conservative = true), new DeadCodeElimination(removeUnusedInputs = false))).run(sys)
 }
 
@@ -227,7 +230,7 @@ case class SynthVars(change: List[BVSymbol], free: List[SMTSymbol]) {
   def minimizeChange(ctx: SolverContext): Unit = change.foreach { sym =>
     ctx.softAssert(BVNot(sym))
   }
-  private def vars: List[BVSymbol] = change ++ free.map(_.asInstanceOf[BVSymbol])
+  def vars: List[BVSymbol] = change ++ free.map(_.asInstanceOf[BVSymbol])
   def readAssignment(ctx: SolverContext): List[(String, BigInt)] = vars.map { sym =>
     sym.name -> ctx.getValue(sym).get
   }

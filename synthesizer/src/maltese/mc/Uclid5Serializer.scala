@@ -24,7 +24,7 @@ object Uclid5PseudoMC extends IsModelChecker {
   override val prefix:        String = "uclid"
   override val fileExtension: String = ".ucl"
 
-  override def check(sys: TransitionSystem, kMax: Int, fileName: Option[String]): ModelCheckResult = {
+  override def check(sys: TransitionSystem, kMax: Int, fileName: Option[String], kMin: Int = -1): ModelCheckResult = {
     println("WARN: Uclid5 backend will only generate a uclid5 file, but not actually call uclid to check it!")
     fileName match {
       case None => throw new NotImplementedError("Currently only file based model checking is supported!")
