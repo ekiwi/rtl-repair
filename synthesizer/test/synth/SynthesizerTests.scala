@@ -109,4 +109,14 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     assert(r.cannotRepair)
   }
 
+  // TODO: implement boolector compatible encoding
+  it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using boolector" ignore {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("boolector")
+    )
+    assert(r.cannotRepair)
+  }
+
 }

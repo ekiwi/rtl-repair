@@ -11,9 +11,26 @@ object Yices2SMTLib extends Solver {
   override def name = "yices2-smtlib"
   override def supportsConstArrays = false
   override def supportsUninterpretedFunctions = true
+  override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = false
   override def supportsSoftAssert = false
   override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
+}
+
+object BoolectorSMTLib extends Solver {
+  private val cmd = List("boolector", "--smt2", "--incremental")
+  override def name = "boolector-smtlib"
+  override def supportsConstArrays = false
+  override def supportsUninterpretedFunctions = false
+  override def supportsUninterpretedSorts = false
+  override def supportsQuantifiers = false
+  override def supportsSoftAssert = false
+  override def createContext(debugOn: Boolean = false): SolverContext = {
+    val ctx = new SMTLibSolverContext(cmd, this, debugOn)
+    // wa always want to produce models
+    ctx.runCommand(SetOption("produce-models", "true"))
+    ctx
+  }
 }
 
 object CVC4SMTLib extends Solver {
@@ -21,6 +38,7 @@ object CVC4SMTLib extends Solver {
   override def name = "cvc4-smtlib"
   override def supportsConstArrays = true
   override def supportsUninterpretedFunctions = true
+  override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = true
   override def supportsSoftAssert = false
   override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
@@ -31,6 +49,7 @@ object Z3SMTLib extends Solver {
   override def name = "z3-smtlib"
   override def supportsConstArrays = true
   override def supportsUninterpretedFunctions = true
+  override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = true
   override def supportsSoftAssert = true
   override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
@@ -41,6 +60,7 @@ object OptiMathSatSMTLib extends Solver {
   override def name = "opti-math-sat-smtlib"
   override def supportsConstArrays = true
   override def supportsUninterpretedFunctions = true
+  override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = true
   override def supportsSoftAssert = true
   override def createContext(debugOn: Boolean = false): SolverContext = new OptiMathSatContext(cmd, debugOn)
@@ -128,6 +148,7 @@ private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: 
     case c: DefineFunction           => writeCommand(serialize(c))
     case c: DeclareFunction          => writeCommand(serialize(c))
     case c: DeclareUninterpretedSort => writeCommand(serialize(c))
+    case c: SetOption                => writeCommand(serialize(c))
   }
 
   /** releases all native resources */

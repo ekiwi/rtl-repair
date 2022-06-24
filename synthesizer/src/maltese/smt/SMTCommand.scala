@@ -13,3 +13,4 @@ case class DeclareFunction(sym: SMTSymbol, args: Seq[SMTType]) extends SMTFuncti
   override def name: String = sym.name
 }
 case class DeclareUninterpretedSort(name: String) extends SMTCommand
+case class SetOption(name: String, value: String) extends SMTCommand

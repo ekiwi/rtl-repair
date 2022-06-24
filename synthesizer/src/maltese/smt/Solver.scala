@@ -13,6 +13,7 @@ trait Solver {
   def supportsConstArrays:            Boolean
   def supportsUninterpretedFunctions: Boolean
   def supportsSoftAssert:             Boolean
+  def supportsUninterpretedSorts:     Boolean
 
   def createContext(debugOn: Boolean = false): SolverContext
 }

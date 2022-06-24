@@ -15,10 +15,12 @@ object SmtSynthesizer {
     // create solver context
     val solver = config.solver.get
     val ctx = solver.createContext(debugOn = config.debugSolver)
-    if (solver.name == "z3") {
+    if (solver.name.contains("z3")) {
       ctx.setLogic("ALL")
-    } else {
+    } else if (solver.supportsUninterpretedSorts) {
       ctx.setLogic("QF_AUFBV")
+    } else {
+      ctx.setLogic("QF_ABV")
     }
     val namespace = Namespace(sys)
 
@@ -182,7 +184,9 @@ object SmtSynthesizer {
     val sysWithInitVars = FreeVars.addStateInitFreeVars(sys, freeVars)
 
     // load system and communicate to solver
-    val encoding = new CompactEncoding(sysWithInitVars)
+    val encoding: TransitionSystemSmtEncoding = if (ctx.solver.supportsUninterpretedSorts) {
+      new CompactEncoding(sysWithInitVars)
+    } else { new UnrollSmtEncoding(sysWithInitVars) }
 
     // define synthesis constants
     encoding.defineHeader(ctx)
