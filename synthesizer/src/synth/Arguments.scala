@@ -4,6 +4,7 @@
 
 package synth
 
+import maltese.mc.{BtormcModelChecker, IsModelChecker}
 import maltese.smt.{OptiMathSatSMTLib, Solver, Z3SMTLib}
 import scopt.OptionParser
 
@@ -13,10 +14,21 @@ case class Arguments(
   config:    Config = Config())
 
 case class Config(
-  solver: Solver = Z3SMTLib,
+  solver:  Option[Solver] = Some(Z3SMTLib),
+  checker: Option[IsModelChecker] = None,
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
-  verbose:     Boolean = false)
+  verbose:     Boolean = false) {
+  require(solver.isEmpty != checker.isEmpty, "need exactly one checker OR solver, not both or neither")
+  def changeSolver(name: String): Config = {
+    name match {
+      case "z3"          => copy(solver = Some(Z3SMTLib), checker = None)
+      case "optimathsat" => copy(solver = Some(OptiMathSatSMTLib), checker = None)
+      case "btormc"      => copy(solver = None, checker = Some(new BtormcModelChecker))
+      case other         => throw new RuntimeException(s"Unknown solver $other")
+    }
+  }
+}
 
 class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
   head("synthesizer", "0.2")
@@ -31,13 +43,8 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
   opt[Unit]("debug-solver")
     .action((_, args) => args.copy(config = args.config.copy(debugSolver = true)))
     .text("print out stdlib commands that are sent to solver")
-  opt[String]("solver").action { (a, config) =>
-    val solver = a match {
-      case "z3"          => Z3SMTLib
-      case "optimathsat" => OptiMathSatSMTLib
-      case other         => throw new RuntimeException(s"Unknown solver $other")
-    }
-    config.copy(config = config.config.copy(solver = solver))
+  opt[String]("solver").action { (a, args) =>
+    args.copy(config = args.config.changeSolver(a))
   }
-    .text("z3 or optimathsat")
+    .text("z3 or optimathsat or btormc")
 }

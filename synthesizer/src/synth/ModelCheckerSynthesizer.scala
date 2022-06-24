@@ -11,25 +11,13 @@ import maltese.smt._
   * - this class encodes the synthesis problem as a series of transitions systems, allowing for the use of a bounded
   * model checker to solve it
   */
-object TransitionSystemSynthesizer {
+object ModelCheckerSynthesizer {
 
-  import Synthesizer.{collectSynthesisVars, inlineAndRemoveDeadCode, isSynthName}
+  import Synthesizer.isSynthName
 
-  def run(design: os.Path, testbench: os.Path, config: Config): RepairResult = {
-    // load design and testbench and validate them
-    val sys = inlineAndRemoveDeadCode(Btor2.load(design))
-    val tbRaw = Testbench.removeRow("time", Testbench.load(testbench))
-    val tb = Testbench.checkSignals(sys, tbRaw, verbose = config.verbose)
-
-    // find synthesis variables and remove them from the system for now
-    val (_, synthVars) = collectSynthesisVars(sys)
-
-    doRepair(sys, tb, synthVars, config)
-  }
-
-  private def doRepair(sys: TransitionSystem, tb: Testbench, synthVars: SynthVars, config: Config): RepairResult = {
+  def doRepair(sys: TransitionSystem, tb: Testbench, synthVars: SynthVars, config: Config): RepairResult = {
     // create model checker
-    val checker: IsModelChecker = new BtormcModelChecker()
+    val checker: IsModelChecker = config.checker.get
 
     val freeInputs = findFreeInputs(sys, tb)
 

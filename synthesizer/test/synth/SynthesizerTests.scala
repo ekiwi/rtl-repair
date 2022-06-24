@@ -25,10 +25,10 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
   }
 
   it should "synthesize a fix for decoder_3_to_8_wadden_buggy1 with original testbench and literal replacer template using btormc" in {
-    val r = TransitionSystemSynthesizer.run(
+    val r = Synthesizer.run(
       BenchmarkDir / "decoder_3_to_8_wadden_buggy1_with_literals_replaced.btor",
       CirFixDir / "decoder_3_to_8" / "orig_tb.csv",
-      DefaultConfig
+      DefaultConfig.changeSolver("btormc")
     )
     assert(r.isSuccess)
   }
