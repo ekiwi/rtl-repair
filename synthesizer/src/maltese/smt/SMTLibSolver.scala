@@ -12,6 +12,7 @@ object Yices2SMTLib extends Solver {
   override def supportsConstArrays = false
   override def supportsUninterpretedFunctions = true
   override def supportsQuantifiers = false
+  override def supportsSoftAssert = false
   override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
 }
 
@@ -21,6 +22,7 @@ object CVC4SMTLib extends Solver {
   override def supportsConstArrays = true
   override def supportsUninterpretedFunctions = true
   override def supportsQuantifiers = true
+  override def supportsSoftAssert = false
   override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
 }
 
@@ -30,6 +32,7 @@ object Z3SMTLib extends Solver {
   override def supportsConstArrays = true
   override def supportsUninterpretedFunctions = true
   override def supportsQuantifiers = true
+  override def supportsSoftAssert = true
   override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
 }
 
@@ -39,6 +42,7 @@ object OptiMathSatSMTLib extends Solver {
   override def supportsConstArrays = true
   override def supportsUninterpretedFunctions = true
   override def supportsQuantifiers = true
+  override def supportsSoftAssert = true
   override def createContext(debugOn: Boolean = false): SolverContext = new OptiMathSatContext(cmd, debugOn)
 }
 
@@ -60,6 +64,7 @@ private class OptiMathSatContext(cmd: List[String], debug: Boolean)
   }
 
   override def softAssert(expr: BVExpr, weight: Int): Unit = {
+    require(solver.supportsSoftAssert, s"${solver.name} does not support soft asserts!")
     if (!hasSoftAssert.top) {
       hasSoftAssert.pop(); hasSoftAssert.push(true)
     }

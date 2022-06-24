@@ -13,7 +13,7 @@ import maltese.smt._
   */
 object ModelCheckerSynthesizer {
 
-  import Synthesizer.isSynthName
+  import Synthesizer.{countChanges, isSynthName}
 
   def doRepair(sys: TransitionSystem, tb: Testbench, synthVars: SynthVars, config: Config): RepairResult = {
     // create model checker
@@ -114,27 +114,12 @@ object ModelCheckerSynthesizer {
     }
   }
 
-  private def log2Ceil(value: BigInt): Int = {
-    require(value > 0)
-    (value - 1).bitLength
-  }
-
   private def performNChanges(sys: TransitionSystem, synthVars: SynthVars, n: Int): TransitionSystem = {
     require(n >= 0)
     require(n <= synthVars.change.length)
     val sum = countChanges(synthVars)
     val constraint = Signal(s"change_exactly_$n", BVEqual(sum, BVLiteral(n, sum.width)), IsConstraint)
     sys.copy(signals = sys.signals :+ constraint)
-  }
-
-  private def countChanges(synthVars: SynthVars): BVExpr = {
-    require(synthVars.change.nonEmpty)
-    val width = log2Ceil(synthVars.change.length)
-    val sum = synthVars.change.map { sym =>
-      if (width > 1) { BVExtend(sym, width - 1, signed = false) }
-      else { sym }
-    }.reduce[BVExpr] { case (a: BVExpr, b: BVExpr) => BVOp(Op.Add, a, b) }
-    sum
   }
 
   private def findFreeVarAssignment(

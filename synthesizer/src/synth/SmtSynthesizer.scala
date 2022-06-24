@@ -6,6 +6,7 @@ package synth
 
 import maltese.mc._
 import maltese.smt._
+import synth.Synthesizer.countChanges
 
 /** Takes in a Transition System with synthesis variables +  a testbench and tries to find a valid synthesis assignment. */
 object SmtSynthesizer {
@@ -36,22 +37,17 @@ object SmtSynthesizer {
     // use the failing assignment for free vars
     freeVars.addConstraints(ctx, freeVarAssignment)
 
-    // try to minimize the change
-    synthVars.minimizeChange(ctx)
+    // instantiate the testbench with inputs _and_ outputs assumed to be correct
     instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = false)
 
     // try to synthesize constants
-    ctx.check() match {
-      case IsSat => if (config.verbose) println("Solution found:")
-      case IsUnSat =>
-        if (config.verbose) println("No possible solution found. Cannot repair. :(")
-        ctx.close()
-        return CannotRepair
-      case IsUnknown =>
-        ctx.close()
-        throw new RuntimeException(s"Unknown result from solver.")
+    val synthFun = if (solver.supportsSoftAssert) { maxSmtSynthesis _ }
+    else { customSynthesis _ }
+
+    val results = synthFun(ctx, synthVars, config.verbose) match {
+      case Some(value) => value
+      case None        => return CannotRepair
     }
-    val results = synthVars.readAssignment(ctx)
     ctx.pop()
 
     // check to see if the synthesized constants work
@@ -69,6 +65,73 @@ object SmtSynthesizer {
     RepairSuccess(results)
   }
 
+  private def maxSmtSynthesis(
+    ctx:       SolverContext,
+    synthVars: SynthVars,
+    verbose:   Boolean
+  ): Option[List[(String, BigInt)]] = {
+    // try to minimize the change
+    synthVars.minimizeChange(ctx)
+
+    // try to synthesize constants
+    ctx.check() match {
+      case IsSat =>
+        if (verbose) println("Solution found:")
+        Some(synthVars.readAssignment(ctx))
+      case IsUnSat =>
+        if (verbose) println("No possible solution found. Cannot repair. :(")
+        ctx.close()
+        None
+      case IsUnknown =>
+        ctx.close()
+        throw new RuntimeException(s"Unknown result from solver.")
+    }
+  }
+
+  /** uses multiple calls to a regular SMT solver which does not support MaxSMT natively to minimize the number of changes in a solution */
+  private def customSynthesis(
+    ctx:       SolverContext,
+    synthVars: SynthVars,
+    verbose:   Boolean
+  ): Option[List[(String, BigInt)]] = {
+    // first we check to see if any solution exists at all or if we cannot repair
+    // (as is often the case if the repair template does not actually work for the problem we are trying to solve)
+    ctx.check() match {
+      case IsSat => // OK
+      case IsUnSat =>
+        if (verbose) println("No possible solution found. Cannot repair. :(")
+        ctx.close(); return None
+      case IsUnknown => ctx.close(); throw new RuntimeException(s"Unknown result from solver.")
+    }
+
+    // no we are going to search from 1 to N to find the smallest number of changes that will make this repair work
+    val ns = 1 until synthVars.change.length
+    ns.foreach { n =>
+      if (verbose) println(s"Searching for solution with $n changes")
+      ctx.push()
+      performNChanges(ctx, synthVars, n)
+      ctx.check() match {
+        case IsSat =>
+          if (verbose) println("Solution found:")
+          val assignment = synthVars.readAssignment(ctx)
+          ctx.pop()
+          return Some(assignment)
+        case IsUnSat   => // continue
+        case IsUnknown => ctx.close(); throw new RuntimeException(s"Unknown result from solver.")
+      }
+      ctx.pop()
+    }
+    throw new RuntimeException(s"Should not get here!")
+  }
+
+  private def performNChanges(ctx: SolverContext, synthVars: SynthVars, n: Int): Unit = {
+    require(n >= 0)
+    require(n <= synthVars.change.length)
+    val sum = countChanges(synthVars)
+    val constraint = BVEqual(sum, BVLiteral(n, sum.width))
+    ctx.assert(constraint)
+  }
+
   /** find assignments to free variables that will make the testbench fail */
   private def findFreeVarAssignment(
     ctx:      SolverContext,
@@ -83,7 +146,7 @@ object SmtSynthesizer {
       case IsSat => // OK
       case IsUnSat =>
         if (config.verbose)
-          println(s"Original system is correct for all starting states and undefined inputs. Nothing to do.")
+          println(s"System is correct for all starting states and undefined inputs.")
         return None
       case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
     }

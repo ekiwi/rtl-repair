@@ -12,6 +12,7 @@ trait Solver {
   /** Constant Arrays are not required by SMTLib: https://rise4fun.com/z3/tutorialcontent/guide */
   def supportsConstArrays:            Boolean
   def supportsUninterpretedFunctions: Boolean
+  def supportsSoftAssert:             Boolean
 
   def createContext(debugOn: Boolean = false): SolverContext
 }

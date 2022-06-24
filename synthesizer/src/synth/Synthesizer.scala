@@ -69,6 +69,20 @@ object Synthesizer {
   def inlineAndRemoveDeadCode(sys: TransitionSystem): TransitionSystem =
     PassManager(Seq(new Inline(conservative = true), new DeadCodeElimination(removeUnusedInputs = false))).run(sys)
 
+  private def log2Ceil(value: BigInt): Int = {
+    require(value > 0)
+    (value - 1).bitLength
+  }
+
+  def countChanges(synthVars: SynthVars): BVExpr = {
+    require(synthVars.change.nonEmpty)
+    val width = log2Ceil(synthVars.change.length)
+    val sum = synthVars.change.map { sym =>
+      if (width > 1) { BVExtend(sym, width - 1, signed = false) }
+      else { sym }
+    }.reduce[BVExpr] { case (a: BVExpr, b: BVExpr) => BVOp(Op.Add, a, b) }
+    sum
+  }
 }
 
 sealed trait RepairResult {

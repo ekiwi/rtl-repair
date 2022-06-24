@@ -5,7 +5,7 @@
 package synth
 
 import maltese.mc.{BtormcModelChecker, IsModelChecker}
-import maltese.smt.{OptiMathSatSMTLib, Solver, Z3SMTLib}
+import maltese.smt._
 import scopt.OptionParser
 
 case class Arguments(
@@ -23,11 +23,13 @@ case class Config(
   def changeSolver(name: String): Config = {
     name match {
       case "z3"          => copy(solver = Some(Z3SMTLib), checker = None)
+      case "cvc4"        => copy(solver = Some(CVC4SMTLib), checker = None)
       case "optimathsat" => copy(solver = Some(OptiMathSatSMTLib), checker = None)
       case "btormc"      => copy(solver = None, checker = Some(new BtormcModelChecker))
       case other         => throw new RuntimeException(s"Unknown solver $other")
     }
   }
+  def makeVerbose(): Config = copy(verbose = true)
 }
 
 class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
