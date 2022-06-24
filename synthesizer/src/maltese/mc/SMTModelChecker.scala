@@ -44,7 +44,7 @@ class SMTModelChecker(
     ctx.push()
 
     // declare/define functions and encode the transition system
-    val enc = new CompactEncoding(sys)
+    val enc: TransitionSystemSmtEncoding = new CompactEncoding(sys)
     enc.defineHeader(ctx)
     enc.init(ctx)
 
@@ -118,7 +118,7 @@ class SMTModelChecker(
   private def getWitness(
     ctx:             SolverContext,
     sys:             TransitionSystem,
-    enc:             CompactEncoding,
+    enc:             TransitionSystemSmtEncoding,
     kMax:            Int,
     failedAssertion: Seq[String] = Seq()
   ): Witness = {
@@ -148,7 +148,17 @@ class SMTModelChecker(
 
 }
 
-class CompactEncoding(sys: TransitionSystem) {
+trait TransitionSystemSmtEncoding {
+  def defineHeader(ctx:   SolverContext): Unit
+  def init(ctx:           SolverContext): Unit
+  def unroll(ctx:         SolverContext): Unit
+  def getConstraint(name: String):        BVExpr
+  def getAssertion(name:  String): BVExpr
+  def getSignalAt(sym:    BVSymbol, k: Int): BVExpr
+  def getSignalAt(sym:    ArraySymbol, k: Int): ArrayExpr
+}
+
+class CompactEncoding(sys: TransitionSystem) extends TransitionSystemSmtEncoding {
   import SMTTransitionSystemEncoder._
   private def id(s: String): String = SMTLibSerializer.escapeIdentifier(s)
   private val stateType = id(sys.name + "_s")
