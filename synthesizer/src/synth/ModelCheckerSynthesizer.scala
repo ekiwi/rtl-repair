@@ -47,10 +47,9 @@ object ModelCheckerSynthesizer {
 
         findFreeVarAssignment(checker, sysWithSolution, tb, freeInputs, config.verbose) match {
           case Some(value) =>
-            print(synthVarAssignment)
-            println(value)
             throw new RuntimeException(
-              s"TODO: the solution we found does not in fact work for all possible free variable assignments :("
+              s"TODO: the solution we found does not in fact work for all possible free variable assignments :(\n" +
+                s"${synthVarAssignment}\n${value}"
             )
           case None => // all good, no more failure
         }
@@ -68,7 +67,7 @@ object ModelCheckerSynthesizer {
   ): Option[List[(String, BigInt)]] = {
     ns.foreach { n =>
       val nChangeSys = performNChanges(sys, synthVars, n)
-      println(s"Searching for solution with $n changes")
+      // println(s"Searching for solution with $n changes")
       findSolution(checker, nChangeSys, tb, freeVarAssignment) match {
         case Some(value) =>
           return Some(value)
