@@ -175,7 +175,8 @@ class TestDecoder(SynthesisTest):
 
     def test_buggy_var_complete_min_tb(self):
         # can be repaired with the replace variable template
-        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="optimathsat")
+        # note, this test takes ~17s with optimathsat and ~4.5s with btormc
+        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="btormc")
 
 
 def _make_histogram(widths: dict) -> dict:

@@ -26,7 +26,12 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str):
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", solver]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
     r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
-    return json.loads(r.stdout.decode('utf-8'))
+    try:
+        return json.loads(r.stdout.decode('utf-8'))
+    except json.JSONDecodeError as e:
+        print("Failed to parse synthesizer output as JSON:")
+        print(r.stdout)
+        raise e
 
 
 _minimal_btor_conversion = [

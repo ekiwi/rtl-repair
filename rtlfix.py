@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -22,7 +23,7 @@ def parse_args():
     parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
                         action='store_true')
     args = parser.parse_args()
-    assert args.solver in {'z3', 'optimathsat'}
+    assert args.solver in {'z3', 'optimathsat', 'btormc'}
     return Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast
 
 
@@ -32,6 +33,14 @@ def create_working_dir(working_dir: Path):
 
 
 _templates = [replace_literals, add_inversions, replace_variables]
+
+
+def find_solver_version(solver: str) -> str:
+    arg = ["-version"]
+    if solver == "btormc":
+        arg += ["-h"]  # without this btormc does not terminate
+    r = subprocess.run([solver] + arg, check=True, stdout=subprocess.PIPE)
+    return r.stdout.decode('utf-8').splitlines()[0].strip()
 
 
 def main():
@@ -52,12 +61,20 @@ def main():
     # instantiate repair templates, one after another
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
     for template in _templates:
+        # create a directory for this particular template
+        template_name = template.__name__
+        template_dir = working_dir / template_name
+        if template_dir.exists():
+            shutil.rmtree(template_dir)
+        os.mkdir(template_dir)
+
+        # apply template any try to synthesize a solution
         template(ast)
         synth = Synthesizer()
-        result = synth.run(name, working_dir, ast, testbench, solver)
+        result = synth.run(name, template_dir, ast, testbench, solver)
         status = result["status"]
         if status == "success":
-            result["template"] = template.__name__
+            result["template"] = template_name
             break
         # nothing to repair, no need to try other templates
         if status == "no-repair":
@@ -73,14 +90,15 @@ def main():
             f.write('\n'.join(f"{line}: {a} -> {b}" for line, a, b in changes))
             f.write('\n')
         with open(working_dir / "solver", "w") as f:
-            r = subprocess.run([solver, "-version"], check=True, stdout=subprocess.PIPE)
-            f.write(r.stdout.decode('utf-8').strip() + "\n")
+            f.write(find_solver_version(solver) + "\n")
         with open(working_dir / "template", "w") as f:
             f.write(result["template"] + "\n")
         repaired_filename = working_dir / (filename.stem + ".repaired.v")
         with open(repaired_filename, "w") as f:
             f.write(serialize(ast))
     print(status)
+    with open(working_dir / "status", "w") as f:
+        f.write(status + "\n")
     delta_time = time.monotonic() - start_time
     with open(working_dir / "time", "w") as f:
         f.write(f"{delta_time}s\n")

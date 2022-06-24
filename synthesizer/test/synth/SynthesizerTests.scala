@@ -61,6 +61,7 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     assert(r.cannotRepair)
   }
 
+  // this is generally much faster (~1.5s)
   it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using btormc" in {
     val r = Synthesizer.run(
       BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
