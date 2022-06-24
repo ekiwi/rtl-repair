@@ -6,10 +6,11 @@ package synth
 
 import maltese.mc._
 import maltese.smt._
-import synth.Synthesizer.countChanges
 
 /** Takes in a Transition System with synthesis variables +  a testbench and tries to find a valid synthesis assignment. */
 object SmtSynthesizer {
+  import synth.Synthesizer.{countChanges, countChangesInAssignment}
+
   def doRepair(sys: TransitionSystem, tb: Testbench, synthVars: SynthVars, config: Config): RepairResult = {
     // create solver context
     val solver = config.solver.get
@@ -100,12 +101,19 @@ object SmtSynthesizer {
   ): Option[List[(String, BigInt)]] = {
     // first we check to see if any solution exists at all or if we cannot repair
     // (as is often the case if the repair template does not actually work for the problem we are trying to solve)
-    ctx.check() match {
+    val maxAssignment = ctx.check() match {
       case IsSat => // OK
+        synthVars.readAssignment(ctx)
       case IsUnSat =>
         if (verbose) println("No possible solution found. Cannot repair. :(")
         ctx.close(); return None
       case IsUnknown => ctx.close(); throw new RuntimeException(s"Unknown result from solver.")
+    }
+    val maxSize = countChangesInAssignment(maxAssignment)
+    if (verbose) println(s"Solution with $maxSize changes found.")
+    assert(maxSize > 0)
+    if (maxSize == 1) { // if by chance we get a 1-change solution, there is not more need to search for a solution
+      return Some(maxAssignment)
     }
 
     // no we are going to search from 1 to N to find the smallest number of changes that will make this repair work

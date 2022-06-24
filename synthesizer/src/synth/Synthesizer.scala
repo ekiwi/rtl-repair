@@ -83,6 +83,9 @@ object Synthesizer {
     }.reduce[BVExpr] { case (a: BVExpr, b: BVExpr) => BVOp(Op.Add, a, b) }
     sum
   }
+
+  def countChangesInAssignment(assignment: List[(String, BigInt)]): Int =
+    assignment.filter(t => isSynthName(t._1)).map(_._2).sum.toInt
 }
 
 sealed trait RepairResult {

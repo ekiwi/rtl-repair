@@ -13,7 +13,7 @@ import maltese.smt._
   */
 object ModelCheckerSynthesizer {
 
-  import Synthesizer.{countChanges, isSynthName}
+  import Synthesizer.{countChanges, countChangesInAssignment, isSynthName}
 
   def doRepair(sys: TransitionSystem, tb: Testbench, synthVars: SynthVars, config: Config): RepairResult = {
     // create model checker
@@ -30,9 +30,17 @@ object ModelCheckerSynthesizer {
 
     // check to see if any solution exists at all
     // (this prevents us from having to search through all possible numbers of solutions)
-    findSolution(checker, sys, tb, freeVarAssignment) match {
-      case Some(_) => // ok, a solution can be found, now we need to minimize it
-      case None    => return CannotRepair // no way to repair this since no solution exists
+    val maxSolution = findSolution(checker, sys, tb, freeVarAssignment) match {
+      case Some(solution) => solution // ok, a solution can be found, now we need to minimize it
+      case None           => return CannotRepair // no way to repair this since no solution exists
+    }
+
+    // try to see if by accident we got a minimal solution without any constraints
+    val maxSize = countChangesInAssignment(maxSolution)
+    if (config.verbose) println(s"Solution with $maxSize changes found.")
+    assert(maxSize > 0)
+    if (maxSize == 1) { // if by chance we get a 1-change solution, there is not more need to search for a solution
+      return RepairSuccess(maxSolution)
     }
 
     // try to solve with the minimal number of changes
