@@ -55,7 +55,16 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     val r = Synthesizer.run(
       BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
       CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
-      DefaultConfig.changeSolver("cvc4").makeVerbose()
+      DefaultConfig.changeSolver("cvc4")
+    )
+    assert(r.isSuccess)
+  }
+
+  it should "synthesize a fix for decoder_3_to_8_buggy_var using yices2" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("yices2")
     )
     assert(r.isSuccess)
   }
@@ -70,12 +79,32 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     assert(r.cannotRepair)
   }
 
+  // this is a little faster with cvc4 much faster (~5s)
+  it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using cvc4" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("cvc4")
+    )
+    assert(r.cannotRepair)
+  }
+
   // this is generally much faster (~1.5s)
   it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using btormc" in {
     val r = Synthesizer.run(
       BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
       CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
       DefaultConfig.changeSolver("btormc")
+    )
+    assert(r.cannotRepair)
+  }
+
+  // this is even a little faster (~1.1s)
+  it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using yices2" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("yices2")
     )
     assert(r.cannotRepair)
   }

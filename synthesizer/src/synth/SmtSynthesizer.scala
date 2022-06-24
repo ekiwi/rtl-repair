@@ -14,7 +14,11 @@ object SmtSynthesizer {
     // create solver context
     val solver = config.solver.get
     val ctx = solver.createContext(debugOn = config.debugSolver)
-    ctx.setLogic("ALL")
+    if (solver.name == "z3") {
+      ctx.setLogic("ALL")
+    } else {
+      ctx.setLogic("QF_AUFBV")
+    }
     val namespace = Namespace(sys)
 
     // declare synthesis variables
