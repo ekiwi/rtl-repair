@@ -2,7 +2,7 @@
 # Copyright 2022 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
-
+import time
 import unittest
 import os
 import subprocess
@@ -46,18 +46,31 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
     return status, changes
 
 
+_default_solver = 'bitwuzla'
+_print_time = False
+
+
 class SynthesisTest(unittest.TestCase):
 
-    def synth_success(self, dir: Path, design: str, testbench: str, solver: str = 'z3', max_changes: int = 2):
+    def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, max_changes: int = 2):
+        start = time.monotonic()
         status, changes = run_synth(dir / design, dir / testbench, solver)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
+        if _print_time:
+            print(f"SUCCESS: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
-    def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
+    def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver):
+        start = time.monotonic()
         self.assertEqual("no-repair", run_synth(dir / design, dir / testbench, solver)[0])
+        if _print_time:
+            print(f"NO-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
-    def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = 'z3'):
+    def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver):
+        start = time.monotonic()
         self.assertEqual("cannot-repair", run_synth(dir / design, dir / testbench, solver)[0])
+        if _print_time:
+            print(f"CANNOT-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
 
 class TestLeftShiftReg(SynthesisTest):
@@ -68,7 +81,6 @@ class TestLeftShiftReg(SynthesisTest):
     def test_wadden_buggy1_orig_tb(self):
         # blocking vs. non-blocking
         self.synth_cannot_repair(left_shift_dir, "lshift_reg_wadden_buggy1.v", "orig_tb.csv")
-
 
     def test_buggy_num(self):
         # wrong number in a _for loop_
@@ -90,10 +102,9 @@ class TestFsmFull(SynthesisTest):
         # missing case
         self.synth_cannot_repair(fsm_dir, "fsm_full_wadden_buggy1.v", "orig_tb.csv")
 
-    @unittest.skip("currently taking too long")
     def test_ssscrazy_buggy2_orig_tb(self):
         # blocking vs. non-blocking, probably won't be able to fix
-        self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy2.v", "orig_tb.csv", "optimathsat")
+        self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy2.v", "orig_tb.csv")
 
     def test_wadden_buggy2_orig_tb(self):
         # latch bug
@@ -110,15 +121,14 @@ class TestFsmFull(SynthesisTest):
     def test_buggy_num(self):
         self.synth_success(fsm_dir, "fsm_full_buggy_num.v", "orig_tb.csv")
 
-    @unittest.skip("taking too long")
     def test_buggy_var(self):
         # should be solvable by replacing a single variable
-        self.synth_success(fsm_dir, "fsm_full_buggy_var.v", "orig_tb.csv", "optimathsat")
+        self.synth_success(fsm_dir, "fsm_full_buggy_var.v", "orig_tb.csv", max_changes=1)
 
-    @unittest.skip("taking too long")
     def test_super_buggy(self):
         # this one contains a sens list bug which might be impossible to repair
-        self.synth_success(fsm_dir, "fsm_full_super_buggy.v", "orig_tb.csv")
+        # TODO: check if the repair makes sense!
+        self.synth_success(fsm_dir, "fsm_full_super_buggy.v", "orig_tb.csv", max_changes=4)
 
 
 class TestFlipFlop(SynthesisTest):
@@ -166,8 +176,11 @@ class TestDecoder(SynthesisTest):
     def test_wadden_buggy2_complete_min_tb(self):
         # this would take a lot longer if using z3
         # should be do-able by changing 8 constants
-        self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy2.v", "complete_min_tb.csv",
-                           solver="optimathsat", max_changes=8)
+        # time with optimathsat: ~28s
+        # time with btormc: ~2.1s
+        # time with yices2: ~7.3s
+        # time with bitwuzla: ~2.2s
+        self.synth_success(decoder_dir, "decoder_3_to_8_wadden_buggy2.v", "complete_min_tb.csv", max_changes=8)
 
     def test_buggy_num_orig_tb(self):
         # this is not mentioned in the paper result, but essentially we just need to change one constant
@@ -175,8 +188,8 @@ class TestDecoder(SynthesisTest):
 
     def test_buggy_var_complete_min_tb(self):
         # can be repaired with the replace variable template
-        # note, this test takes ~17s with optimathsat and ~4.5s with btormc
-        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv", solver="btormc")
+        # note, this test takes ~17s with optimathsat, ~4.5s with btormc, ~4.2s with yices2, ~4.4s with bitwuzla
+        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv")
 
 
 def _make_histogram(widths: dict) -> dict:

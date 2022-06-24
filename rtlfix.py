@@ -12,6 +12,8 @@ from pathlib import Path
 from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, preprocess
 from rtlfix.templates import *
 
+_supported_solvers = {'z3', 'cvc4', 'yices2', 'boolector', 'bitwuzla', 'optimathsat', 'btormc'}
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Repair Verilog file')
@@ -23,7 +25,7 @@ def parse_args():
     parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
                         action='store_true')
     args = parser.parse_args()
-    assert args.solver in {'z3', 'optimathsat', 'btormc'}
+    assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     return Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast
 
 
@@ -36,9 +38,13 @@ _templates = [replace_literals, add_inversions, replace_variables]
 
 
 def find_solver_version(solver: str) -> str:
-    arg = ["-version"]
+    arg = ["--version"]
     if solver == "btormc":
         arg += ["-h"]  # without this btormc does not terminate
+    if solver == 'yices2':
+        solver = 'yices-smt2'
+    if solver == 'optimathsat':
+        arg = ["-version"]
     r = subprocess.run([solver] + arg, check=True, stdout=subprocess.PIPE)
     return r.stdout.decode('utf-8').splitlines()[0].strip()
 
