@@ -30,7 +30,7 @@ object ModelCheckerSynthesizer {
 
     // check to see if any solution exists at all
     // (this prevents us from having to search through all possible numbers of solutions)
-    val maxSolution = findSolution(checker, sys, tb, freeVarAssignment) match {
+    val maxSolution = findSolution(checker, sys, tb, freeVarAssignment, config.verbose) match {
       case Some(solution) => solution // ok, a solution can be found, now we need to minimize it
       case None           => return CannotRepair // no way to repair this since no solution exists
     }
@@ -45,7 +45,7 @@ object ModelCheckerSynthesizer {
 
     // try to solve with the minimal number of changes
     val ns = 1 until synthVars.change.length
-    val solution = searchForSolution(checker, sys, tb, synthVars, freeVarAssignment, ns)
+    val solution = searchForSolution(checker, sys, tb, synthVars, freeVarAssignment, ns, config.verbose)
 
     solution match {
       case None                     => CannotRepair
@@ -71,12 +71,13 @@ object ModelCheckerSynthesizer {
     tb:                Testbench,
     synthVars:         SynthVars,
     freeVarAssignment: Map[(Int, String), BigInt],
-    ns:                Iterable[Int]
+    ns:                Iterable[Int],
+    verbose:           Boolean
   ): Option[List[(String, BigInt)]] = {
     ns.foreach { n =>
       val nChangeSys = performNChanges(sys, synthVars, n)
-      // println(s"Searching for solution with $n changes")
-      findSolution(checker, nChangeSys, tb, freeVarAssignment) match {
+      if (verbose) println(s"Searching for solution with $n changes")
+      findSolution(checker, nChangeSys, tb, freeVarAssignment, verbose) match {
         case Some(value) =>
           return Some(value)
         case None =>
@@ -89,7 +90,8 @@ object ModelCheckerSynthesizer {
     checker:            IsModelChecker,
     sys:                TransitionSystem,
     tb:                 Testbench,
-    freeVarAssignments: Map[(Int, String), BigInt]
+    freeVarAssignments: Map[(Int, String), BigInt],
+    verbose:            Boolean
   ): Option[List[(String, BigInt)]] = {
     val withTB = instantiateTestbench(sys, tb, assertDontAssumeOutputs = false, freeVarAssignments)
     // TODO: place this in working directory instead of making a temporary file
@@ -98,6 +100,7 @@ object ModelCheckerSynthesizer {
     val k = tb.length // we need to go to the full length because the assertion is delayed by one cycle
     checker.check(withTB, kMax = k, fileName = Some(temp.toString())) match {
       case ModelCheckFail(witness) =>
+        if (verbose) println("Solution found:")
         if (false) { // debugging code
           val vcdTemp = os.temp(suffix = ".vcd")
           val sim = new TransitionSystemSimulator(withTB)
@@ -147,7 +150,7 @@ object ModelCheckerSynthesizer {
         Some(extractFreeVarAssignment(witness, sys, freeInputs))
       case ModelCheckSuccess() =>
         if (verbose)
-          println(s"Original system is correct for all starting states and undefined inputs. Nothing to do.")
+          println(s"System is correct for all starting states and undefined inputs.")
         None
     }
   }

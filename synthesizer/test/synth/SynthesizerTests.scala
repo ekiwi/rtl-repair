@@ -46,7 +46,7 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     val r = Synthesizer.run(
       BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
       CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
-      DefaultConfig.changeSolver("btormc").makeVerbose()
+      DefaultConfig.changeSolver("btormc")
     )
     assert(r.isSuccess)
   }
