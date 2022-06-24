@@ -185,7 +185,7 @@ object SmtSynthesizer {
 
     // load system and communicate to solver
     val encoding: TransitionSystemSmtEncoding = if (ctx.solver.supportsUninterpretedSorts) {
-      new CompactEncoding(sysWithInitVars)
+      new CompactSmtEncoding(sysWithInitVars)
     } else { new UnrollSmtEncoding(sysWithInitVars) }
 
     // define synthesis constants

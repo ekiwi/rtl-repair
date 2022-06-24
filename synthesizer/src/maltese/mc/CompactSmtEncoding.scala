@@ -7,7 +7,7 @@ package maltese.mc
 import maltese.smt._
 import scala.collection.mutable
 
-class CompactEncoding(sys: TransitionSystem) extends TransitionSystemSmtEncoding {
+class CompactSmtEncoding(sys: TransitionSystem) extends TransitionSystemSmtEncoding {
   import SMTTransitionSystemEncoder._
   private def id(s: String): String = SMTLibSerializer.escapeIdentifier(s)
   private val stateType = id(sys.name + "_s")

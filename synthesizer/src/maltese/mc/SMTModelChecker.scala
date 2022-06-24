@@ -42,7 +42,7 @@ class SMTModelChecker(
     ctx.push()
 
     // declare/define functions and encode the transition system
-    val enc: TransitionSystemSmtEncoding = new CompactEncoding(sys)
+    val enc: TransitionSystemSmtEncoding = new CompactSmtEncoding(sys)
     enc.defineHeader(ctx)
     enc.init(ctx)
 

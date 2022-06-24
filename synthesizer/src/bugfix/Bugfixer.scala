@@ -139,7 +139,7 @@ object Bugfixer {
     val sysWithInitVars = FreeVars.addStateInitFreeVars(sys, freeVars)
 
     // load system and communicate to solver
-    val encoding = new CompactEncoding(sysWithInitVars)
+    val encoding = new CompactSmtEncoding(sysWithInitVars)
 
     // define synthesis constants
     encoding.defineHeader(ctx)
