@@ -5,7 +5,6 @@
 package synth
 
 import maltese.mc._
-import maltese.passes._
 import maltese.smt._
 
 /** Takes in a Transition System with synthesis variables +  a testbench and tries to find a valid synthesis assignment. */

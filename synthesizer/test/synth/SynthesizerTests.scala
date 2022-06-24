@@ -33,4 +33,41 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     assert(r.isSuccess)
   }
 
+  it should "synthesize a fix for decoder_3_to_8_buggy_var using optimathsat" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("optimathsat")
+    )
+    assert(r.isSuccess)
+  }
+
+  it should "synthesize a fix for decoder_3_to_8_buggy_var using btormc" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("btormc")
+    )
+    assert(r.isSuccess)
+  }
+
+  // this generally takes a while (~14s)
+  it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using optimathsat" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("optimathsat")
+    )
+    assert(r.cannotRepair)
+  }
+
+  it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using btormc" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("btormc")
+    )
+    assert(r.cannotRepair)
+  }
+
 }

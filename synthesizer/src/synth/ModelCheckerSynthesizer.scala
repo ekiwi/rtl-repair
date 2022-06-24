@@ -28,6 +28,13 @@ object ModelCheckerSynthesizer {
       case None        => return NoRepairNecessary // testbench does not in fact fail
     }
 
+    // check to see if any solution exists at all
+    // (this prevents us from having to search through all possible numbers of solutions)
+    findSolution(checker, sys, tb, freeVarAssignment) match {
+      case Some(_) => // ok, a solution can be found, now we need to minimize it
+      case None    => return CannotRepair // no way to repair this since no solution exists
+    }
+
     // try to solve with the minimal number of changes
     val ns = 1 until synthVars.change.length
     val solution = searchForSolution(checker, sys, tb, synthVars, freeVarAssignment, ns)
@@ -61,7 +68,7 @@ object ModelCheckerSynthesizer {
   ): Option[List[(String, BigInt)]] = {
     ns.foreach { n =>
       val nChangeSys = performNChanges(sys, synthVars, n)
-      // println(s"Searching for solution with $n changes")
+      println(s"Searching for solution with $n changes")
       findSolution(checker, nChangeSys, tb, freeVarAssignment) match {
         case Some(value) =>
           return Some(value)
