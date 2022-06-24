@@ -26,6 +26,7 @@ case class Config(
       case "cvc4"        => copy(solver = Some(CVC4SMTLib), checker = None)
       case "yices2"      => copy(solver = Some(Yices2SMTLib), checker = None)
       case "boolector"   => copy(solver = Some(BoolectorSMTLib), checker = None)
+      case "bitwuzla"    => copy(solver = Some(BitwuzlaSMTLib), checker = None)
       case "optimathsat" => copy(solver = Some(OptiMathSatSMTLib), checker = None)
       case "btormc"      => copy(solver = None, checker = Some(new BtormcModelChecker))
       case other         => throw new RuntimeException(s"Unknown solver $other")

@@ -33,6 +33,22 @@ object BoolectorSMTLib extends Solver {
   }
 }
 
+object BitwuzlaSMTLib extends Solver {
+  private val cmd = List("bitwuzla", "--smt2", "--incremental")
+  override def name = "bitwuzla-smtlib"
+  override def supportsConstArrays = false
+  override def supportsUninterpretedFunctions = false
+  override def supportsUninterpretedSorts = false
+  override def supportsQuantifiers = false
+  override def supportsSoftAssert = false
+  override def createContext(debugOn: Boolean = false): SolverContext = {
+    val ctx = new SMTLibSolverContext(cmd, this, debugOn)
+    // wa always want to produce models
+    ctx.runCommand(SetOption("produce-models", "true"))
+    ctx
+  }
+}
+
 object CVC4SMTLib extends Solver {
   private val cmd = List("cvc4", "--incremental", "--produce-models", "--lang", "smt2")
   override def name = "cvc4-smtlib"

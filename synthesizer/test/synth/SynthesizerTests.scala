@@ -78,6 +78,15 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     assert(r.isSuccess)
   }
 
+  it should "synthesize a fix for decoder_3_to_8_buggy_var using bitwuzla" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla")
+    )
+    assert(r.isSuccess)
+  }
+
   // this generally takes a while (~14s)
   it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using optimathsat" in {
     val r = Synthesizer.run(
@@ -104,6 +113,16 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
       BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
       CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
       DefaultConfig.changeSolver("boolector")
+    )
+    assert(r.cannotRepair)
+  }
+
+  // takes around 1.6s
+  it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using bitwuzla" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
+      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla")
     )
     assert(r.cannotRepair)
   }
