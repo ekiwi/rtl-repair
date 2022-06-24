@@ -35,14 +35,19 @@ class SMTModelChecker(
     val ctx = solver.createContext()
     // z3 only supports the non-standard as-const array syntax when the logic is set to ALL
     val logic = if (solver.name.contains("z3")) { "ALL" }
-    else { "QF_AUFBV" }
+    else if (solver.supportsUninterpretedSorts) { "QF_AUFBV" }
+    else { "QF_ABV" }
     ctx.setLogic(logic)
 
     // create new context
     ctx.push()
 
     // declare/define functions and encode the transition system
-    val enc: TransitionSystemSmtEncoding = new CompactSmtEncoding(sys)
+    val enc: TransitionSystemSmtEncoding = if (solver.supportsUninterpretedSorts) {
+      new CompactSmtEncoding(sys)
+    } else {
+      new UnrollSmtEncoding(sys)
+    }
     enc.defineHeader(ctx)
     enc.init(ctx)
 
