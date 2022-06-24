@@ -18,6 +18,7 @@ case class Config(
   checker: Option[IsModelChecker] = None,
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
+  unroll:      Boolean = false,
   verbose:     Boolean = false) {
   require(solver.isEmpty != checker.isEmpty, "need exactly one checker OR solver, not both or neither")
   def changeSolver(name: String): Config = {
@@ -33,6 +34,7 @@ case class Config(
     }
   }
   def makeVerbose(): Config = copy(verbose = true)
+  def forceUnroll(): Config = copy(unroll = true)
 }
 
 class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
@@ -48,6 +50,11 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
   opt[Unit]("debug-solver")
     .action((_, args) => args.copy(config = args.config.copy(debugSolver = true)))
     .text("print out stdlib commands that are sent to solver")
+  opt[Unit]("force-unroll")
+    .action((_, args) => args.copy(config = args.config.forceUnroll()))
+    .text(
+      "always unroll system instead of using the compact encoding. only has an effect for z3, optimathsat, cvc4 and yices2"
+    )
   opt[String]("solver").action { (a, args) =>
     args.copy(config = args.config.changeSolver(a))
   }

@@ -45,7 +45,7 @@ object SmtSynthesizer {
     freeVars.addConstraints(ctx, freeVarAssignment)
 
     // instantiate the testbench with inputs _and_ outputs assumed to be correct
-    instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = false)
+    instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = false, config = config)
 
     // try to synthesize constants
     val synthFun = if (solver.supportsSoftAssert) { maxSmtSynthesis _ }
@@ -155,7 +155,7 @@ object SmtSynthesizer {
     config:   Config
   ): Option[Seq[(String, BigInt)]] = {
     ctx.push()
-    instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = true)
+    instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = true, config = config)
     ctx.check() match {
       case IsSat => // OK
       case IsUnSat =>
@@ -179,12 +179,14 @@ object SmtSynthesizer {
     sys:                     TransitionSystem,
     tb:                      Testbench,
     freeVars:                FreeVars,
-    assertDontAssumeOutputs: Boolean
+    assertDontAssumeOutputs: Boolean,
+    config:                  Config
   ): Unit = {
     val sysWithInitVars = FreeVars.addStateInitFreeVars(sys, freeVars)
 
     // load system and communicate to solver
-    val encoding: TransitionSystemSmtEncoding = if (ctx.solver.supportsUninterpretedSorts) {
+    val doUnroll = ctx.solver.supportsUninterpretedSorts || config.unroll
+    val encoding: TransitionSystemSmtEncoding = if (doUnroll) {
       new CompactSmtEncoding(sysWithInitVars)
     } else { new UnrollSmtEncoding(sysWithInitVars) }
 
