@@ -15,10 +15,9 @@ class BtormcModelChecker extends Btor2ModelChecker {
   override val name:           String = "btormc"
   override val prefix:         String = "btormc"
   override val supportsOutput: Boolean = false
-  override protected def makeArgs(kMax: Int, inputFile: Option[String], kMin: Int): Seq[String] = {
-    val kMaxArg = if (kMin >= 0) Seq(s"--kmax $kMax") else Seq()
-    val kMinArg = if (kMin >= 0) Seq(s"--kmin $kMin") else Seq()
-    val prefix = Seq("btormc") ++ kMinArg ++ kMaxArg
+  override protected def makeArgs(kMax: Int, inputFile: Option[String]): Seq[String] = {
+    val kMaxArg = if (kMax >= 0) Seq(s"--kmax $kMax") else Seq()
+    val prefix = Seq("btormc") ++ kMaxArg
     inputFile match {
       case None       => prefix
       case Some(file) => prefix ++ Seq(s"$file")
@@ -36,8 +35,7 @@ class Cosa2ModelChecker extends Btor2ModelChecker {
   override val prefix:                     String = "btormc"
   override val supportsOutput:             Boolean = true
   override val supportsMultipleProperties: Boolean = false
-  override protected def makeArgs(kMax: Int, inputFile: Option[String], kMin: Int): Seq[String] = {
-    require(kMin == -1, "kmin is currently not supported")
+  override protected def makeArgs(kMax: Int, inputFile: Option[String]): Seq[String] = {
     val base = Seq("cosa2", "--engine bmc")
     val prefix = if (kMax > 0) base ++ Seq(s"--bound $kMax") else base
     inputFile match {
@@ -61,14 +59,13 @@ class Cosa2ModelChecker extends Btor2ModelChecker {
 abstract class Btor2ModelChecker extends IsModelChecker {
   override val name: String
   override val fileExtension: String = ".btor2"
-  protected def makeArgs(kMax: Int, inputFile: Option[String] = None, kMin: Int = -1): Seq[String]
+  protected def makeArgs(kMax: Int, inputFile: Option[String] = None): Seq[String]
   val supportsOutput: Boolean
   val supportsMultipleProperties: Boolean = true
   override def check(
     sys:      TransitionSystem,
     kMax:     Int = -1,
-    fileName: Option[String] = None,
-    kMin:     Int = -1
+    fileName: Option[String] = None
   ): ModelCheckResult = {
     val hasQuantifiers = TransitionSystem.hasQuantifier(sys)
     val quantifierFree = if (hasQuantifiers) new ExpandQuantifiers().run(sys) else sys
@@ -77,21 +74,21 @@ abstract class Btor2ModelChecker extends IsModelChecker {
     //  if (supportsMultipleProperties) quantifierFree else TransitionSystem.combineProperties(quantifierFree)
     fileName match {
       case None       => throw new NotImplementedError("Currently only file based model checking is supported!")
-      case Some(file) => checkWithFile(file, checkSys, kMax, kMin)
+      case Some(file) => checkWithFile(file, checkSys, kMax)
     }
   }
 
   /* called to check the results of the solver */
   protected def isFail(ret: Int, res: Iterable[String]): Boolean = res.nonEmpty && res.head.startsWith("sat")
 
-  private def checkWithFile(fileName: String, sys: TransitionSystem, kMax: Int, kMin: Int): ModelCheckResult = {
+  private def checkWithFile(fileName: String, sys: TransitionSystem, kMax: Int): ModelCheckResult = {
     val btorWrite = new PrintWriter(fileName)
     val lines = Btor2Serializer.serialize(sys, skipOutput = !supportsOutput)
     lines.foreach { l => btorWrite.println(l) }
     btorWrite.close()
 
     // execute model checker
-    val cmd = makeArgs(kMax, Some(fileName), kMin).mkString(" ")
+    val cmd = makeArgs(kMax, Some(fileName)).mkString(" ")
     val stdout = mutable.ArrayBuffer[String]()
     val stderr = mutable.ArrayBuffer[String]()
     val ret = cmd ! ProcessLogger(stdout.append(_), stderr.append(_))

@@ -88,7 +88,7 @@ object ModelCheckerSynthesizer {
     val temp = os.temp(suffix = ".btor")
 
     val k = tb.length // we need to go to the full length because the assertion is delayed by one cycle
-    checker.check(withTB, kMax = k, fileName = Some(temp.toString()), kMin = k) match {
+    checker.check(withTB, kMax = k, fileName = Some(temp.toString())) match {
       case ModelCheckFail(witness) =>
         if (false) { // debugging code
           val vcdTemp = os.temp(suffix = ".vcd")

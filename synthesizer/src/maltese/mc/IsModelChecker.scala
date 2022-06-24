@@ -17,7 +17,7 @@ trait IsModelChecker {
   val fileExtension: String
   val supportsUF:          Boolean = false
   val supportsQuantifiers: Boolean = false
-  def check(sys: TransitionSystem, kMax: Int = -1, fileName: Option[String] = None, kMin: Int = -1): ModelCheckResult
+  def check(sys: TransitionSystem, kMax: Int = -1, fileName: Option[String] = None): ModelCheckResult
 }
 
 case class Witness(
