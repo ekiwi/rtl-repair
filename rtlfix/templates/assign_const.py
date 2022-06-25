@@ -59,10 +59,10 @@ class ConstAssigner(RepairTemplate):
             return None
         block = ensure_block(stmt)
         # add assignments to beginning of process
-        block.statements = tuple(self.make_assignments() + list(block.statements))
+        block.statements = tuple(self.make_assignments(stmt.lineno) + list(block.statements))
         return block
 
-    def make_assignments(self):
+    def make_assignments(self, lineno: int):
         res = []
         for var in self.assigned_vars:
             width = self.widths[var]
@@ -71,7 +71,7 @@ class ConstAssigner(RepairTemplate):
                 assign = vast.BlockingSubstitution(vast.Lvalue(var), vast.Rvalue(const))
             else:
                 assign = vast.NonblockingSubstitution(vast.Lvalue(var), vast.Rvalue(const))
-            res.append(self.make_change_stmt(assign))
+            res.append(self.make_change_stmt(assign, lineno))
         return res
 
 

@@ -197,10 +197,25 @@ class TestDecoder(SynthesisTest):
         # this is not mentioned in the paper result, but essentially we just need to change one constant
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_num.v", "orig_tb.csv")
 
+    def test_buggy_num_complete_min_tb(self):
+        # this is not mentioned in the paper result, but essentially we just need to change one constant
+        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_num.v", "complete_min_tb.csv")
+
     def test_buggy_var_complete_min_tb(self):
         # can be repaired with the replace variable template
         # note, this test takes ~17s with optimathsat, ~4.5s with btormc, ~4.2s with yices2, ~4.4s with bitwuzla
         self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "complete_min_tb.csv")
+
+    def test_buggy_var_orig_tb(self):
+        # note: the repair is not actually correct since the testbench is incomplete
+        self.synth_success(decoder_dir, "decoder_3_to_8_buggy_var.v", "orig_tb.csv")
+
+    def test_super_buggy_complete_min_tb(self):
+        self.synth_success(decoder_dir, "decoder_3_to_8_super_buggy.v", "complete_min_tb.csv", max_changes=6)
+
+    def test_super_buggy_orig_tb(self):
+        # note: the repair is not actually correct since the testbench is incomplete
+        self.synth_success(decoder_dir, "decoder_3_to_8_super_buggy.v", "orig_tb.csv", max_changes=4)
 
 
 def _make_histogram(widths: dict) -> dict:

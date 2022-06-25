@@ -10,6 +10,9 @@ from pyverilog.utils.identifierreplace import children_items
 import pyverilog.vparser.ast as vast
 
 
+def is_empty_block(node: vast.Node):
+    return isinstance(node, vast.Block) and len(node.statements) == 0
+
 class AstVisitor:
     """ Generic AST visitor for pyverilog. Inspired by the IdentifierReplace class. """
 
@@ -41,9 +44,15 @@ class AstVisitor:
             if isinstance(child, list) or isinstance(child, tuple):
                 r = []
                 for c in child:
-                    r.append(self.visit(c))
+                    visited = self.visit(c)
+                    if visited is not None and not is_empty_block(visited):  # remove empty blocks from AST
+                        r.append(visited)
                 ret = tuple(r)
             else:
                 ret = self.visit(child)
+                if is_empty_block(ret):  # remove empty blocks from AST
+                    ret = None
+
             setattr(node, name, ret)
         return node
+

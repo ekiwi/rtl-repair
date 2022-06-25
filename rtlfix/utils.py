@@ -28,6 +28,8 @@ _codegen = ASTCodeGenerator()
 
 
 def serialize(ast) -> str:
+    if ast is None:
+        return "None"
     source = _codegen.visit(ast)
     return source
 
