@@ -67,11 +67,8 @@ def find_solver_version(solver: str) -> str:
     return r.stdout.decode('utf-8').splitlines()[0].strip()
 
 
-def try_template(config: Config, input_file: Path, prefix: str, template):
+def try_template(config: Config, ast, prefix: str, template):
     start_time = time.monotonic()
-    # parse file, the input file could be different from the original "source" because of preprocessing
-    print(input_file)
-    ast = parse_verilog(input_file)
 
     # create a directory for this particular template
     template_name = template.__name__
@@ -113,10 +110,10 @@ def try_template(config: Config, input_file: Path, prefix: str, template):
     return result
 
 
-def try_templates_in_parallel(config: Config, filename: Path):
+def try_templates_in_parallel(config: Config, ast):
     tmpls = [(f"{ii + 1}_", tmp) for ii, tmp in enumerate(_templates)]
     with Pool() as p:
-        procs = [p.apply_async(try_template, (config, filename, prefix, tmp)) for prefix, tmp in tmpls]
+        procs = [p.apply_async(try_template, (config, ast, prefix, tmp)) for prefix, tmp in tmpls]
         while len(procs) > 0:
             done, procs = partition(procs, lambda pp: pp.ready())
             for res in (pp.get() for pp in done):
@@ -135,12 +132,12 @@ def partition(elements: list, filter_foo):
     return a, b
 
 
-def try_templates_in_sequence(config: Config, filename: Path):
+def try_templates_in_sequence(config: Config, ast):
     # instantiate repair templates, one after another
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
     for ii, template in enumerate(_templates):
         prefix = f"{ii + 1}_"
-        res = try_template(config, filename, prefix, template)
+        res = try_template(config, ast, prefix, template)
         if res["status"] in {Success, NoRepair}:
             return res["status"], res
     return CannotRepair, None
@@ -154,14 +151,14 @@ def main():
     # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
     filename, preprocess_changed = preprocess(config.source, config.working_dir)
 
+    ast = parse_verilog(filename)
     if config.show_ast:
-        ast = parse_verilog(filename)
         ast.show()
 
     if config.parallel:
-        status, result = try_templates_in_parallel(config, filename)
+        status, result = try_templates_in_parallel(config, ast)
     else:
-        status, result = try_templates_in_sequence(config, filename)
+        status, result = try_templates_in_sequence(config, ast)
 
     success = (status == Success) or (status == NoRepair and preprocess_changed)
     if success:
