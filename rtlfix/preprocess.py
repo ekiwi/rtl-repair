@@ -109,7 +109,7 @@ def run_linter(iteration: int, filename: Path, preprocess_dir: Path) -> list:
     return parse_linter_output(info)
 
 
-_fix_warnings = {"CASEINCOMPLETE", "BLKSEQ", "LATCH"}
+_fix_warnings = {"CASEINCOMPLETE", "BLKSEQ", "LATCH", "COMBDLY"}
 
 
 def filter_warnings(warnings: list) -> list:
@@ -144,6 +144,7 @@ class LintFixer(AstVisitor):
         - CASEINCOMPLETE: Case values incompletely covered (example pattern 0x5)
         - LATCH
         - BLKSEQ: Blocking assignment '=' in sequential logic process
+        - COMBDLY: Non-blocking assignment \'<=\' in combinational logic process
     """
 
     def __init__(self, warnings: list):
@@ -185,4 +186,11 @@ class LintFixer(AstVisitor):
         # change to non-blocking if we got a blocking assignment in sequential logic process
         if len(self._find_warnings("BLKSEQ", node.lineno)) > 0:
             node = vast.NonblockingSubstitution(node.left, node.right, node.ldelay, node.rdelay, node.lineno)
+        return node
+
+    def visit_NonblockingSubstitution(self, node: vast.NonblockingSubstitution):
+        node = self.generic_visit(node)
+        # change to blocking if we got a non-blocking assignment in combinatorial logic process
+        if len(self._find_warnings("COMBDLY", node.lineno)) > 0:
+            node = vast.BlockingSubstitution(node.left, node.right, node.ldelay, node.rdelay, node.lineno)
         return node

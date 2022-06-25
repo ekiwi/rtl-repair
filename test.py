@@ -157,6 +157,8 @@ class TestFirstCounter(SynthesisTest):
         self.synth_no_repair(counter_dir, "first_counter_overflow.v", "orig_tb.csv")
 
     # wadden_buggy1 is a sens list bug and thus won't be solvable by our approach
+    def test_wadden_buggy1_orig_tb(self):
+        self.synth_cannot_repair(counter_dir, "first_counter_overflow_wadden_buggy1.v", "orig_tb.csv")
 
     def test_wadden_buggy2_orig_tb(self):
         # cannot be repaired with just literal replacement
