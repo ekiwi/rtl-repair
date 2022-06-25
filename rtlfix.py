@@ -53,7 +53,7 @@ def create_working_dir(working_dir: Path):
         os.mkdir(working_dir)
 
 
-_templates = [replace_literals, add_inversions, replace_variables]
+_templates = [replace_literals, add_inversions, replace_variables, assign_const]
 
 
 def find_solver_version(solver: str) -> str:

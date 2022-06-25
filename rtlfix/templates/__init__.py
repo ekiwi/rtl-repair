@@ -6,8 +6,4 @@
 from rtlfix.templates.add_inversions import add_inversions
 from rtlfix.templates.replace_literals import replace_literals
 from rtlfix.templates.replace_variables import replace_variables
-
-# Template Ideas:
-# - assign constant to variable in same always@ block that it is normally assigned under a synthesized condition
-#   (this might help with some of the counter overflow things)
-# -
+from rtlfix.templates.assign_const import assign_const

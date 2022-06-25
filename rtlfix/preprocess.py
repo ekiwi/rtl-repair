@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 
 from rtlfix import parse_verilog, serialize
+from rtlfix.utils import ensure_block
 from rtlfix.visitor import AstVisitor
 import pyverilog.vparser.ast as vast
 
@@ -131,12 +132,6 @@ def assign_latch_signal(latch_warning: LintWarning):
     signal_parts = m.group(1).split(".")
     ident = vast.Identifier(signal_parts[-1].strip())
     return vast.BlockingSubstitution(vast.Lvalue(ident), vast.Rvalue(vast.IntConst("'d0")))
-
-
-def ensure_block(stmt: vast.Node) -> vast.Block:
-    if isinstance(stmt, vast.Block):
-        return stmt
-    return vast.Block(tuple([stmt]))
 
 
 class LintFixer(AstVisitor):

@@ -162,11 +162,12 @@ class TestFirstCounter(SynthesisTest):
 
     def test_wadden_buggy2_orig_tb(self):
         # cannot be repaired with just literal replacement
+        # this would need an if() condition to modified
         self.synth_cannot_repair(counter_dir, "first_counter_overflow_wadden_buggy2.v", "orig_tb.csv")
 
     def test_kgoliya_buggy1_orig_tb(self):
-        # cannot be repaired with just literal replacement
-        self.synth_cannot_repair(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "orig_tb.csv")
+        # this can be repaired through the assign_const template
+        self.synth_success(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "orig_tb.csv")
 
 
 class TestDecoder(SynthesisTest):

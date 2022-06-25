@@ -58,3 +58,8 @@ def parse_width(width) -> int:
     assert msb >= lsb
     return msb - lsb + 1
 
+
+def ensure_block(stmt: vast.Node) -> vast.Block:
+    if isinstance(stmt, vast.Block):
+        return stmt
+    return vast.Block(tuple([stmt]))
