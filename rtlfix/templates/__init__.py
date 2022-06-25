@@ -7,3 +7,4 @@ from rtlfix.templates.add_inversions import add_inversions
 from rtlfix.templates.replace_literals import replace_literals
 from rtlfix.templates.replace_variables import replace_variables
 from rtlfix.templates.assign_const import assign_const
+from rtlfix.templates.synthesize_condition import synthesize_condition
