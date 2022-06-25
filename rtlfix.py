@@ -4,10 +4,12 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, preprocess
 from rtlfix.templates import *
@@ -15,7 +17,16 @@ from rtlfix.templates import *
 _supported_solvers = {'z3', 'cvc4', 'yices2', 'boolector', 'bitwuzla', 'optimathsat', 'btormc'}
 
 
-def parse_args():
+@dataclass
+class Config:
+    source: Path
+    testbench: Path
+    working_dir: Path
+    solver: str
+    show_ast: bool
+
+
+def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='Repair Verilog file')
     parser.add_argument('--source', dest='source', help='Verilog source file', required=True)
     parser.add_argument('--testbench', dest='testbench', help='Testbench in CSV format', required=True)
@@ -26,7 +37,7 @@ def parse_args():
                         action='store_true')
     args = parser.parse_args()
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
-    return Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast
+    return Config(Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast)
 
 
 def create_working_dir(working_dir: Path):
@@ -49,65 +60,86 @@ def find_solver_version(solver: str) -> str:
     return r.stdout.decode('utf-8').splitlines()[0].strip()
 
 
-def main():
+def try_template(config: Config, prefix: str, template):
     start_time = time.monotonic()
-    filename, testbench, working_dir, solver, show_ast = parse_args()
-    name = filename.name
-    create_working_dir(working_dir)
+    # parse file
+    ast = parse_verilog(config.source)
 
-    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
-    filename = preprocess(filename, working_dir)
+    # create a directory for this particular template
+    template_name = template.__name__
+    template_dir = config.working_dir / (prefix + template_name)
+    if template_dir.exists():
+        shutil.rmtree(template_dir)
+    os.mkdir(template_dir)
 
-    status = "cannot-repair"
-    result = []
-    ast = parse_verilog(filename)
-    if show_ast:
-        ast.show()
-
-    # instantiate repair templates, one after another
-    # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
-    for template in _templates:
-        # create a directory for this particular template
-        template_name = template.__name__
-        template_dir = working_dir / template_name
-        if template_dir.exists():
-            shutil.rmtree(template_dir)
-        os.mkdir(template_dir)
-
-        # apply template any try to synthesize a solution
-        template(ast)
-        synth = Synthesizer()
-        result = synth.run(name, template_dir, ast, testbench, solver)
-        status = result["status"]
-        if status == "success":
-            result["template"] = template_name
-            break
-        # nothing to repair, no need to try other templates
-        if status == "no-repair":
-            break
-        # recreate AST since we destroyed (mutated) the old one
-        ast = parse_verilog(filename)
+    # apply template any try to synthesize a solution
+    template(ast)
+    synth_start_time = time.monotonic()
+    synth = Synthesizer()
+    result = synth.run(config.source.name, template_dir, ast, config.testbench, config.solver)
+    synth_time = time.monotonic() - synth_start_time
+    # add some metadata to result
+    result["template"] = template_name
+    result["solver"] = find_solver_version(config.solver)
+    status = result["status"]
 
     if status == "success":
         # execute synthesized repair
         changes = do_repair(ast, result["assignment"])
-        with open(working_dir / "changes.txt", "w") as f:
+        result["num_changes"] = len(changes)
+        with open(template_dir / "changes.txt", "w") as f:
+            f.write(f"{template_name}\n")
             f.write(f"{len(changes)}\n")
             f.write('\n'.join(f"{line}: {a} -> {b}" for line, a, b in changes))
             f.write('\n')
-        with open(working_dir / "solver", "w") as f:
-            f.write(find_solver_version(solver) + "\n")
-        with open(working_dir / "template", "w") as f:
-            f.write(result["template"] + "\n")
-        repaired_filename = working_dir / (filename.stem + ".repaired.v")
+        repaired_filename = template_dir / (config.source.stem + ".repaired.v")
         with open(repaired_filename, "w") as f:
             f.write(serialize(ast))
+
+    # write result to disk
+    result['synth_time'] = f"{synth_time:.3f}"
+    result['total_time'] = f"{time.monotonic() - start_time:.3f}"
+    with open(template_dir / "result.json", "w") as f:
+        json.dump(result, f, indent=2)
+    return result
+
+
+def main():
+    start_time = time.monotonic()
+    config = parse_args()
+    create_working_dir(config.working_dir)
+
+    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
+    filename = preprocess(config.source, config.working_dir)
+
+    status = "cannot-repair"
+    success_template = None
+
+    if config.show_ast:
+        ast = parse_verilog(filename)
+        ast.show()
+
+    # instantiate repair templates, one after another
+    # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
+    for ii, template in enumerate(_templates):
+        prefix = f"{ii + 1}_"
+        status = try_template(config, prefix, template)['status']
+        if status == 'success':
+            success_template = prefix + template.__name__
+            break
+
+    if success_template is not None:
+        # copy repaired file and result json to working dir
+        src_dir = config.working_dir / success_template
+        shutil.copy(src_dir / "changes.txt", config.working_dir)
+        shutil.copy(src_dir / (config.source.stem + ".repaired.v"), config.working_dir)
+
     print(status)
-    with open(working_dir / "status", "w") as f:
+    with open(config.working_dir / "status", "w") as f:
         f.write(status + "\n")
     delta_time = time.monotonic() - start_time
-    with open(working_dir / "time", "w") as f:
-        f.write(f"{delta_time}s\n")
+    with open(config.working_dir / "time", "w") as f:
+        f.write(f"{delta_time:.3f}s\n")
 
 
 if __name__ == '__main__':

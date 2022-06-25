@@ -17,7 +17,7 @@ def preprocess(filename: Path, working_dir: Path) -> Path:
     """ runs a linter on the verilog file and tries to address some issues """
     # create directory
     assert working_dir.exists()
-    preprocess_dir = working_dir / "preprocess"
+    preprocess_dir = working_dir / "0_preprocess"
     if preprocess_dir.exists():
         shutil.rmtree(preprocess_dir)
     os.mkdir(preprocess_dir)

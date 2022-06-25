@@ -40,10 +40,13 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
         status = f.read().strip()
     if status == "success":
         with open(out_dir / "changes.txt") as f:
-            changes = int(f.readlines()[0].strip())
+            lines = f.readlines()
+            template = lines[0].strip()
+            changes = int(lines[1].strip())
     else:
         changes = 0
-    return status, changes
+        template = None
+    return status, changes, template
 
 
 _default_solver = 'yices2'
@@ -55,7 +58,7 @@ class SynthesisTest(unittest.TestCase):
 
     def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, max_changes: int = 2):
         start = time.monotonic()
-        status, changes = run_synth(dir / design, dir / testbench, solver)
+        status, changes, template = run_synth(dir / design, dir / testbench, solver)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
