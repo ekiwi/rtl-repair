@@ -11,6 +11,10 @@ import pyverilog.vparser.ast as vast
 def synthesize_condition(ast: vast.Source):
     """ try to synthesize boolean conditions
         - this template repairs a superset of `add_inversion`
+        - in order not to create comb loops, we should only consider expressions involving variables that
+            - are not dominated by the condition
+            - or are registers (indicated by being assigned in a non-blocking assignment process)
+        - maybe preference should be given to combinations of existing conditions
     """
     namespace = Namespace(ast)
     infer = InferWidths()
