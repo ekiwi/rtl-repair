@@ -23,12 +23,14 @@ def preprocess(filename: Path, working_dir: Path) -> Path:
     os.mkdir(preprocess_dir)
 
     # run linter up to two times
+    changed = False
     for ii in range(2):
-        warnings = run_linter(filename, preprocess_dir)
+        warnings = run_linter(ii, filename, preprocess_dir)
 
         if len(warnings) == 0:
             return filename  # no warnings -> nothing to fix
 
+        changed = True
         # parse ast and fix if necessary
         fixed_filename = preprocess_dir / f"{filename.stem}.{ii}.v"
         ast = parse_verilog(filename)
@@ -37,6 +39,12 @@ def preprocess(filename: Path, working_dir: Path) -> Path:
         with open(fixed_filename, "w") as f:
             f.write(serialize(ast))
         filename = fixed_filename
+
+    if changed:
+        with open(preprocess_dir / "changes.txt", "w") as f:
+            f.write("preprocess\n")
+            f.write("-1\n")
+            f.write("TODO: actually export changes!\n")
 
     # return path to preprocessed file
     return filename
@@ -76,7 +84,7 @@ def parse_linter_output(lines: list) -> list:
     return out
 
 
-def run_linter(filename: Path, preprocess_dir: Path) -> list:
+def run_linter(iteration: int, filename: Path, preprocess_dir: Path) -> list:
     """ Things we are interested in:
         - ASSIGNDLY: Unsupported: Ignoring timing control on this assignment
         - CASEINCOMPLETE: Case values incompletely covered (example pattern 0x5)
@@ -94,7 +102,7 @@ def run_linter(filename: Path, preprocess_dir: Path) -> list:
     if len(info) == 0:
         return []
     # output raw info
-    with open(preprocess_dir / "linter.txt", "w") as f:
+    with open(preprocess_dir / f"{iteration}_linter.txt", "w") as f:
         f.write("\n".join(info) + "\n")
     # parse
     return parse_linter_output(info)

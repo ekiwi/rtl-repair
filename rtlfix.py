@@ -60,10 +60,10 @@ def find_solver_version(solver: str) -> str:
     return r.stdout.decode('utf-8').splitlines()[0].strip()
 
 
-def try_template(config: Config, prefix: str, template):
+def try_template(config: Config, input_file: Path, prefix: str, template):
     start_time = time.monotonic()
-    # parse file
-    ast = parse_verilog(config.source)
+    # parse file, the input file could be different from the original "source" because of preprocessing
+    ast = parse_verilog(input_file)
 
     # create a directory for this particular template
     template_name = template.__name__
@@ -109,11 +109,14 @@ def main():
     config = parse_args()
     create_working_dir(config.working_dir)
 
-    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
-    filename = preprocess(config.source, config.working_dir)
-
     status = "cannot-repair"
     success_template = None
+
+    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
+    filename = preprocess(config.source, config.working_dir)
+    if filename != config.source:
+        # if the preprocessing changed the file, that might have already fixed the issue
+        success_template = "0_preprocess"
 
     if config.show_ast:
         ast = parse_verilog(filename)
@@ -123,16 +126,23 @@ def main():
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
     for ii, template in enumerate(_templates):
         prefix = f"{ii + 1}_"
-        status = try_template(config, prefix, template)['status']
+        status = try_template(config, filename, prefix, template)['status']
         if status == 'success':
             success_template = prefix + template.__name__
+            break
+        if status == 'no-repair':
             break
 
     if success_template is not None:
         # copy repaired file and result json to working dir
         src_dir = config.working_dir / success_template
         shutil.copy(src_dir / "changes.txt", config.working_dir)
-        shutil.copy(src_dir / (config.source.stem + ".repaired.v"), config.working_dir)
+        if status == 'no-repair':  # this means that the preprocessor already fixed all our issues
+            status = 'success'
+            shutil.copy(filename, config.working_dir / (config.source.stem + ".repaired.v"))
+        else:
+            assert status == 'success'
+            shutil.copy(src_dir / (config.source.stem + ".repaired.v"), config.working_dir)
 
     print(status)
     with open(config.working_dir / "status", "w") as f:

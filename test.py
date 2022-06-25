@@ -113,14 +113,12 @@ class TestFsmFull(SynthesisTest):
     def test_wadden_buggy2_orig_tb(self):
         # latch bug
         # this is repaired (by accident) by our linter based preprocessing
-        # TODO: this should not return "no-repair"
-        self.synth_no_repair(fsm_dir, "fsm_full_wadden_buggy2.v", "orig_tb.csv")
+        self.synth_success(fsm_dir, "fsm_full_wadden_buggy2.v", "orig_tb.csv")
 
     def test_ssscrazy_buggy1(self):
         # latch bug
         # this is repaired (by accident) by our linter based preprocessing
-        # TODO: this should not return "no-repair"
-        self.synth_no_repair(fsm_dir, "fsm_full_ssscrazy_buggy1.v", "orig_tb.csv")
+        self.synth_success(fsm_dir, "fsm_full_ssscrazy_buggy1.v", "orig_tb.csv")
 
     def test_buggy_num(self):
         self.synth_success(fsm_dir, "fsm_full_buggy_num.v", "orig_tb.csv")
