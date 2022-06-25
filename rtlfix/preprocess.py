@@ -13,7 +13,7 @@ from rtlfix.visitor import AstVisitor
 import pyverilog.vparser.ast as vast
 
 
-def preprocess(filename: Path, working_dir: Path) -> Path:
+def preprocess(filename: Path, working_dir: Path):
     """ runs a linter on the verilog file and tries to address some issues """
     # create directory
     assert working_dir.exists()
@@ -47,7 +47,7 @@ def preprocess(filename: Path, working_dir: Path) -> Path:
             f.write("TODO: actually export changes!\n")
 
     # return path to preprocessed file
-    return filename
+    return filename, changed
 
 
 def _check_for_verilator():
@@ -55,7 +55,7 @@ def _check_for_verilator():
     assert r.returncode == 0, "failed to find verilator"
 
 
-_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY"}
+_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY", "UNUSED"}
 _verilator_lint_flags = ["--lint-only", "-Wno-fatal", "-Wall"] + [f"-Wno-{w}" for w in _ignore_warnings]
 _verilator_re = re.compile(r"%Warning-([A-Z]+): ([^:]+):(\d+):(\d+):([^\n]+)")
 

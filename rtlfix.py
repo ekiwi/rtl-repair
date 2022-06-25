@@ -9,13 +9,16 @@ import os
 import shutil
 import subprocess
 import time
+from multiprocessing import Pool
 from dataclasses import dataclass
 from pathlib import Path
 from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, preprocess
 from rtlfix.templates import *
 
 _supported_solvers = {'z3', 'cvc4', 'yices2', 'boolector', 'bitwuzla', 'optimathsat', 'btormc'}
-
+Success = "success"
+CannotRepair = "cannot-repair"
+NoRepair = "no-repair"
 
 @dataclass
 class Config:
@@ -24,6 +27,7 @@ class Config:
     working_dir: Path
     solver: str
     show_ast: bool
+    parallel: bool
 
 
 def parse_args() -> Config:
@@ -35,9 +39,12 @@ def parse_args() -> Config:
     parser.add_argument('--solver', dest='solver', help='z3 or optimathsat', default="z3")
     parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
                         action='store_true')
+    parser.add_argument('--parallel', dest='parallel', help='try to apply repair templates in parallel',
+                        action='store_true')
     args = parser.parse_args()
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
-    return Config(Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast)
+    return Config(Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast,
+                  args.parallel)
 
 
 def create_working_dir(working_dir: Path):
@@ -63,6 +70,7 @@ def find_solver_version(solver: str) -> str:
 def try_template(config: Config, input_file: Path, prefix: str, template):
     start_time = time.monotonic()
     # parse file, the input file could be different from the original "source" because of preprocessing
+    print(input_file)
     ast = parse_verilog(input_file)
 
     # create a directory for this particular template
@@ -81,9 +89,10 @@ def try_template(config: Config, input_file: Path, prefix: str, template):
     # add some metadata to result
     result["template"] = template_name
     result["solver"] = find_solver_version(config.solver)
+    result["directory"] = template_dir.name
     status = result["status"]
 
-    if status == "success":
+    if status == Success:
         # execute synthesized repair
         changes = do_repair(ast, result["assignment"])
         result["num_changes"] = len(changes)
@@ -104,45 +113,66 @@ def try_template(config: Config, input_file: Path, prefix: str, template):
     return result
 
 
+def try_templates_in_parallel(config: Config, filename: Path):
+    tmpls = [(f"{ii + 1}_", tmp) for ii, tmp in enumerate(_templates)]
+    with Pool() as p:
+        procs = [p.apply_async(try_template, (config, filename, prefix, tmp)) for prefix, tmp in tmpls]
+        while len(procs) > 0:
+            done, procs = partition(procs, lambda pp: pp.ready())
+            for res in (pp.get() for pp in done):
+                if res["status"] in {Success, NoRepair}:
+                    return res["status"], res
+    return CannotRepair, None
+
+
+def partition(elements: list, filter_foo):
+    a, b = [], []
+    for e in elements:
+        if filter_foo(e):
+            a.append(e)
+        else:
+            b.append(e)
+    return a, b
+
+
+def try_templates_in_sequence(config: Config, filename: Path):
+    # instantiate repair templates, one after another
+    # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
+    for ii, template in enumerate(_templates):
+        prefix = f"{ii + 1}_"
+        res = try_template(config, filename, prefix, template)
+        if res["status"] in {Success, NoRepair}:
+            return res["status"], res
+    return CannotRepair, None
+
+
 def main():
     start_time = time.monotonic()
     config = parse_args()
     create_working_dir(config.working_dir)
 
-    status = "cannot-repair"
-    success_template = None
-
     # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
-    filename = preprocess(config.source, config.working_dir)
-    if filename != config.source:
-        # if the preprocessing changed the file, that might have already fixed the issue
-        success_template = "0_preprocess"
+    filename, preprocess_changed = preprocess(config.source, config.working_dir)
 
     if config.show_ast:
         ast = parse_verilog(filename)
         ast.show()
 
-    # instantiate repair templates, one after another
-    # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
-    for ii, template in enumerate(_templates):
-        prefix = f"{ii + 1}_"
-        status = try_template(config, filename, prefix, template)['status']
-        if status == 'success':
-            success_template = prefix + template.__name__
-            break
-        if status == 'no-repair':
-            break
+    if config.parallel:
+        status, result = try_templates_in_parallel(config, filename)
+    else:
+        status, result = try_templates_in_sequence(config, filename)
 
-    if success_template is not None:
+    success = (status == Success) or (status == NoRepair and preprocess_changed)
+    if success:
         # copy repaired file and result json to working dir
-        src_dir = config.working_dir / success_template
-        shutil.copy(src_dir / "changes.txt", config.working_dir)
-        if status == 'no-repair':  # this means that the preprocessor already fixed all our issues
-            status = 'success'
+        if preprocess_changed:
+            src_dir = config.working_dir / "0_preprocess"
             shutil.copy(filename, config.working_dir / (config.source.stem + ".repaired.v"))
         else:
-            assert status == 'success'
+            src_dir = config.working_dir / result["directory"]
             shutil.copy(src_dir / (config.source.stem + ".repaired.v"), config.working_dir)
+        shutil.copy(src_dir / "changes.txt", config.working_dir)
 
     print(status)
     with open(config.working_dir / "status", "w") as f:

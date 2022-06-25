@@ -28,7 +28,7 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
         "--source", str(source.resolve()),
         "--testbench", str(testbench.resolve()),
         "--solver", solver,
-        "--working-dir", str(out_dir.resolve())
+        "--working-dir", str(out_dir.resolve()),
     ]
     cmd = ["./rtlfix.py"] + args
     try:
