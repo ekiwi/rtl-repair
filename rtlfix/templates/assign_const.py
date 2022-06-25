@@ -18,14 +18,14 @@ def assign_const(ast: vast.Source):
     namespace = Namespace(ast)
     infer = InferWidths()
     infer.run(ast)
-    repl = ConstAssigner(infer.vars)
+    repl = ConstAssigner(infer.widths)
     repl.apply(namespace, ast)
 
 
 class ConstAssigner(RepairTemplate):
-    def __init__(self, vars):
+    def __init__(self, widths):
         super().__init__(name="assign")
-        self.vars = vars
+        self.widths = widths
         self.use_blocking = False
         self.assigned_vars = []
 
@@ -35,7 +35,8 @@ class ConstAssigner(RepairTemplate):
         if analysis.non_blocking_count > 0 and analysis.blocking_count > 0:
             print("WARN: single always process seems to mix blocking and non-blocking assignment. Skipping.")
             return node
-        self.assigned_vars = list(analysis.assigned_vars)
+        # note: we are ignoring pointer for now since these might contain loop vars that may not always be in scope..
+        self.assigned_vars = [var for var in analysis.assigned_vars if isinstance(var, vast.Identifier)]
         self.use_blocking = analysis.blocking_count > 0
         # add assignments to beginning of process
         node.statement = self.prepend_assignments(self.visit(node.statement))
@@ -63,13 +64,13 @@ class ConstAssigner(RepairTemplate):
 
     def make_assignments(self):
         res = []
-        for name in self.assigned_vars:
-            width = self.vars[name]
+        for var in self.assigned_vars:
+            width = self.widths[var]
             const = vast.Identifier(self.make_synth_var(width))
             if self.use_blocking:
-                assign = vast.BlockingSubstitution(vast.Lvalue(vast.Identifier(name)), vast.Rvalue(const))
+                assign = vast.BlockingSubstitution(vast.Lvalue(var), vast.Rvalue(const))
             else:
-                assign = vast.NonblockingSubstitution(vast.Lvalue(vast.Identifier(name)), vast.Rvalue(const))
+                assign = vast.NonblockingSubstitution(vast.Lvalue(var), vast.Rvalue(const))
             res.append(self.make_change_stmt(assign))
         return res
 
@@ -87,9 +88,13 @@ class ProcessAnalyzer(AstVisitor):
     def visit_BlockingSubstitution(self, node: vast.BlockingSubstitution):
         self.generic_visit(node)
         self.blocking_count += 1
-        self.assigned_vars.add(str(node.left.var.name))
+        self.assigned_vars.add(node.left.var)
 
     def visit_NonblockingSubstitution(self, node: vast.NonblockingSubstitution):
         self.generic_visit(node)
         self.non_blocking_count += 1
-        self.assigned_vars.add(str(node.left.var.name))
+        self.assigned_vars.add(node.left.var)
+
+    def visit_ForStatement(self, node: vast.ForStatement):
+        # ignore the condition, pre and post of the for statement
+        self.visit(node.statement)
