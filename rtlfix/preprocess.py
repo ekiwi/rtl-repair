@@ -55,7 +55,7 @@ def _check_for_verilator():
     assert r.returncode == 0, "failed to find verilator"
 
 
-_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY", "UNUSED"}
+_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY", "UNUSED", "EOFNEWLINE"}
 _verilator_lint_flags = ["--lint-only", "-Wno-fatal", "-Wall"] + [f"-Wno-{w}" for w in _ignore_warnings]
 _verilator_re = re.compile(r"%Warning-([A-Z]+): ([^:]+):(\d+):(\d+):([^\n]+)")
 
@@ -110,6 +110,7 @@ def run_linter(iteration: int, filename: Path, preprocess_dir: Path) -> list:
 
 
 _fix_warnings = {"CASEINCOMPLETE", "BLKSEQ", "LATCH"}
+
 
 def filter_warnings(warnings: list) -> list:
     out = []

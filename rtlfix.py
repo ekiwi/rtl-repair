@@ -4,6 +4,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import argparse
+import copy
 import json
 import os
 import shutil
@@ -137,9 +138,12 @@ def try_templates_in_sequence(config: Config, ast):
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
     for ii, template in enumerate(_templates):
         prefix = f"{ii + 1}_"
+        # we need to deep copy the ast since the template is going to modify it in place!
+        ast_copy = copy.deepcopy(ast)
         res = try_template(config, ast, prefix, template)
         if res["status"] in {Success, NoRepair}:
             return res["status"], res
+        ast = ast_copy
     return CannotRepair, None
 
 
