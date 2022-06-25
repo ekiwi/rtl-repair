@@ -84,7 +84,11 @@ class TestLeftShiftReg(SynthesisTest):
 
     def test_wadden_buggy1_orig_tb(self):
         # blocking vs. non-blocking
-        self.synth_cannot_repair(left_shift_dir, "lshift_reg_wadden_buggy1.v", "orig_tb.csv")
+        self.synth_success(left_shift_dir, "lshift_reg_wadden_buggy1.v", "orig_tb.csv")
+
+    def test_wadden_buggy2_orig_tb(self):
+        # blocking vs. non-blocking
+        self.synth_success(left_shift_dir, "lshift_reg_wadden_buggy2.v", "orig_tb.csv")
 
     def test_buggy_num(self):
         # wrong number in a _for loop_

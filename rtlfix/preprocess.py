@@ -28,7 +28,7 @@ def preprocess(filename: Path, working_dir: Path) -> Path:
         warnings = run_linter(ii, filename, preprocess_dir)
 
         if len(warnings) == 0:
-            return filename  # no warnings -> nothing to fix
+            break  # no warnings -> nothing to fix
 
         changed = True
         # parse ast and fix if necessary
@@ -55,7 +55,8 @@ def _check_for_verilator():
     assert r.returncode == 0, "failed to find verilator"
 
 
-_verilator_lint_flags = ["--lint-only", "-Wno-fatal", "-Wall", "-Wno-style"]
+_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY"}
+_verilator_lint_flags = ["--lint-only", "-Wno-fatal", "-Wall"] + [f"-Wno-{w}" for w in _ignore_warnings]
 _verilator_re = re.compile(r"%Warning-([A-Z]+): ([^:]+):(\d+):(\d+):([^\n]+)")
 
 
@@ -108,15 +109,14 @@ def run_linter(iteration: int, filename: Path, preprocess_dir: Path) -> list:
     return parse_linter_output(info)
 
 
-_fix_warnings = {"ASSIGNDLY", "CASEINCOMPLETE", "BLKSEQ", "LATCH"}
-
+_fix_warnings = {"CASEINCOMPLETE", "BLKSEQ", "LATCH"}
 
 def filter_warnings(warnings: list) -> list:
     out = []
     for warn in warnings:
         if warn.tpe in _fix_warnings:
             out.append(warn)
-        else:
+        elif warn.tpe not in _ignore_warnings:
             raise RuntimeWarning(f"Unknown warning type: {warn}")
     return out
 
@@ -140,8 +140,8 @@ def ensure_block(stmt: vast.Node) -> vast.Block:
 
 class LintFixer(AstVisitor):
     """ This class addressed the following lint warning:
-        - ASSIGNDLY: Unsupported: Ignoring timing control on this assignment
         - CASEINCOMPLETE: Case values incompletely covered (example pattern 0x5)
+        - LATCH
         - BLKSEQ: Blocking assignment '=' in sequential logic process
     """
 
@@ -177,4 +177,11 @@ class LintFixer(AstVisitor):
         stmt = ensure_block(node.statement)
         stmt.statements = tuple(assignments + list(stmt.statements))
         node.statement = stmt
+        return node
+
+    def visit_BlockingSubstitution(self, node: vast.BlockingSubstitution):
+        node = self.generic_visit(node)
+        # change to non-blocking if we got a blocking assignment in sequential logic process
+        if len(self._find_warnings("BLKSEQ", node.lineno)) > 0:
+            node = vast.NonblockingSubstitution(node.left, node.right, node.ldelay, node.rdelay, node.lineno)
         return node
