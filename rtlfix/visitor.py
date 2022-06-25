@@ -49,9 +49,8 @@ class AstVisitor:
                         r.append(visited)
                 ret = tuple(r)
             else:
+                # do not remove empty block in case there is only one child such as a vast.Case
                 ret = self.visit(child)
-                if is_empty_block(ret):  # remove empty blocks from AST
-                    ret = None
 
             setattr(node, name, ret)
         return node
