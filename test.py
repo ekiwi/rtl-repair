@@ -9,6 +9,11 @@ import subprocess
 from collections import defaultdict
 from pathlib import Path
 
+_default_solver = 'yices2'
+# _default_solver = 'bitwuzla'
+_print_time = False
+_parallel = False
+
 root_dir = Path(__file__).parent.resolve()
 working_dir = root_dir / "working-dir"
 benchmark_dir = root_dir / "benchmarks"
@@ -30,6 +35,8 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
         "--solver", solver,
         "--working-dir", str(out_dir.resolve()),
     ]
+    if _parallel:
+        args += ["--parallel"]
     cmd = ["./rtlfix.py"] + args
     try:
         r = subprocess.run(cmd, stdout=subprocess.PIPE, check=True, cwd=root_dir)
@@ -47,11 +54,6 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
         changes = 0
         template = None
     return status, changes, template
-
-
-_default_solver = 'yices2'
-# _default_solver = 'bitwuzla'
-_print_time = False
 
 
 class SynthesisTest(unittest.TestCase):
@@ -111,8 +113,8 @@ class TestFsmFull(SynthesisTest):
         self.synth_cannot_repair(fsm_dir, "fsm_full_wadden_buggy1.v", "orig_tb.csv")
 
     def test_ssscrazy_buggy2_orig_tb(self):
-        # blocking vs. non-blocking, probably won't be able to fix
-        self.synth_cannot_repair(fsm_dir, "fsm_full_ssscrazy_buggy2.v", "orig_tb.csv")
+        # we repair this by fixing the blocking assignment lint warning
+        self.synth_success(fsm_dir, "fsm_full_ssscrazy_buggy2.v", "orig_tb.csv")
 
     def test_wadden_buggy2_orig_tb(self):
         # latch bug

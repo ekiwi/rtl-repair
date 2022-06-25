@@ -168,6 +168,7 @@ def main():
     if success:
         # copy repaired file and result json to working dir
         if preprocess_changed:
+            status = Success  # fixing things purely through the preprocessor is a kind of success!
             src_dir = config.working_dir / "0_preprocess"
             shutil.copy(filename, config.working_dir / (config.source.stem + ".repaired.v"))
         else:
