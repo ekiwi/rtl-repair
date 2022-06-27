@@ -90,6 +90,16 @@ class RepairTemplate(AstVisitor):
         node.ptr = self.visit(node.ptr)
         return node
 
+    def visit_Partselect(self, node: vast.Partselect):
+        # by default we ignore part selects (aka bit slices) since the integer indices are constants and messing with
+        # the variable might also not be a good idea
+        return node
+
+    def visit_Repeat(self, node: vast.Repeat):
+        # by default we ignore the times attribute of a repeat since it needs to be a constant
+        node.value = self.visit(node.value)
+        return node
+
     def visit_DelayStatement(self, node: vast.DelayStatement):
         # by default, we ignore delay statement since they do not make much sense for synchronous circuit descriptions
         return node
