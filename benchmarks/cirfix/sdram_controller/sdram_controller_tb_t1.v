@@ -20,12 +20,16 @@ module sdram_controller_tb();
     /* SDRAM SIDE */
     wire [12:0] addr;
     wire [1:0] bank_addr;
-    wire [15:0] data; 
+    // replaced tri-state `data`
+    //wire [15:0] data; 
+    wire        data_oe;
+    wire [15:0] data_in;
+    wire [15:0] data_out;
     wire clock_enable, cs_n, ras_n, cas_n, we_n, rd_ready, data_mask_low, data_mask_high;
 
     reg [15:0] data_r;
 
-    assign data = data_r;
+    assign data_in = data_r;
 
 
     initial 
@@ -37,7 +41,7 @@ module sdram_controller_tb();
         rst_n = 1'b1;
         clk = 1'b0;
         instrumented_clk=1'b0;
-        data_r = 16'hzzzz;
+        data_r = 16'hx;
     end
 
     always
@@ -50,15 +54,15 @@ module sdram_controller_tb();
     initial begin
         f = $fopen("output_sdram_controller_tb_t1.txt");
         // inputs
-        $fwrite(f, "time,wr_addr,wr_data,wr_enable,rd_addr,rd_enable,rst_n,clk,");
+        $fwrite(f, "time,wr_addr,wr_data,wr_enable,rd_addr,rd_enable,rst_n,clk,data_in,");
         // outputs
-        $fwrite(f, "rd_data,rd_ready,busy,addr,bank_addr,data,clock_enable,cs_n,ras_n,cas_n,we_n,data_mask_low,data_mask_high\n");
+        $fwrite(f, "rd_data,rd_ready,busy,addr,bank_addr,data_oe,data_out,clock_enable,cs_n,ras_n,cas_n,we_n,data_mask_low,data_mask_high\n");
 	forever begin
 	    @(posedge clk);
-        // inputs
-        $fwrite(f,"%g,%d,%d,%d,%d,%d,%d,%d,", $time, haddr,data_input,wr_enable,rd_addr,rd_enable,rst_n,clk);
+       // inputs
+        $fwrite(f,"%g,%d,%d,%d,%d,%d,%d,%d,%d,", $time, haddr,data_input,wr_enable,rd_addr,rd_enable,rst_n,clk,data_in);
         // outputs
-        $fwrite(f,"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", data_output,rd_ready,busy,addr,bank_addr,data,clock_enable,cs_n,ras_n,cas_n,we_n,data_mask_low,data_mask_high);
+        $fwrite(f,"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", data_output,rd_ready,busy,addr,bank_addr,data_oe,data_out,clock_enable,cs_n,ras_n,cas_n,we_n,data_mask_low,data_mask_high);
 	end
     end
 
@@ -87,7 +91,7 @@ module sdram_controller_tb();
       haddr = 24'd0;
       
       #8 data_r = 16'hbbbb;
-      #2 data_r = 16'hzzzz;
+      #2 data_r = 16'hx;
       
       #1000
       $fclose(f);
@@ -103,7 +107,10 @@ sdram_controller sdram_controlleri (
     .busy(busy), .rd_enable(rd_enable), .wr_enable(wr_enable), .rst_n(rst_n), .clk(clk),
 
     /* SDRAM SIDE */
-    .addr(addr), .bank_addr(bank_addr), .data(data), .clock_enable(clock_enable), .cs_n(cs_n), .ras_n(ras_n), .cas_n(cas_n), .we_n(we_n), .data_mask_low(data_mask_low), .data_mask_high(data_mask_high)
+    .addr(addr), .bank_addr(bank_addr),
+    // tri-state replaced: `data`
+    .data_oe(data_oe), .data_out(data_out), .data_in(data_in),
+    .clock_enable(clock_enable), .cs_n(cs_n), .ras_n(ras_n), .cas_n(cas_n), .we_n(we_n), .data_mask_low(data_mask_low), .data_mask_high(data_mask_high)
 );
 
 endmodule
