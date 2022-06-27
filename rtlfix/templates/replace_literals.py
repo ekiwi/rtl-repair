@@ -16,31 +16,6 @@ def replace_literals(ast: vast.Source):
     repl.apply(namespace, ast)
 
 
-_bases = {'b': 2, 'o': 8, 'h': 16, 'd': 10}
-
-
-def _find_min_width(value: int) -> int:
-    assert value >= 0
-    return len(f"{value:b}")
-
-
-def parse_verilog_int_literal(value: str) -> (int, int):
-    width = None
-    if "'" in value:
-        parts = value.split("'")
-        if len(parts[0].strip()) > 0:
-            width = int(parts[0])
-        prefix = parts[1][0]
-        if prefix in _bases:
-            value = int(parts[1][1:], _bases[prefix])
-        else:
-            value = int(parts[1])
-        return value, width
-    else:
-        value = int(value)
-        return value, width
-
-
 class LiteralReplacer(RepairTemplate):
     def __init__(self, widths):
         super().__init__(name="literal")

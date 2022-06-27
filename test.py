@@ -22,6 +22,7 @@ flip_flop_dir = benchmark_dir / "cirfix" / "flip_flop"
 counter_dir = benchmark_dir / "cirfix" / "first_counter_overflow"
 fsm_dir = benchmark_dir / "cirfix" / "fsm_full"
 left_shift_dir = benchmark_dir / "cirfix" / "lshift_reg"
+sd_dir = benchmark_dir / "cirfix" / "sdram_controller"
 
 
 def run_synth(source: Path, testbench: Path, solver='z3'):
@@ -279,6 +280,16 @@ class TestTypeInference(unittest.TestCase):
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         self.assertEqual({1: 3, 8: 6, 32: 7}, hist)
+
+    def test_sdram_controller_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(sd_dir / "sdram_controller.v")
+        # ast.show()
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        expected = {None: 1, 32: 26, 5: 60, 8: 17, 2: 7, 13: 4, 1: 14, 10: 7, 4: 7, 24: 4, 16: 5, 9: 2, 3: 1}
+        self.assertEqual(expected, hist)
 
 
 if __name__ == '__main__':

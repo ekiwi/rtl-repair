@@ -3,7 +3,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 from rtlfix.visitor import AstVisitor
-from rtlfix.utils import parse_width
+from rtlfix.utils import parse_width, parse_verilog_int_literal
 import pyverilog.vparser.ast as vast
 
 
@@ -13,61 +13,6 @@ def infer_widths(ast: vast.Source) -> dict:
 
 _cmp_op = {vast.LessThan, vast.GreaterThan, vast.LessEq, vast.GreaterEq, vast.Eq, vast.NotEq, vast.Eql, vast.NotEql}
 _context_dep_bops = {vast.Plus, vast.Minus, vast.Times, vast.Divide, vast.Mod, vast.And, vast.Or, vast.Xor, vast.Xnor}
-
-
-class ExpressionWidthChecker:
-    def __init__(self, symbols: dict):
-        self.symbols = symbols
-        self.widths = dict()
-
-    def visit(self, node, env_width) -> int:
-        # caching
-        if node in self.widths:
-            return self.widths[node]
-
-        if isinstance(node, vast.Identifier):
-            width = self.symbols[node.name]
-        elif isinstance(node, vast.Pointer):
-            width = self.visit(node.var, env_width)
-            # visit the index (named ptr here for some reason?!)
-            self.visit(node.ptr, None)
-        elif isinstance(node, vast.IntConst):
-            if "'" in node.value and not node.value.startswith("'"):
-                width = int(node.value.split("'")[0])
-            else:
-                width = 32 if env_width is None else env_width
-        elif isinstance(node, vast.UnaryOperator):
-            #                        +          -            ~
-            if type(node) in {vast.Uplus, vast.Uminus, vast.Unot}:
-                width = self.visit(node.right, env_width)
-            #                        |           &         !            ~&         ~|         ^          ~^
-            elif type(node) in {vast.Uor, vast.Uand, vast.Ulnot, vast.Unand, vast.Unor, vast.Uxor, vast.Uxnor}:
-                self.visit(node.right, None)
-                width = 1
-            else:
-                raise NotImplementedError(f"TODO: deal with unary op {node} : {type(node)}")
-        elif isinstance(node, vast.Cond):  # ite / (...)? (..) : (..)
-            self.visit(node.cond, 1)
-            width_left = self.visit(node.true_value, env_width)
-            width_right = self.visit(node.false_value, env_width)
-            width = max(width_left, width_right)
-        elif isinstance(node, vast.Concat):
-            widths = [self.visit(cc, None) for cc in node.list]
-            width = max(widths)
-        elif type(node) in _context_dep_bops:
-            width_left = self.visit(node.left, env_width)
-            width_right = self.visit(node.right, env_width)
-            width = max(width_left, width_right)
-            if env_width is not None and env_width > width:
-                width = env_width
-        elif type(node) in _cmp_op:
-            width_left = self.visit(node.left, None)
-            width_right = self.visit(node.right, None)
-            width = max(width_left, width_right)
-        else:
-            raise NotImplementedError(f"TODO: deal with {node} : {type(node)}")
-        self.widths[node] = width
-        return width
 
 
 class InferWidths(AstVisitor):
@@ -80,38 +25,156 @@ class InferWidths(AstVisitor):
     def __init__(self):
         super().__init__()
         self.widths = dict()  # ast node value -> width
-        self.vars = dict()  # symbol name -> width
+        self.vars = dict()    # symbol name -> width
+        self.params = dict()  # symbol name -> value
 
     def run(self, ast: vast.Source) -> dict:
         """ returns a mapping of node -> width """
-        self.widths = dict()
+        self.widths = {None: None}
         self.vars = dict()
+        self.params = dict()
         self.visit(ast)
         return self.widths
 
-    def _get_width(self, node, env_width) -> int:
-        checker = ExpressionWidthChecker(self.vars)
-        width = checker.visit(node, env_width)
-        self.widths.update(checker.widths)
+    def expr_width(self, node, env_width) -> int:
+        # caching
+        if node in self.widths:
+            return self.widths[node]
+
+        if isinstance(node, vast.Identifier):
+            width = self.vars[node.name]
+        elif isinstance(node, vast.Pointer):
+            width = self.expr_width(node.var, env_width)
+            # visit the index (named ptr here for some reason?!)
+            self.expr_width(node.ptr, None)
+        elif isinstance(node, vast.IntConst):
+            if "'" in node.value and not node.value.startswith("'"):
+                width = int(node.value.split("'")[0])
+            else:
+                width = 32 if env_width is None else env_width
+        elif isinstance(node, vast.UnaryOperator):
+            #                        +          -            ~
+            if type(node) in {vast.Uplus, vast.Uminus, vast.Unot}:
+                width = self.expr_width(node.right, env_width)
+            #                        |           &         !            ~&         ~|         ^          ~^
+            elif type(node) in {vast.Uor, vast.Uand, vast.Ulnot, vast.Unand, vast.Unor, vast.Uxor, vast.Uxnor}:
+                self.expr_width(node.right, None)
+                width = 1
+            else:
+                raise NotImplementedError(f"TODO: deal with unary op {node} : {type(node)}")
+        elif isinstance(node, vast.Cond):  # ite / (...)? (..) : (..)
+            self.expr_width(node.cond, 1)
+            width_left = self.expr_width(node.true_value, env_width)
+            width_right = self.expr_width(node.false_value, env_width)
+            width = max(width_left, width_right)
+        elif isinstance(node, vast.Concat):
+            widths = [self.expr_width(cc, None) for cc in node.list]
+            width = max(widths)
+        elif type(node) in {vast.Rvalue, vast.Lvalue}:
+            return self.expr_width(node.var, env_width)
+        elif type(node) in _context_dep_bops:
+            width_left = self.expr_width(node.left, env_width)
+            width_right = self.expr_width(node.right, env_width)
+            width = max(width_left, width_right)
+            if env_width is not None and env_width > width:
+                width = env_width
+        elif type(node) in _cmp_op:
+            width_left = self.expr_width(node.left, None)
+            width_right = self.expr_width(node.right, None)
+            if width_right is None or width_left is None:
+                print(f"{node=} {width_left=} {width_right=}")
+                print(f"{self.vars=}")
+                print(f"{self.params=}")
+                raise NotImplementedError("Unexpected None width")
+            width = max(width_left, width_right)
+        elif isinstance(node, vast.Partselect):
+            # this is a bit slice or bit select
+            msb = self.eval(node.msb)
+            lsb = self.eval(node.lsb)
+            assert msb >= lsb >= 0, f"{msb}:{lsb}"
+            width = msb - lsb + 1
+        elif isinstance(node, vast.Repeat):
+            value_width = self.expr_width(node.value, None)
+            times = self.eval(node.times)
+            width = value_width * times
+        else:
+            raise NotImplementedError(f"TODO: deal with {node} : {type(node)}")
+        self.widths[node] = width
         return width
+
+    # tries to evaluate constants
+    def eval(self, node: vast.Node) -> int:
+        if node is None:
+            value = None
+        elif isinstance(node, vast.IntConst):
+            # we do not deal with tri-state signals!
+            if 'x' in node.value or 'z' in node.value:
+                value = None
+            else:
+                value, _ = parse_verilog_int_literal(node.value)
+        elif isinstance(node, vast.Identifier):
+            assert node.name in self.params, f"Value of {node.name} not known at compile time. Not a constant?"
+            value = self.params[node.name]
+        elif isinstance(node, vast.Rvalue):
+            value = self.eval(node.var)
+        elif isinstance(node, vast.Cond):
+            cond = self.eval(node.cond)
+            if cond == 0:
+                value = self.eval(node.false_value)
+            else:
+                value = self.eval(node.true_value)
+        elif isinstance(node, vast.GreaterThan):
+            value = int(self.eval(node.left) > self.eval(node.right))
+        elif isinstance(node, vast.Plus):
+            value = self.eval(node.left) + self.eval(node.right)
+        elif isinstance(node, vast.Minus):
+            value = self.eval(node.left) - self.eval(node.right)
+        elif isinstance(node, vast.Times):
+            value = self.eval(node.left) * self.eval(node.right)
+        elif isinstance(node, vast.Divide):
+            value = self.eval(node.left) // self.eval(node.right)
+        elif isinstance(node, vast.Width):
+            msb = self.eval(node.msb)
+            lsb = self.eval(node.lsb)
+            if msb is None or lsb is None:
+                value = None
+            else:
+                assert msb >= lsb >= 0, f"{msb}:{lsb}"
+                value = msb - lsb + 1
+        else:
+            raise NotImplementedError(f"TODO: constant prop: {node} : {type(node)}")
+        return value
+
+    def determine_var_width(self, node):
+        assert isinstance(node, vast.Variable) or isinstance(node, vast.Parameter)
+        explicit_width = self.eval(node.width)
+        if explicit_width is not None:  # if there is an explicit width annotated, take that
+            self.vars[node.name] = explicit_width
+        elif node.value is not None:    # otherwise, check if the value has a determined width
+            self.vars[node.name] = self.expr_width(node.value, None)
+        else:                           # by default if we just declare a reg/wire etc. is will be 1-bit
+            self.vars[node.name] = 1
 
     def generic_visit(self, node):
         if isinstance(node, vast.Variable):
-            self.vars[node.name] = parse_width(node.width)
+            self.determine_var_width(node)
         elif isinstance(node, vast.Parameter):
-            self.vars[node.name] = parse_width(node.width)
+            self.determine_var_width(node)
+            # TODO: we currently assume that the module will be instantiated with the
+            #       default parameters, instead one might allow the user pass a parameter assignment
+            self.params[node.name] = self.eval(node.value)
         elif isinstance(node, vast.Substitution):
             assert isinstance(node.left, vast.Lvalue)
             assert isinstance(node.right, vast.Rvalue)
             # check the lhs first because it might influence the lhs
-            lhs_width = self._get_width(node.left.var, None)
-            rhs_width = self._get_width(node.right.var, lhs_width)
+            lhs_width = self.expr_width(node.left.var, None)
+            rhs_width = self.expr_width(node.right.var, lhs_width)
         elif isinstance(node, vast.IfStatement):
-            self._get_width(node.cond, 1)
+            self.expr_width(node.cond, 1)
             self.visit(node.true_statement)
             self.visit(node.false_statement)
         elif isinstance(node, vast.Value) or isinstance(node, vast.Operator):
-            self._get_width(node, None)
+            self.expr_width(node, None)
         else:
             node = super().generic_visit(node)
         return node

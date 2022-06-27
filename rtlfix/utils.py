@@ -65,3 +65,24 @@ def ensure_block(stmt: vast.Node) -> vast.Block:
     if isinstance(stmt, vast.Block):
         return stmt
     return vast.Block(tuple([stmt]))
+
+
+_bases = {'b': 2, 'o': 8, 'h': 16, 'd': 10}
+
+
+def parse_verilog_int_literal(value: str) -> (int, int):
+    assert 'x' not in value, f"values containing 'x' like: {value} are not supported!"
+    width = None
+    if "'" in value:
+        parts = value.split("'")
+        if len(parts[0].strip()) > 0:
+            width = int(parts[0])
+        prefix = parts[1][0]
+        if prefix in _bases:
+            value = int(parts[1][1:], _bases[prefix])
+        else:
+            value = int(parts[1])
+        return value, width
+    else:
+        value = int(value)
+        return value, width
