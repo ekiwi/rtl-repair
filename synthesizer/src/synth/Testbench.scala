@@ -21,8 +21,8 @@ object Testbench {
           .split(",")
           .map(_.trim)
           .map {
-            case "x" => None
-            case num => Some(BigInt(num, 10))
+            case "x" | "X" => None
+            case num       => Some(BigInt(num, 10))
           }
           .toSeq
         assert(v.length == signals.length, s"expected ${signals.length} values, but got ${v.length} in line $line")

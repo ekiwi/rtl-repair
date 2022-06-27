@@ -120,8 +120,8 @@ object ModelCheckerSynthesizer {
   }
 
   private def readSynthVarAssignments(sys: TransitionSystem, witness: Witness): List[(String, BigInt)] = {
-    sys.states.zipWithIndex.filter { case (state, _) => isSynthName(state.name) }.map { case (state, index) =>
-      state.name -> witness.regInit(index)
+    sys.states.zipWithIndex.filter { case (state, _) => isSynthName(state.name) }.flatMap { case (state, index) =>
+      witness.regInit.get(index).map(i => state.name -> i)
     }
   }
 

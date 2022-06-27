@@ -147,4 +147,14 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
     assert(r.cannotRepair)
   }
 
+  // this takes ~22s with yices2, ~28s with bitwuzla
+  it should "determine there is nothing to fix for sdram_controller with original testbench" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "sdram_controller_replace_literals.btor",
+      CirFixDir / "sdram_controller" / "orig_tb.csv",
+      DefaultConfig.changeSolver("yices2")
+    )
+    assert(r.cannotRepair)
+  }
+
 }
