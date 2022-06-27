@@ -64,6 +64,12 @@ module sdram_controller_tb();
 
     initial
     begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, sdram_controlleri);
+    end
+
+    initial
+    begin
       #3 rst_n = 1'b0;
       #3 rst_n = 1'b1;
       
