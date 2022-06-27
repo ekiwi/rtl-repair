@@ -92,6 +92,12 @@ class TestLeftShiftReg(SynthesisTest):
         # blocking vs. non-blocking
         self.synth_success(left_shift_dir, "lshift_reg_wadden_buggy2.v", "orig_tb.csv")
 
+    def test_kgoliya_buggy1_orig_tb(self):
+        # since this is a negedge vs posedge issue which is outside the model used for model checking
+        # our tool claims everything is OK, however that is not the case!
+        # => this counts as "cannot-repair"
+        self.synth_no_repair(left_shift_dir, "lshift_reg_kgoliya_buggy1.v", "orig_tb.csv")
+
     def test_buggy_num(self):
         # wrong number in a _for loop_
         # only way to repair this would be to synthesize the following:
