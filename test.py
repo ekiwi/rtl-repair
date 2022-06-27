@@ -240,14 +240,14 @@ class TestTypeInference(unittest.TestCase):
         from rtlfix.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
         widths = infer_widths(ast)
-        self.assertEqual({1: 6}, _make_histogram(widths))
+        self.assertEqual({None: 1, 1: 6}, _make_histogram(widths))
 
     def test_flip_flop_buggy1_widths(self):
         from rtlfix import parse_verilog
         from rtlfix.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff_wadden_buggy1.v")
         widths = infer_widths(ast)
-        self.assertEqual({1: 5}, _make_histogram(widths))
+        self.assertEqual({None: 1, 1: 5}, _make_histogram(widths))
 
     def test_decoder_widths(self):
         from rtlfix import parse_verilog
@@ -255,7 +255,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({1: 5, 4: 16, 8: 17}, hist)
+        self.assertEqual({None: 1, 1: 5, 4: 16, 8: 17}, hist)
 
     def test_counter_widths(self):
         from rtlfix import parse_verilog
@@ -263,7 +263,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({1: 8, 4: 7}, hist)
+        self.assertEqual({None: 1, 1: 8, 4: 7}, hist)
 
     def test_fsm_widths(self):
         from rtlfix import parse_verilog
@@ -271,7 +271,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(fsm_dir / "fsm_full.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({1: 19, 3: 8}, hist)
+        self.assertEqual({None: 1, 1: 19, 3: 8}, hist)
 
     def test_left_shift_widths(self):
         from rtlfix import parse_verilog
@@ -279,7 +279,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(left_shift_dir / "lshift_reg.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({1: 3, 8: 6, 32: 7}, hist)
+        self.assertEqual({None: 1, 1: 3, 8: 7, 32: 6}, hist)
 
     def test_sdram_controller_widths(self):
         from rtlfix import parse_verilog
