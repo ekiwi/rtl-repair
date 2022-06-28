@@ -36,7 +36,10 @@ module sdram_controller (
     busy, rst_n, clk,
 
     /* SDRAM SIDE */
-    addr, bank_addr, data, clock_enable, cs_n, ras_n, cas_n, we_n,
+    addr, bank_addr,
+    // replaced tri-state `data
+    data_out, data_in, data_oe,
+    clock_enable, cs_n, ras_n, cas_n, we_n,
     data_mask_low, data_mask_high
 );
 
@@ -119,7 +122,11 @@ input                      clk;
 //output [BANK_WIDTH-1:0]    bank_addr;
 output [12:0]              addr;
 output [1:0]               bank_addr;
-inout  [15:0]              data;
+// replaced tri-state
+//inout  [15:0]              data;
+output                     data_oe;
+output [15:0]              data_out;
+input  [15:0]              data_in;
 output                     clock_enable;
 output                     cs_n;
 output                     ras_n;
@@ -165,7 +172,10 @@ assign {clock_enable, cs_n, ras_n, cas_n, we_n} = command[7:3];
 assign bank_addr      = (state[4]) ? bank_addr_r : command[2:1];
 assign addr           = (state[4] | state == INIT_LOAD) ? addr_r : { {SDRADDR_WIDTH-11{1'b0}}, command[0], 10'd0 };
 
-assign data = (state == WRIT_CAS) ? wr_data_r : 16'bz;
+// replaced tri-state
+//assign data = (state == WRIT_CAS) ? wr_data_r : 16'bz;
+assign data_oe = state == WRIT_CAS;
+assign data_out = wr_data_r;
 assign rd_ready = rd_ready_r;
 
 // HOST INTERFACE
@@ -198,7 +208,7 @@ always @ (posedge clk)
 
     if (state == READ_READ)
       begin
-      rd_data_r <= data;
+      rd_data_r <= data_in;
       rd_ready_r <= 1'b1;
       end
     else
