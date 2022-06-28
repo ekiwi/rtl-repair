@@ -57,7 +57,8 @@ def _check_for_verilator():
 
 
 # while WIDTH warnings can be indicative of a bug, they are generally too noisy to deal with easily
-_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY", "UNUSED", "EOFNEWLINE", "WIDTH"}
+# CASEOVERLAP might be an interesting warning to deal with
+_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY", "UNUSED", "EOFNEWLINE", "WIDTH", "CASEOVERLAP"}
 _verilator_lint_flags = ["--lint-only", "-Wno-fatal", "-Wall"] + [f"-Wno-{w}" for w in _ignore_warnings]
 _verilator_re = re.compile(r"%Warning-([A-Z]+): ([^:]+):(\d+):(\d+):([^\n]+)")
 

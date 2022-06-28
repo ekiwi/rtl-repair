@@ -29,8 +29,12 @@ class Inverter(RepairTemplate):
         # ignore constants as they are already covered by the literal replacer template
         if isinstance(node, vast.Constant):
             return node
-        # visit children
-        node = super().generic_visit(node)
+        # for repeat operators, we do not want to visit the times child since that expects a constant
+        if isinstance(node, vast.Repeat):
+            node.value = self.visit(node.value)
+        else:
+            # visit all children
+            node = super().generic_visit(node)
         # if it is a 1-bit node, add the possibility to invert
         if node in self.widths and self.widths[node] == 1:
             # add possibility to invert boolean expression

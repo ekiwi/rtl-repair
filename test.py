@@ -87,6 +87,11 @@ class TestSdRamController(SynthesisTest):
         # this only works with zero init because otherwise the original design has some x-prop issues
         self.synth_no_repair(sd_dir, "sdram_controller.v", "orig_tb.csv", init='zero')
 
+    @unittest.skip("this is currently not terminating within 30min")
+    def test_wadden_buggy2_orig_tb(self):
+        # one messed up constant (READ_NOP1)
+        self.synth_success(sd_dir, "sdram_controller_wadden_buggy2.v", "orig_tb.csv", init='zero')
+
 
 class TestLeftShiftReg(SynthesisTest):
 
