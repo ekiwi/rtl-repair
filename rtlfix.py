@@ -27,6 +27,7 @@ class Config:
     testbench: Path
     working_dir: Path
     solver: str
+    init: str
     show_ast: bool
     parallel: bool
 
@@ -38,14 +39,17 @@ def parse_args() -> Config:
     parser.add_argument('--working-dir', dest='working_dir', help='Working directory, files might be overwritten!',
                         required=True)
     parser.add_argument('--solver', dest='solver', help='z3 or optimathsat', default="z3")
+    parser.add_argument('--init', dest='init', help='how should states be initialized? [any], zero or random',
+                        default="any")
     parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
                         action='store_true')
     parser.add_argument('--parallel', dest='parallel', help='try to apply repair templates in parallel',
                         action='store_true')
     args = parser.parse_args()
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
-    return Config(Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.show_ast,
-                  args.parallel)
+    assert args.init in {'any', 'zero', 'random'}
+    return Config(Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.init,
+                  args.show_ast, args.parallel)
 
 
 def create_working_dir(working_dir: Path):
@@ -82,7 +86,7 @@ def try_template(config: Config, ast, prefix: str, template):
     template(ast)
     synth_start_time = time.monotonic()
     synth = Synthesizer()
-    result = synth.run(config.source.name, template_dir, ast, config.testbench, config.solver)
+    result = synth.run(config.source.name, template_dir, ast, config.testbench, config.solver, config.init)
     synth_time = time.monotonic() - synth_start_time
     # add some metadata to result
     result["template"] = template_name

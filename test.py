@@ -25,7 +25,7 @@ left_shift_dir = benchmark_dir / "cirfix" / "lshift_reg"
 sd_dir = benchmark_dir / "cirfix" / "sdram_controller"
 
 
-def run_synth(source: Path, testbench: Path, solver='z3'):
+def run_synth(source: Path, testbench: Path, solver='z3', init='any'):
     if not working_dir.exists():
         os.mkdir(working_dir)
     dir_name = source.stem + "_" + testbench.stem
@@ -35,6 +35,7 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
         "--testbench", str(testbench.resolve()),
         "--solver", solver,
         "--working-dir", str(out_dir.resolve()),
+        "--init", init
     ]
     if _parallel:
         args += ["--parallel"]
@@ -59,25 +60,32 @@ def run_synth(source: Path, testbench: Path, solver='z3'):
 
 class SynthesisTest(unittest.TestCase):
 
-    def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, max_changes: int = 2):
+    def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any', max_changes: int = 2):
         start = time.monotonic()
-        status, changes, template = run_synth(dir / design, dir / testbench, solver)
+        status, changes, template = run_synth(dir / design, dir / testbench, solver, init)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
             print(f"SUCCESS: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
-    def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver):
+    def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any'):
         start = time.monotonic()
-        self.assertEqual("no-repair", run_synth(dir / design, dir / testbench, solver)[0])
+        self.assertEqual("no-repair", run_synth(dir / design, dir / testbench, solver, init)[0])
         if _print_time:
             print(f"NO-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
-    def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver):
+    def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any'):
         start = time.monotonic()
-        self.assertEqual("cannot-repair", run_synth(dir / design, dir / testbench, solver)[0])
+        self.assertEqual("cannot-repair", run_synth(dir / design, dir / testbench, solver, init)[0])
         if _print_time:
             print(f"CANNOT-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
+
+
+class TestSdRamController(SynthesisTest):
+
+    def test_orig_orig_tb(self):
+        # this only works with zero init because otherwise the original design has some x-prop issues
+        self.synth_no_repair(sd_dir, "sdram_controller.v", "orig_tb.csv", init='zero')
 
 
 class TestLeftShiftReg(SynthesisTest):
