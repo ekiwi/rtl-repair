@@ -156,7 +156,7 @@ class TestFsmFull(SynthesisTest):
     def test_super_buggy(self):
         # this one contains a sens list bug which might be impossible to repair
         # TODO: check if the repair makes sense!
-        self.synth_success(fsm_dir, "fsm_full_super_buggy.v", "orig_tb.csv", max_changes=4)
+        self.synth_success(fsm_dir, "fsm_full_super_buggy.v", "orig_tb.csv", max_changes=6)
 
 
 class TestFlipFlop(SynthesisTest):
