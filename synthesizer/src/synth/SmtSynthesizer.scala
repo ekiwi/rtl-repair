@@ -167,7 +167,15 @@ object SmtSynthesizer {
     val freeVarAssignment = freeVars.readValues(ctx)
     if (config.verbose) {
       println("Assignment for free variables which makes the testbench fail:")
-      freeVarAssignment.foreach { case (name, value) => println(s" - $name = $value") }
+      val hideUnnamedInputs = true
+      if (hideUnnamedInputs) {
+        println("(hiding un-named inputs starting with _input)")
+        freeVarAssignment.filterNot(_._1.startsWith("_input")).foreach { case (name, value) =>
+          println(s" - $name = $value")
+        }
+      } else {
+        freeVarAssignment.foreach { case (name, value) => println(s" - $name = $value") }
+      }
     }
     ctx.pop()
     Some(freeVarAssignment)

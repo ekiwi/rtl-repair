@@ -151,10 +151,10 @@ class SynthesizerDecoderTests extends SynthesizerSpec {
   it should "determine there is nothing to fix for sdram_controller with original testbench" in {
     val r = Synthesizer.run(
       BenchmarkDir / "sdram_controller_replace_literals.btor",
-      CirFixDir / "sdram_controller" / "orig_tb.csv",
-      DefaultConfig.changeSolver("yices2")
+      CirFixDir / "sdram_controller" / "orig_tb_output_x_until_reset.csv",
+      DefaultConfig.changeSolver("bitwuzla").makeVerbose().changeInit(ZeroInit)
     )
-    assert(r.cannotRepair)
+    assert(r.noRepairNecessary)
   }
 
 }

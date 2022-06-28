@@ -16,6 +16,8 @@ case class Arguments(
 case class Config(
   solver:  Option[Solver] = Some(Z3SMTLib),
   checker: Option[IsModelChecker] = None,
+  init:    InitType = AnyInit,
+  seed:    Long = 0, // currently used to seed random state init if the option is selected
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
   unroll:      Boolean = false,
@@ -35,7 +37,15 @@ case class Config(
   }
   def makeVerbose(): Config = copy(verbose = true)
   def forceUnroll(): Config = copy(unroll = true)
+  def changeInit(tpe: InitType): Config = copy(init = tpe)
 }
+
+sealed trait InitType
+case object ZeroInit extends InitType
+case object RandomInit extends InitType
+
+/** creates an exists for all problem where the solution has to work for any initial state assignment */
+case object AnyInit extends InitType
 
 class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
   head("synthesizer", "0.2")
@@ -59,4 +69,14 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     args.copy(config = args.config.changeSolver(a))
   }
     .text("z3 or optimathsat or btormc")
+  opt[String]("init").action { (a, args) =>
+    val tpe = a match {
+      case "any"    => AnyInit
+      case "zero"   => ZeroInit
+      case "random" => RandomInit
+      case other    => throw new RuntimeException(s"Un-supported init type: $other. Try: any, zero or random")
+    }
+    args.copy(config = args.config.changeInit(tpe))
+  }
+    .text("any, zero or random")
 }

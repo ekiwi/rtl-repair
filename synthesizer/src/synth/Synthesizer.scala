@@ -38,17 +38,45 @@ object Synthesizer {
     val sys = inlineAndRemoveDeadCode(Btor2.load(design))
     val tbRaw = Testbench.removeRow("time", Testbench.load(testbench))
     val tb = Testbench.checkSignals(sys, tbRaw, verbose = config.verbose)
+    val rnd = new scala.util.Random(config.seed)
+
+    // initialize unconstrained states according to config
+    val initializedSys = initSys(sys, config.init, rnd)
 
     // find synthesis variables and remove them from the system for now
-    val (noSynthVarSys, synthVars) = collectSynthesisVars(sys)
+    val (noSynthVarSys, synthVars) = collectSynthesisVars(initializedSys)
+
+    // println(noSynthVarSys.serialize)
 
     if (config.solver.isDefined) {
       SmtSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
     } else {
       assert(config.checker.isDefined)
       // it is important that we pass the system _with_ synthesis variables!
-      ModelCheckerSynthesizer.doRepair(sys, tb, synthVars, config)
+      ModelCheckerSynthesizer.doRepair(initializedSys, tb, synthVars, config)
     }
+  }
+
+  private def initSys(sys: TransitionSystem, tpe: InitType, rnd: scala.util.Random): TransitionSystem = tpe match {
+    case ZeroInit | RandomInit =>
+      val getValue = if (tpe == ZeroInit) { (width: Int) =>
+        BVLiteral(0, width)
+      } else { (width: Int) =>
+        BVLiteral(BigInt(width, rnd), width)
+      }
+      val states = sys.states.map { state =>
+        if (isSynthName(state.name)) {
+          state
+        } else {
+          val init = state.init match {
+            case Some(value) => value
+            case None        => getValue(state.sym.asInstanceOf[BVSymbol].width)
+          }
+          state.copy(init = Some(init))
+        }
+      }
+      sys.copy(states = states)
+    case AnyInit => sys
   }
 
   def isSynthName(name: String): Boolean =
