@@ -14,10 +14,11 @@ case class Arguments(
   config:    Config = Config())
 
 case class Config(
-  solver:  Option[Solver] = Some(Z3SMTLib),
-  checker: Option[IsModelChecker] = None,
-  init:    InitType = AnyInit,
-  seed:    Long = 0, // currently used to seed random state init if the option is selected
+  solver:      Option[Solver] = Some(Z3SMTLib),
+  checker:     Option[IsModelChecker] = None,
+  init:        InitType = AnyInit,
+  incremental: Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
+  seed:        Long = 0, // currently used to seed random state init if the option is selected
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
   unroll:      Boolean = false,
@@ -38,6 +39,7 @@ case class Config(
   def makeVerbose(): Config = copy(verbose = true)
   def forceUnroll(): Config = copy(unroll = true)
   def changeInit(tpe: InitType): Config = copy(init = tpe)
+  def useIncremental(): Config = copy(incremental = true)
 }
 
 sealed trait InitType

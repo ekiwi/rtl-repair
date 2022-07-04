@@ -36,12 +36,13 @@ object Synthesizer {
   def run(design: os.Path, testbench: os.Path, config: Config): RepairResult = {
     // load design and testbench and validate them
     val sys = inlineAndRemoveDeadCode(Btor2.load(design))
+    val sysWithoutUndef = setAnonymousInputsToZero(sys)
     val tbRaw = Testbench.removeRow("time", Testbench.load(testbench))
-    val tb = Testbench.checkSignals(sys, tbRaw, verbose = config.verbose)
+    val tb = Testbench.checkSignals(sysWithoutUndef, tbRaw, verbose = config.verbose)
     val rnd = new scala.util.Random(config.seed)
 
     // initialize unconstrained states according to config
-    val initializedSys = initSys(sys, config.init, rnd)
+    val initializedSys = initSys(sysWithoutUndef, config.init, rnd)
 
     // find synthesis variables and remove them from the system for now
     val (noSynthVarSys, synthVars) = collectSynthesisVars(initializedSys)
@@ -49,12 +50,31 @@ object Synthesizer {
     // println(noSynthVarSys.serialize)
 
     if (config.solver.isDefined) {
-      SmtSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
+      if (config.incremental) {
+        IncrementalSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
+      } else {
+        SmtSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
+      }
     } else {
+      assert(!config.incremental)
       assert(config.checker.isDefined)
       // it is important that we pass the system _with_ synthesis variables!
       ModelCheckerSynthesizer.doRepair(initializedSys, tb, synthVars, config)
     }
+  }
+
+  /** Remove any inputs named `_input_[...]` and replace their use with a literal zero.
+    * This essentially gets rid of all undefined value modelling by yosys.
+    */
+  def setAnonymousInputsToZero(sys: TransitionSystem): TransitionSystem = {
+    def isAnonymousInput(input: BVSymbol): Boolean = input.name.startsWith("_input_")
+    val inputs = sys.inputs.filterNot(isAnonymousInput)
+    def onExpr(e: SMTExpr): SMTExpr = e match {
+      case sym: BVSymbol if isAnonymousInput(sym) => BVLiteral(0, sym.width)
+      case other => SMTExprMap.mapExpr(other, onExpr)
+    }
+    val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
+    sys.copy(inputs = inputs, signals = signals)
   }
 
   private def initSys(sys: TransitionSystem, tpe: InitType, rnd: scala.util.Random): TransitionSystem = tpe match {
