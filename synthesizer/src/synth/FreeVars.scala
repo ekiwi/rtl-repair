@@ -19,6 +19,8 @@ case class FreeVars(stateInit: Seq[(String, SMTSymbol)], inputs: Seq[((String, I
 
 object FreeVars {
 
+  type Assignment = Seq[((Int, String), BigInt)]
+
   // note: this suffix cannot be "_init" since that would clash with a built-in name used in the TransitionSystem encoding
   val InitSuffix = "_init_val"
 

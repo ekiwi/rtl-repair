@@ -73,4 +73,13 @@ object Testbench {
       tb.copy(signals = signals, values = values)
     }
   }
+
+  /** concretely execute the testbench on the given transition system */
+  def run(sys: TransitionSystem, tb: Testbench): TestbenchResult = {
+    // we need all starting states to be concrete
+
+    ???
+  }
 }
+
+case class TestbenchResult()

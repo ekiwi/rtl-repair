@@ -139,7 +139,7 @@ object ModelCheckerSynthesizer {
     tb:         Testbench,
     freeInputs: Seq[(Int, BVSymbol)],
     verbose:    Boolean
-  ): Option[Seq[((Int, String), BigInt)]] = {
+  ): Option[FreeVars.Assignment] = {
     val withTB = instantiateTestbench(sys, tb, assertDontAssumeOutputs = true, freeVarAssignments = Map())
     // TODO: place this in working directory instead of making a temporary file
     val temp = os.temp(suffix = ".btor")
