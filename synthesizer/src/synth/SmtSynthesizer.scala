@@ -6,22 +6,14 @@ package synth
 
 import maltese.mc._
 import maltese.smt._
+import synth.Synthesizer.encodeSystem
 
 /** Takes in a Transition System with synthesis variables +  a testbench and tries to find a valid synthesis assignment. */
 object SmtSynthesizer {
-  import synth.Synthesizer.{countChanges, countChangesInAssignment}
+  import synth.Synthesizer.{countChanges, countChangesInAssignment, startSolver}
 
   def doRepair(sys: TransitionSystem, tb: Testbench, synthVars: SynthVars, config: Config): RepairResult = {
-    // create solver context
-    val solver = config.solver.get
-    val ctx = solver.createContext(debugOn = config.debugSolver)
-    if (solver.name.contains("z3")) {
-      ctx.setLogic("ALL")
-    } else if (solver.supportsUninterpretedSorts) {
-      ctx.setLogic("QF_AUFBV")
-    } else {
-      ctx.setLogic("QF_ABV")
-    }
+    val ctx = startSolver(config)
     val namespace = Namespace(sys)
 
     // declare synthesis variables
@@ -48,7 +40,7 @@ object SmtSynthesizer {
     instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = false, config = config)
 
     // try to synthesize constants
-    val synthFun = if (solver.supportsSoftAssert) { maxSmtSynthesis _ }
+    val synthFun = if (ctx.solver.supportsSoftAssert) { maxSmtSynthesis _ }
     else { customSynthesis _ }
 
     val results = synthFun(ctx, synthVars, config.verbose) match {
@@ -182,7 +174,7 @@ object SmtSynthesizer {
   }
 
   /** Unrolls the system and adds all testbench constraints. Returns symbols for all undefined initial states and inputs. */
-  private def instantiateTestbench(
+  def instantiateTestbench(
     ctx:                     SolverContext,
     sys:                     TransitionSystem,
     tb:                      Testbench,
@@ -193,14 +185,7 @@ object SmtSynthesizer {
     val sysWithInitVars = FreeVars.addStateInitFreeVars(sys, freeVars)
 
     // load system and communicate to solver
-    val doUnroll = ctx.solver.supportsUninterpretedSorts || config.unroll
-    val encoding: TransitionSystemSmtEncoding = if (doUnroll) {
-      new CompactSmtEncoding(sysWithInitVars)
-    } else { new UnrollSmtEncoding(sysWithInitVars) }
-
-    // define synthesis constants
-    encoding.defineHeader(ctx)
-    encoding.init(ctx)
+    val encoding = encodeSystem(sysWithInitVars, ctx, config)
 
     // get some meta data for testbench application
     val signalWidth = (

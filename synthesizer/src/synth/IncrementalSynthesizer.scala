@@ -9,7 +9,8 @@ import maltese.smt._
 
 /** Tries to synthesize a solution without completely unrolling the system. */
 object IncrementalSynthesizer {
-  import synth.Synthesizer.{initSys, isSynthName}
+  import synth.Synthesizer._
+  import synth.SmtSynthesizer._
 
   def doRepair(
     sys:       TransitionSystem,
@@ -24,7 +25,39 @@ object IncrementalSynthesizer {
     val noChange = noSynth(initialized)
 
     // execute testbench on system
-    Testbench.run(noChange, tb)
+    val exec = Testbench.run(noChange, tb)
+    if (!exec.failed) {
+      if (config.verbose) println("No failure. System seems to work without any changes.")
+      return NoRepairNecessary
+    }
+
+    // start solver and declare system
+    val ctx = startSolver(config)
+    val enc = encodeSystem(sys, ctx, config)
+
+    // start k steps before failure
+    val k = 2
+    val start = Seq(exec.failAt - k, 0).max
+    val startValues = exec.values(start)
+    sys.states.foreach { st =>
+      val sym = st.sym.asInstanceOf[BVSymbol]
+      val eq = BVEqual(enc.getSignalAt(sym, 0), BVLiteral(startValues(sym.name), sym.width))
+      ctx.assert(eq)
+    }
+
+    // unroll for k, applying the appropriate inputs and outputs
+    val shortTb = tb.slice(start, start + k)
+    // instantiateTestbench(ctx, sys, shortTb, freeVars)
+    // TODO: adept instantiate function
+
+    // check to see if a fix to the system exists that will make the outputs not fail
+    ctx.check() match {
+      case IsSat =>
+        println("Potential solutions found!")
+      case IsUnSat =>
+        println("No solution")
+      case IsUnknown => ???
+    }
 
     println(noChange.serialize)
 

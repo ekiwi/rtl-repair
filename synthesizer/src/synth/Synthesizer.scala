@@ -134,6 +134,32 @@ object Synthesizer {
 
   def countChangesInAssignment(assignment: List[(String, BigInt)]): Int =
     assignment.filter(t => isSynthName(t._1)).map(_._2).sum.toInt
+
+  def startSolver(config: Config): SolverContext = {
+    // create solver context
+    val solver = config.solver.get
+    val ctx = solver.createContext(debugOn = config.debugSolver)
+    if (solver.name.contains("z3")) {
+      ctx.setLogic("ALL")
+    } else if (solver.supportsUninterpretedSorts) {
+      ctx.setLogic("QF_AUFBV")
+    } else {
+      ctx.setLogic("QF_ABV")
+    }
+    ctx
+  }
+
+  def encodeSystem(sys: TransitionSystem, ctx: SolverContext, config: Config): TransitionSystemSmtEncoding = {
+    val doUnroll = ctx.solver.supportsUninterpretedSorts || config.unroll
+    val encoding = if (doUnroll) {
+      new CompactSmtEncoding(sys)
+    } else {
+      new UnrollSmtEncoding(sys)
+    }
+    encoding.defineHeader(ctx)
+    encoding.init(ctx)
+    encoding
+  }
 }
 
 sealed trait RepairResult {

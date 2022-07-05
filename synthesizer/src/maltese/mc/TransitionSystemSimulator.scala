@@ -101,11 +101,13 @@ class TransitionSystemSimulator(
 
   private def arrayDepth(indexWidth: Int): Int = (BigInt(1) << indexWidth).toInt
 
-  private def init(
+  def init(
     regInit: Map[Int, BigInt],
     memInit: Map[Int, Seq[(Option[BigInt], BigInt)]],
     withVcd: Boolean
   ): Unit = {
+    stepCount = 0
+
     // initialize vcd
     vcdWriter =
       if (!withVcd) None
@@ -153,7 +155,10 @@ class TransitionSystemSimulator(
     }
   }
 
-  private def step(index: Int, inputs: Map[Int, BigInt], expectedFailed: Option[Seq[String]] = None): Unit = {
+  private var stepCount: Int = 0
+
+  def step(inputs: Map[Int, BigInt], expectedFailed: Option[Seq[String]] = None): Unit = {
+    val index = stepCount; stepCount += 1
     vcdWriter.foreach(_.wireChanged("Step", index))
 
     if (printUpdates) println(s"\nSTEP $index")
@@ -259,9 +264,9 @@ class TransitionSystemSimulator(
     witness.inputs.zipWithIndex.foreach { case (inputs, index) =>
       // on the last step we expect the bad states to be entered
       if (index == witness.inputs.size - 1) {
-        step(index, inputs, Some(witness.failed))
+        step(inputs, Some(witness.failed))
       } else {
-        step(index, inputs)
+        step(inputs)
       }
     }
     vcdFileName.foreach { ff =>

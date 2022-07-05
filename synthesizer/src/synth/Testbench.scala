@@ -4,10 +4,11 @@
 
 package synth
 
-import maltese.mc.{IsOutput, TransitionSystem, TransitionSystemSimulator}
+import maltese.mc.{IsOutput, TransitionSystem, TransitionSystemSim, TransitionSystemSimulator}
 
 case class Testbench(signals: Seq[String], values: Seq[Seq[Option[BigInt]]]) {
   def length: Int = values.length
+  def slice(from: Int, until: Int): Testbench = copy(values = values.slice(from, until))
 }
 
 object Testbench {
@@ -74,13 +75,68 @@ object Testbench {
     }
   }
 
+  /** extracts name and index of each input to the testbench */
+  private def filterInputs(sys: TransitionSystem, tb: Testbench): Seq[(String, Int)] = {
+    val isInput = sys.inputs.map(_.name).toSet
+    tb.signals.zipWithIndex.filter(t => isInput(t._1))
+  }
+
+  /** extracts name and index of each output to the testbench */
+  private def filterOutputs(sys: TransitionSystem, tb: Testbench): Seq[(String, Int)] = {
+    val isOutput = sys.signals.filter(_.lbl == IsOutput).map(_.name).toSet
+    tb.signals.zipWithIndex.filter(t => isOutput(t._1))
+  }
+
+  /**
+    */
+  private def getValueMap(signals: Seq[(String, Int)], values: Seq[Option[BigInt]]): Map[String, BigInt] = {
+    signals.flatMap { case (name, ii) =>
+      values(ii) match {
+        case Some(value) => Some(name -> value)
+        case None        => None
+      }
+    }.toMap
+  }
+
   /** concretely execute the testbench on the given transition system */
   def run(sys: TransitionSystem, tb: Testbench): TestbenchResult = {
     // we need all starting states to be concrete
-    val sim = new TransitionSystemSimulator(sys)
-
-    ???
+    sys.states.foreach(s => assert(s.init.isDefined, s"uninitialized state $s"))
+    val inputs = filterInputs(sys, tb)
+    val outputs = filterOutputs(sys, tb)
+    val sim = new TransitionSystemSim(sys)
+    var failAt = -1
+    val values = tb.values.map { values =>
+      // apply input and evaluate signals
+      sim.poke(getValueMap(inputs, values))
+      sim.update()
+      // check outputs
+      val outVals = outputs.map { case (name, ii) =>
+        val actual = sim.peek(name)
+        values(ii) match {
+          case Some(expected) =>
+            if (expected != actual) {
+              //println(s"$expected != $actual $name@${sim.getStepCount}")
+              if (failAt < 0) {
+                failAt = sim.getStepCount
+              }
+            }
+          case None => // ignore
+        }
+        name -> actual
+      }
+      // copy state
+      val state = sys.states.map(s => s.name -> sim.peek(s.name))
+      // advance state
+      sim.step()
+      // report output and state values
+      (outVals ++ state).toMap
+    }
+    TestbenchResult(values, failAt)
   }
+
 }
 
-case class TestbenchResult()
+case class TestbenchResult(values: Seq[Map[String, BigInt]], failAt: Int = -1) {
+  def failed: Boolean = failAt >= 0
+}
