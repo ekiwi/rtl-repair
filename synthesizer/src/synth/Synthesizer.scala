@@ -51,7 +51,7 @@ object Synthesizer {
 
     if (config.solver.isDefined) {
       if (config.incremental) {
-        IncrementalSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
+        IncrementalSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config, rnd)
       } else {
         SmtSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
       }
@@ -77,7 +77,7 @@ object Synthesizer {
     sys.copy(inputs = inputs, signals = signals)
   }
 
-  private def initSys(sys: TransitionSystem, tpe: InitType, rnd: scala.util.Random): TransitionSystem = tpe match {
+  def initSys(sys: TransitionSystem, tpe: InitType, rnd: scala.util.Random): TransitionSystem = tpe match {
     case ZeroInit | RandomInit =>
       val getValue = if (tpe == ZeroInit) { (width: Int) =>
         BVLiteral(0, width)

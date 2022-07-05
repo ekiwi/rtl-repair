@@ -4,7 +4,7 @@
 
 package synth
 
-import maltese.mc.{IsOutput, TransitionSystem}
+import maltese.mc.{IsOutput, TransitionSystem, TransitionSystemSimulator}
 
 case class Testbench(signals: Seq[String], values: Seq[Seq[Option[BigInt]]]) {
   def length: Int = values.length
@@ -77,6 +77,7 @@ object Testbench {
   /** concretely execute the testbench on the given transition system */
   def run(sys: TransitionSystem, tb: Testbench): TestbenchResult = {
     // we need all starting states to be concrete
+    val sim = new TransitionSystemSimulator(sys)
 
     ???
   }
