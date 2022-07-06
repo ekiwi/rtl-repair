@@ -133,7 +133,10 @@ object Synthesizer {
   }
 
   def countChangesInAssignment(assignment: List[(String, BigInt)]): Int =
-    assignment.filter(t => isSynthName(t._1)).map(_._2).sum.toInt
+    assignment.filter(t => t._1.startsWith(SynthChangePrefix)).map(_._2).sum.toInt
+
+  def getChangesInAssignment(assignment: List[(String, BigInt)]): List[String] =
+    assignment.filter(_._2 == 1).map(_._1).filter(_.startsWith(SynthChangePrefix))
 
   def startSolver(config: Config): SolverContext = {
     // create solver context

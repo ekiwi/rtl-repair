@@ -99,7 +99,7 @@ object Testbench {
   }
 
   /** concretely execute the testbench on the given transition system */
-  def run(sys: TransitionSystem, tb: Testbench): TestbenchResult = {
+  def run(sys: TransitionSystem, tb: Testbench, verbose: Boolean): TestbenchResult = {
     // we need all starting states to be concrete
     sys.states.foreach(s => assert(s.init.isDefined, s"uninitialized state $s"))
     val inputs = filterInputs(sys, tb)
@@ -116,9 +116,11 @@ object Testbench {
         values(ii) match {
           case Some(expected) =>
             if (expected != actual) {
-              //println(s"$expected != $actual $name@${sim.getStepCount}")
               if (failAt < 0) {
                 failAt = sim.getStepCount
+              }
+              if (sim.getStepCount == failAt) {
+                if (verbose) println(s"$expected != $actual $name@${sim.getStepCount}")
               }
             }
           case None => // ignore

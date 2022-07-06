@@ -40,10 +40,7 @@ object SmtSynthesizer {
     instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = false, config = config)
 
     // try to synthesize constants
-    val synthFun = if (ctx.solver.supportsSoftAssert) { maxSmtSynthesis _ }
-    else { customSynthesis _ }
-
-    val results = synthFun(ctx, synthVars, config.verbose) match {
+    val results = synthesize(ctx, synthVars, config.verbose) match {
       case Some(value) => value
       case None        => return CannotRepair
     }
@@ -63,6 +60,14 @@ object SmtSynthesizer {
     ctx.close()
     RepairSuccess(results)
   }
+
+  /** automatically selects the correct synthesis function depending on config and solver capabilities. */
+  def synthesize(
+    ctx:       SolverContext,
+    synthVars: SynthVars,
+    verbose:   Boolean
+  ): Option[List[(String, BigInt)]] = if (ctx.solver.supportsSoftAssert) { maxSmtSynthesis(ctx, synthVars, verbose) }
+  else { customSynthesis(ctx, synthVars, verbose) }
 
   private def maxSmtSynthesis(
     ctx:       SolverContext,
@@ -130,7 +135,7 @@ object SmtSynthesizer {
     throw new RuntimeException(s"Should not get here!")
   }
 
-  private def performNChanges(ctx: SolverContext, synthVars: SynthVars, n: Int): Unit = {
+  def performNChanges(ctx: SolverContext, synthVars: SynthVars, n: Int): Unit = {
     require(n >= 0)
     require(n <= synthVars.change.length)
     val sum = countChanges(synthVars)
