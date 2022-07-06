@@ -33,6 +33,8 @@ object IncrementalSynthesizer {
 
     // start solver and declare system
     val ctx = startSolver(config)
+    // declare synthesis variables
+    synthVars.declare(ctx)
     val enc = encodeSystem(sys, ctx, config)
 
     // start k steps before failure
@@ -47,8 +49,7 @@ object IncrementalSynthesizer {
 
     // unroll for k, applying the appropriate inputs and outputs
     val shortTb = tb.slice(start, start + k)
-    // instantiateTestbench(ctx, sys, shortTb, freeVars)
-    // TODO: adept instantiate function
+    instantiateTestbench(ctx, enc, sys, shortTb, (a, b) => None, assertDontAssumeOutputs = false)
 
     // check to see if a fix to the system exists that will make the outputs not fail
     ctx.check() match {

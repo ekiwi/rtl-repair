@@ -173,7 +173,7 @@ object SmtSynthesizer {
     Some(freeVarAssignment)
   }
 
-  /** Unrolls the system and adds all testbench constraints. Returns symbols for all undefined initial states and inputs. */
+  /** Unrolls the system and adds all testbench constraints. */
   def instantiateTestbench(
     ctx:                     SolverContext,
     sys:                     TransitionSystem,
@@ -188,13 +188,28 @@ object SmtSynthesizer {
     val encoding = encodeSystem(sysWithInitVars, ctx, config)
 
     // get some meta data for testbench application
+    val getFreeInputVar = freeVars.inputs.toMap
+    def getFreeInputConstraint(sym: BVSymbol, ii: Int): Option[BVExpr] = Some(getFreeInputVar(sym.name -> ii))
+    instantiateTestbench(ctx, encoding, sysWithInitVars, tb, getFreeInputConstraint _, assertDontAssumeOutputs)
+  }
+
+  /** Unrolls the system and adds all testbench constraints. Returns symbols for all undefined initial states and inputs. */
+  def instantiateTestbench(
+    ctx:                     SolverContext,
+    encoding:                TransitionSystemSmtEncoding,
+    sys:                     TransitionSystem,
+    tb:                      Testbench,
+    getFreeInputConstraint:  (BVSymbol, Int) => Option[BVExpr],
+    assertDontAssumeOutputs: Boolean
+  ): Unit = {
+
+    // get some meta data for testbench application
     val signalWidth = (
-      sysWithInitVars.inputs.map(i => i.name -> i.width) ++
-        sysWithInitVars.signals.filter(_.lbl == IsOutput).map(s => s.name -> s.e.asInstanceOf[BVExpr].width)
+      sys.inputs.map(i => i.name -> i.width) ++
+        sys.signals.filter(_.lbl == IsOutput).map(s => s.name -> s.e.asInstanceOf[BVExpr].width)
     ).toMap
     val tbSymbols = tb.signals.map(name => BVSymbol(name, signalWidth(name)))
-    val isInput = sysWithInitVars.inputs.map(_.name).toSet
-    val getFreeInputVar = freeVars.inputs.toMap
+    val isInput = sys.inputs.map(_.name).toSet
 
     // unroll system k-1 times
     tb.values.drop(1).foreach(_ => encoding.unroll(ctx))
@@ -205,9 +220,8 @@ object SmtSynthesizer {
         case (value, sym) if isInput(sym.name) =>
           val signal = encoding.getSignalAt(sym, ii)
           value match {
-            case None => // assign arbitrary value if input is X
-              val freeVar = getFreeInputVar(sym.name -> ii)
-              Some(BVEqual(signal, freeVar))
+            case None =>
+              getFreeInputConstraint(sym, ii).map(v => BVEqual(signal, v))
             case Some(num) =>
               Some(BVEqual(signal, BVLiteral(num, sym.width)))
           }

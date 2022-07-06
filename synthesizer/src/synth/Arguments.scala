@@ -36,8 +36,9 @@ case class Config(
       case other         => throw new RuntimeException(s"Unknown solver $other")
     }
   }
-  def makeVerbose(): Config = copy(verbose = true)
-  def forceUnroll(): Config = copy(unroll = true)
+  def showSolverCommunication(): Config = copy(debugSolver = true)
+  def makeVerbose():             Config = copy(verbose = true)
+  def forceUnroll():             Config = copy(unroll = true)
   def changeInit(tpe: InitType): Config = copy(init = tpe)
   def useIncremental(): Config = copy(incremental = true)
 }
