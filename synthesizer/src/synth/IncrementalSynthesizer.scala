@@ -25,7 +25,7 @@ object IncrementalSynthesizer {
     val noChange = noSynth(initialized)
 
     // execute testbench on system
-    val exec = Testbench.run(noChange, tb, verbose = true)
+    val exec = Testbench.run(noChange, tb, verbose = config.verbose)
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
       return NoRepairNecessary
@@ -37,14 +37,19 @@ object IncrementalSynthesizer {
     val startValues = exec.values(start)
     val sysWithStartValues = setInitValues(sys, startValues)
 
+    // ensure that we can concretely replay the failure
+    val shortTb = tb.slice(start, start + k + 1)
+    val replayExec = Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = config.verbose)
+    assert(replayExec.failed, "cannot replay failure!")
+    assert(replayExec.failAt == k, s"the replay should always fail at exactly k=$k")
+
     // start solver and declare system
     val ctx = startSolver(config)
     // declare synthesis variables
     synthVars.declare(ctx)
-    val enc = encodeSystem(sys, ctx, config)
+    val enc = encodeSystem(sysWithStartValues, ctx, config)
 
     // unroll for k, applying the appropriate inputs and outputs
-    val shortTb = tb.slice(start, start + k)
     def zeroByDefault(sym: BVSymbol, ii: Int): Option[BVExpr] = Some(BVLiteral(0, sym.width))
     instantiateTestbench(ctx, enc, sysWithStartValues, shortTb, zeroByDefault _, assertDontAssumeOutputs = false)
 
@@ -54,23 +59,23 @@ object IncrementalSynthesizer {
     assert(ctx.check().isUnSat, "Found a solution that does not require any changes at all!")
     ctx.pop()
 
-    // check to see if a fix to the system exists that will make the outputs not fail
-    synthesize(ctx, synthVars, config.verbose) match {
-      case Some(value) =>
-        println(s"Found solution: $value")
-        val changes = value.filter(_._2 == 1).map(_._1).filter(_.startsWith(SynthChangePrefix))
-        println(changes.mkString(", "))
-      case None =>
-        throw new NotImplementedError("TODO: do something if there is no solution!")
-    }
-
+    // find all minimal solutions
     val solutions = synthesizeMultiple(ctx, synthVars, config.verbose)
     println(s"Found ${solutions.size} unique minimal solutions")
     solutions.foreach(s => getChangesInAssignment(s).mkString(", "))
 
-    // println(noChange.serialize)
+    // check solutions
+    solutions.zipWithIndex.foreach { case (assignment, ii) =>
+      if (config.verbose) println(s"Solution #$ii: " + getChangesInAssignment(assignment).mkString(", "))
+      val withFix = applySynthAssignment(initialized, assignment)
+      val exec = Testbench.run(withFix, tb, verbose = config.verbose)
+      if (!exec.failed) {
+        if (config.verbose) println("Works!")
+        return RepairSuccess(assignment)
+      }
+    }
 
-    ???
+    CannotRepair
   }
 
   private def setInitValues(sys: TransitionSystem, values: Map[String, BigInt]): TransitionSystem = {
@@ -130,6 +135,25 @@ object IncrementalSynthesizer {
     }
     val constraint = BVNot(BVAnd(changes))
     ctx.assert(constraint)
+  }
+
+  private def applySynthAssignment(sys: TransitionSystem, assignment: List[(String, BigInt)]): TransitionSystem = {
+    val nameToValue = assignment.toMap
+    // this assumes that all synthesis variables states have already been removed
+    def onExpr(e: SMTExpr): SMTExpr = e match {
+      case sym: BVSymbol if isSynthName(sym.name) =>
+        val value = nameToValue(sym.name)
+        BVLiteral(value, sym.width)
+      case BVIte(cond, tru, fals) => // do some small constant prop
+        onExpr(cond) match {
+          case True()  => onExpr(tru)
+          case False() => onExpr(fals)
+          case cc: BVExpr => BVIte(cc, onExpr(tru).asInstanceOf[BVExpr], onExpr(fals).asInstanceOf[BVExpr])
+        }
+      case other => SMTExprMap.mapExpr(other, onExpr)
+    }
+    val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
+    sys.copy(signals = signals)
   }
 
   private def noSynth(sys: TransitionSystem): TransitionSystem = {

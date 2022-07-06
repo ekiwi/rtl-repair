@@ -99,12 +99,12 @@ object Testbench {
   }
 
   /** concretely execute the testbench on the given transition system */
-  def run(sys: TransitionSystem, tb: Testbench, verbose: Boolean): TestbenchResult = {
+  def run(sys: TransitionSystem, tb: Testbench, verbose: Boolean, vcd: Option[os.Path] = None): TestbenchResult = {
     // we need all starting states to be concrete
     sys.states.foreach(s => assert(s.init.isDefined, s"uninitialized state $s"))
     val inputs = filterInputs(sys, tb)
     val outputs = filterOutputs(sys, tb)
-    val sim = new TransitionSystemSim(sys)
+    val sim = new TransitionSystemSim(sys, vcd)
     var failAt = -1
     val values = tb.values.map { values =>
       // apply input and evaluate signals
@@ -115,14 +115,16 @@ object Testbench {
         val actual = sim.peek(name)
         values(ii) match {
           case Some(expected) =>
-            if (expected != actual) {
+            val correct = if (expected != actual) {
               if (failAt < 0) {
                 failAt = sim.getStepCount
               }
               if (sim.getStepCount == failAt) {
                 if (verbose) println(s"$expected != $actual $name@${sim.getStepCount}")
               }
-            }
+              0
+            } else { 1 }
+            sim.printSignal(s"@${name}_correct", correct, 1)
           case None => // ignore
         }
         name -> actual
@@ -134,6 +136,7 @@ object Testbench {
       // report output and state values
       (outVals ++ state).toMap
     }
+    sim.finish()
     TestbenchResult(values, failAt)
   }
 

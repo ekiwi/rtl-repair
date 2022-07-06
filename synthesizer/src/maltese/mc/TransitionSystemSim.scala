@@ -5,10 +5,12 @@
 package maltese.mc
 
 import maltese.smt._
+import treadle.vcd
+
 import scala.collection.mutable
 
 /** A new and improved transition system simulator. */
-class TransitionSystemSim(sys: TransitionSystem) {
+class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
   sys.signals.foreach(s => assert(s.e.isInstanceOf[BVExpr], s"array signals are not supported! $s"))
   sys.states.foreach(s => assert(s.sym.isInstanceOf[BVExpr], s"array states are not supported! $s"))
 
@@ -31,6 +33,8 @@ class TransitionSystemSim(sys: TransitionSystem) {
         case None => getDefault(st.sym.asInstanceOf[BVSymbol].width)
       }
     }
+    vcdWriter.foreach(updateVcd)
+    vcdWriter.foreach(_.incrementTime())
     // update signals
     updateSignals()
   }
@@ -41,9 +45,11 @@ class TransitionSystemSim(sys: TransitionSystem) {
   def update(): Unit = {
     // update signals
     updateSignals()
+    vcdWriter.foreach(updateVcd)
   }
 
   def step(): Unit = {
+    vcdWriter.foreach(_.incrementTime())
     // update states to next step
     sys.states.foreach { st =>
       st.next match {
@@ -53,9 +59,23 @@ class TransitionSystemSim(sys: TransitionSystem) {
       }
     }
     stepCount += 1
+    vcdWriter.foreach(updateVcd)
+    vcdWriter.foreach(_.incrementTime())
   }
 
   def peek(name: String): BigInt = data(name)
+
+  // adds an arbitrary signal and value to the output vcd if one is being produced, ignored otherwise
+  def printSignal(name: String, value: BigInt, width: Int = 1): Unit =
+    vcdWriter.foreach(_.wireChanged(name, value, width))
+
+  def finish(): Unit = {
+    updateSignals()
+    vcdWriter.foreach { writer =>
+      writer.incrementTime()
+      writer.write(vcdFilename.get.toString())
+    }
+  }
 
   private def updateSignals(): Unit = {
     sys.signals.foreach { sig =>
@@ -82,6 +102,25 @@ class TransitionSystemSim(sys: TransitionSystem) {
     override def startVariableScope(name: String, value: BigInt): Unit = ???
     override def endVariableScope(name:   String): Unit = ???
     override def constArray(indexWidth:   Int, value: BigInt): ArrayValue = ???
+  }
+
+  // VCD support
+  private val vcdWriter = vcdFilename.map(_ => initVcd())
+
+  private def initVcd(): vcd.VCD = {
+    val vv = vcd.VCD(sys.name)
+    vv.addWire("Step", 64)
+    val allBV = sys.inputs ++ sys.states.map(_.sym.asInstanceOf[BVSymbol]) ++ sys.signals.map(s =>
+      BVSymbol(s.name, s.e.asInstanceOf[BVExpr].width)
+    )
+    allBV.foreach(s => vv.addWire(s.name, s.width))
+    vv
+  }
+
+  /** update the Vcd right before taking the next step */
+  private def updateVcd(write: vcd.VCD): Unit = {
+    write.wireChanged("Step", stepCount)
+    data.foreach { case (name, value) => write.wireChanged(name, value) }
   }
 
   // start with initialized data
