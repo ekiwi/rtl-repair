@@ -189,7 +189,7 @@ always @ (posedge clk)
 
     haddr_r <= {HADDR_WIDTH{1'b0}};
     // wr_data_r <= 16'b0;
-    rd_data_r <= data;
+    rd_data_r <= data_in;
     // rd_data_r <= 16'b0; 
     busy <= 1'b0;
     end
