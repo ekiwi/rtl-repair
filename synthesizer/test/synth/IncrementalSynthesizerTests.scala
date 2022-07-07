@@ -27,4 +27,13 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     ) // currently the incremental solver fails because looking at a single failure case is not enough
   }
 
+  it should "signal no repair for (linter cleaned) sdram_controller_kgoliya_buggy2_replace_literals" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "sdram_controller_kgoliya_buggy2_replace_literals.btor",
+      CirFixDir / "sdram_controller" / "orig_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
+    )
+    assert(r.noRepairNecessary)
+  }
+
 }

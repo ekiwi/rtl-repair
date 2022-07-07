@@ -68,6 +68,11 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     .text(
       "always unroll system instead of using the compact encoding. only has an effect for z3, optimathsat, cvc4 and yices2"
     )
+  opt[Unit]("incremental")
+    .action((_, args) => args.copy(config = args.config.useIncremental()))
+    .text(
+      "use incremental solver"
+    )
   opt[String]("solver").action { (a, args) =>
     args.copy(config = args.config.changeSolver(a))
   }
