@@ -19,11 +19,13 @@ def _check_jar():
     assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
 
 
-def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str):
+def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incremental: bool):
     assert design.exists(), f"{design=} does not exist"
     assert testbench.exists(), f"{testbench=} does not exist"
     _check_jar()
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", solver, "--init", init]
+    if incremental:
+        args += ["--incremental"]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
     r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
     try:
@@ -73,14 +75,15 @@ class Synthesizer:
     def __init__(self):
         pass
 
-    def run(self, name: str, working_dir: Path, ast: vast.Source, testbench: Path, solver: str, init: str) -> dict:
+    def run(self, name: str, working_dir: Path, ast: vast.Source, testbench: Path, solver: str, init: str,
+            incremental: bool) -> dict:
         synth_filename = working_dir / name
         with open(synth_filename, "w") as f:
             f.write(serialize(ast))
 
         # convert file and run synthesizer
         btor_filename = _to_btor(synth_filename)
-        result = _run_synthesizer(btor_filename, testbench, solver, init)
+        result = _run_synthesizer(btor_filename, testbench, solver, init, incremental)
         status = result["status"]
         with open(working_dir / "status", "w") as f:
             f.write(status + "\n")

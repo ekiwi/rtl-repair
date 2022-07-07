@@ -25,7 +25,7 @@ left_shift_dir = benchmark_dir / "cirfix" / "lshift_reg"
 sd_dir = benchmark_dir / "cirfix" / "sdram_controller"
 
 
-def run_synth(source: Path, testbench: Path, solver='z3', init='any'):
+def run_synth(source: Path, testbench: Path, solver='z3', init='any', incremental=False):
     if not working_dir.exists():
         os.mkdir(working_dir)
     dir_name = source.stem + "_" + testbench.stem
@@ -37,6 +37,8 @@ def run_synth(source: Path, testbench: Path, solver='z3', init='any'):
         "--working-dir", str(out_dir.resolve()),
         "--init", init
     ]
+    if incremental:
+        args += ["--incremental"]
     if _parallel:
         args += ["--parallel"]
     cmd = ["./rtlfix.py"] + args
@@ -60,9 +62,10 @@ def run_synth(source: Path, testbench: Path, solver='z3', init='any'):
 
 class SynthesisTest(unittest.TestCase):
 
-    def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any', max_changes: int = 2):
+    def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
+                      incremental: bool = False, max_changes: int = 2):
         start = time.monotonic()
-        status, changes, template = run_synth(dir / design, dir / testbench, solver, init)
+        status, changes, template = run_synth(dir / design, dir / testbench, solver, init, incremental)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
@@ -87,10 +90,16 @@ class TestSdRamController(SynthesisTest):
         # this only works with zero init because otherwise the original design has some x-prop issues
         self.synth_no_repair(sd_dir, "sdram_controller.v", "orig_tb.csv", init='zero')
 
-    @unittest.skip("this is currently not terminating within 30min")
     def test_wadden_buggy2_orig_tb(self):
         # one messed up constant (READ_NOP1)
-        self.synth_success(sd_dir, "sdram_controller_wadden_buggy2.v", "orig_tb.csv", init='zero')
+        # requires two changes since the constant is used in two places
+        # only completes in a resonable amount of time when using the incremental solver
+        # TODO: currently the solver replaces b10000 with b11100, instead of the expected b10001
+        self.synth_success(sd_dir, "sdram_controller_wadden_buggy2.v", "orig_tb.csv", incremental=True)
+
+    def test_kgoliya_buggy2_orig_tb(self):
+        # missing default case
+        self.synth_success(sd_dir, "sdram_controller_kgoliya_buggy2.v", "orig_tb.csv", incremental=True)
 
 
 class TestLeftShiftReg(SynthesisTest):

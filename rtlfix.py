@@ -30,6 +30,7 @@ class Config:
     init: str
     show_ast: bool
     parallel: bool
+    incremental: bool
 
 
 def parse_args() -> Config:
@@ -41,6 +42,8 @@ def parse_args() -> Config:
     parser.add_argument('--solver', dest='solver', help='z3 or optimathsat', default="z3")
     parser.add_argument('--init', dest='init', help='how should states be initialized? [any], zero or random',
                         default="any")
+    parser.add_argument('--incremental', dest='incremental', help='use incremental solver',
+                        action='store_true')
     parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
                         action='store_true')
     parser.add_argument('--parallel', dest='parallel', help='try to apply repair templates in parallel',
@@ -49,7 +52,7 @@ def parse_args() -> Config:
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
     return Config(Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.init,
-                  args.show_ast, args.parallel)
+                  args.show_ast, args.parallel, args.incremental)
 
 
 def create_working_dir(working_dir: Path):
@@ -86,7 +89,8 @@ def try_template(config: Config, ast, prefix: str, template):
     template(ast)
     synth_start_time = time.monotonic()
     synth = Synthesizer()
-    result = synth.run(config.source.name, template_dir, ast, config.testbench, config.solver, config.init)
+    result = synth.run(config.source.name, template_dir, ast,
+                       config.testbench, config.solver, config.init, config.incremental)
     synth_time = time.monotonic() - synth_start_time
     # add some metadata to result
     result["template"] = template_name
