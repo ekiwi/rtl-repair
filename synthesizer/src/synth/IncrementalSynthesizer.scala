@@ -32,8 +32,8 @@ object IncrementalSynthesizer {
       return NoRepairNecessary
     }
 
-    val ks = Seq(2, 3, 4, 8, 16, 32)
-    ks.foreach { k =>
+    val ks = Seq(0, 2, 3, 4, 8, 16, 32)
+    ks.filter(_ <= exec.failAt).foreach { k =>
       if (config.verbose) println(s"Searching for solution with unrolling of k=$k")
       findSolutionWithUnrolling(sys, initialized, tb, config, synthVars, exec, k) match {
         case Some(value) => return RepairSuccess(value)
@@ -80,9 +80,13 @@ object IncrementalSynthesizer {
     def checkSolution(assignment: Assignment): Boolean = {
       if (config.verbose) println(s"Solution: " + getChangesInAssignment(assignment).mkString(", "))
       val withFix = applySynthAssignment(initialized, assignment)
-      val exec = Testbench.run(withFix, tb, verbose = config.verbose)
-      if (config.verbose && !exec.failed) println("Works!")
-      !exec.failed
+      val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose)
+      if (config.verbose) {
+        if (fixedExec.failed) {
+          println(s"Old failure was at ${exec.failAt}, new failure at ${fixedExec.failAt}")
+        } else { println("Works!") }
+      }
+      !fixedExec.failed
     }
 
     // find a minimal solutions
