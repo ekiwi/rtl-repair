@@ -32,7 +32,7 @@ object IncrementalSynthesizer {
     }
 
     // start k steps before failure
-    val k = 2
+    val k = 3 // TODO: increase k until success
     val start = Seq(exec.failAt - k, 0).max
     val startValues = exec.values(start)
     val sysWithStartValues = setInitValues(sys, startValues)
@@ -50,10 +50,12 @@ object IncrementalSynthesizer {
     val enc = encodeSystem(sysWithStartValues, ctx, config)
 
     // unroll for k, applying the appropriate inputs and outputs
+    // TODO: zero by default might need to be updated if we do anything more fancy in the simulator
     def zeroByDefault(sym: BVSymbol, ii: Int): Option[BVExpr] = Some(BVLiteral(0, sym.width))
     instantiateTestbench(ctx, enc, sysWithStartValues, shortTb, zeroByDefault _, assertDontAssumeOutputs = false)
 
     // make sure that the shortened system actually fails!
+    // TODO: this check is not necessary and is only used for debugging
     ctx.push()
     performNChanges(ctx, synthVars, 0)
     assert(ctx.check().isUnSat, "Found a solution that does not require any changes at all!")
@@ -75,6 +77,9 @@ object IncrementalSynthesizer {
       }
     }
 
+    // see if solutions that are 1-larger work better
+    // val solutionsPlusOne
+
     CannotRepair
   }
 
@@ -95,7 +100,7 @@ object IncrementalSynthesizer {
     ctx:       SolverContext,
     synthVars: SynthVars,
     verbose:   Boolean
-  ): List[List[(String, BigInt)]] = {
+  ): List[Assignment] = {
     val solution = synthesize(ctx, synthVars, verbose) match {
       case Some(values) => values
       case None         => return List() // no solution
@@ -103,13 +108,19 @@ object IncrementalSynthesizer {
 
     // check size of solution
     val size = countChangesInAssignment(solution)
+
+    findSolutionsOfSize(ctx, synthVars, size)
+  }
+
+  type Assignment = List[(String, BigInt)]
+
+  private def findSolutionsOfSize(ctx: SolverContext, synthVars: SynthVars, size: Int): List[Assignment] = {
     // restrict size of solution to known minimal size
     ctx.push()
     performNChanges(ctx, synthVars, size)
 
-    // block and remember original solution
-    blockSolution(ctx, solution)
-    var solutions = List(solution)
+    // keep track of solutions
+    var solutions = List[Assignment]()
 
     // search for new solutions until none left
     var done = false
