@@ -15,6 +15,7 @@ def add_inversions(ast: vast.Source):
 
 
 _skip_nodes = {vast.Lvalue, vast.Decl, vast.SensList, vast.Portlist}
+_skip_children_nodes = {vast.Partselect, vast.Repeat, vast.Pointer}
 
 
 class Inverter(RepairTemplate):
@@ -29,14 +30,16 @@ class Inverter(RepairTemplate):
         # ignore constants as they are already covered by the literal replacer template
         if isinstance(node, vast.Constant):
             return node
-        # for repeat operators, we do not want to visit the times child since that expects a constant
-        if isinstance(node, vast.Repeat):
-            node.value = self.visit(node.value)
-        else:
+        # some nodes children should not be messed with since it easily leads to incorrect Verilog
+        if not type(node) in _skip_children_nodes:
             # visit all children
             node = super().generic_visit(node)
         # if it is a 1-bit node, add the possibility to invert
         if node in self.widths and self.widths[node] == 1:
             # add possibility to invert boolean expression
             node = self.make_change(vast.Ulnot(node), node)
+        return node
+
+    # TODO: this is to fix a bug with the generic visitor not being called.
+    def visit_Repeat(self, node: vast.Repeat):
         return node
