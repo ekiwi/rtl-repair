@@ -25,23 +25,43 @@ object IncrementalSynthesizer {
     val noChange = noSynth(initialized)
 
     // execute testbench on system
+    if (config.verbose) println("Executing system with testbench to find first failing output")
     val exec = Testbench.run(noChange, tb, verbose = config.verbose)
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
       return NoRepairNecessary
     }
 
+    val ks = Seq(2, 3, 4, 8, 16, 32)
+    ks.foreach { k =>
+      if (config.verbose) println(s"Searching for solution with unrolling of k=$k")
+      findSolutionWithUnrolling(sys, initialized, tb, config, synthVars, exec, k) match {
+        case Some(value) => return RepairSuccess(value)
+        case None        =>
+      }
+    }
+
+    CannotRepair
+  }
+
+  /** Try to find a solution while unrolling for up to [[k]] steps. */
+  private def findSolutionWithUnrolling(
+    sys:         TransitionSystem,
+    initialized: TransitionSystem,
+    tb:          Testbench,
+    config:      Config,
+    synthVars:   SynthVars,
+    exec:        TestbenchResult,
+    k:           Int
+  ): Option[Assignment] = {
     // start k steps before failure
-    val k = 3 // TODO: increase k until success
     val start = Seq(exec.failAt - k, 0).max
     val startValues = exec.values(start)
     val sysWithStartValues = setInitValues(sys, startValues)
 
     // ensure that we can concretely replay the failure
     val shortTb = tb.slice(start, start + k + 1)
-    val replayExec = Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = config.verbose)
-    assert(replayExec.failed, "cannot replay failure!")
-    assert(replayExec.failAt == k, s"the replay should always fail at exactly k=$k")
+    sanityCheckErrorWithSim(sysWithStartValues, shortTb, config.verbose, k)
 
     // start solver and declare system
     val ctx = startSolver(config)
@@ -54,33 +74,39 @@ object IncrementalSynthesizer {
     def zeroByDefault(sym: BVSymbol, ii: Int): Option[BVExpr] = Some(BVLiteral(0, sym.width))
     instantiateTestbench(ctx, enc, sysWithStartValues, shortTb, zeroByDefault _, assertDontAssumeOutputs = false)
 
+    sanityCheckErrorWithSolver(ctx, synthVars)
+
+    // define how to check solution
+    def checkSolution(assignment: Assignment): Boolean = {
+      if (config.verbose) println(s"Solution: " + getChangesInAssignment(assignment).mkString(", "))
+      val withFix = applySynthAssignment(initialized, assignment)
+      val exec = Testbench.run(withFix, tb, verbose = config.verbose)
+      if (config.verbose && !exec.failed) println("Works!")
+      !exec.failed
+    }
+
+    // find a minimal solutions
+    synthesizeMultiple(ctx, synthVars, config.verbose, checkSolution)
+  }
+
+  private def sanityCheckErrorWithSolver(ctx: SolverContext, synthVars: SynthVars): Unit = {
     // make sure that the shortened system actually fails!
     // TODO: this check is not necessary and is only used for debugging
     ctx.push()
     performNChanges(ctx, synthVars, 0)
     assert(ctx.check().isUnSat, "Found a solution that does not require any changes at all!")
     ctx.pop()
+  }
 
-    // find all minimal solutions
-    val solutions = synthesizeMultiple(ctx, synthVars, config.verbose)
-    println(s"Found ${solutions.size} unique minimal solutions")
-    solutions.foreach(s => getChangesInAssignment(s).mkString(", "))
-
-    // check solutions
-    solutions.zipWithIndex.foreach { case (assignment, ii) =>
-      if (config.verbose) println(s"Solution #$ii: " + getChangesInAssignment(assignment).mkString(", "))
-      val withFix = applySynthAssignment(initialized, assignment)
-      val exec = Testbench.run(withFix, tb, verbose = config.verbose)
-      if (!exec.failed) {
-        if (config.verbose) println("Works!")
-        return RepairSuccess(assignment)
-      }
-    }
-
-    // see if solutions that are 1-larger work better
-    // val solutionsPlusOne
-
-    CannotRepair
+  private def sanityCheckErrorWithSim(
+    sysWithStartValues: TransitionSystem,
+    shortTb:            Testbench,
+    verbose:            Boolean,
+    k:                  Int
+  ): Unit = {
+    val replayExec = Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = verbose)
+    assert(replayExec.failed, "cannot replay failure!")
+    assert(replayExec.failAt == k, s"the replay should always fail at exactly k=$k")
   }
 
   private def setInitValues(sys: TransitionSystem, values: Map[String, BigInt]): TransitionSystem = {
@@ -97,24 +123,30 @@ object IncrementalSynthesizer {
 
   /** tries to enumerate all minimal solutions */
   private def synthesizeMultiple(
-    ctx:       SolverContext,
-    synthVars: SynthVars,
-    verbose:   Boolean
-  ): List[Assignment] = {
+    ctx:           SolverContext,
+    synthVars:     SynthVars,
+    verbose:       Boolean,
+    checkSolution: Assignment => Boolean
+  ): Option[Assignment] = {
     val solution = synthesize(ctx, synthVars, verbose) match {
       case Some(values) => values
-      case None         => return List() // no solution
+      case None         => return None // no solution
     }
 
     // check size of solution
     val size = countChangesInAssignment(solution)
 
-    findSolutionsOfSize(ctx, synthVars, size)
+    findSolutionOfSize(ctx, synthVars, size, checkSolution)
   }
 
   type Assignment = List[(String, BigInt)]
 
-  private def findSolutionsOfSize(ctx: SolverContext, synthVars: SynthVars, size: Int): List[Assignment] = {
+  private def findSolutionOfSize(
+    ctx:           SolverContext,
+    synthVars:     SynthVars,
+    size:          Int,
+    checkSolution: Assignment => Boolean
+  ): Option[Assignment] = {
     // restrict size of solution to known minimal size
     ctx.push()
     performNChanges(ctx, synthVars, size)
@@ -130,13 +162,16 @@ object IncrementalSynthesizer {
           val assignment = synthVars.readAssignment(ctx)
           blockSolution(ctx, assignment)
           solutions = assignment +: solutions
+          val success = checkSolution(assignment)
+          if (success) return Some(assignment)
         case IsUnSat   => done = true
         case IsUnknown => done = true
       }
     }
     ctx.pop()
-    // return all solutions found
-    solutions
+
+    // none of the solutions seem to work on the complete testbench
+    None
   }
 
   private def blockSolution(ctx: SolverContext, assignment: List[(String, BigInt)]): Unit = {
