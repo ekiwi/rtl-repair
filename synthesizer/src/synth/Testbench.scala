@@ -140,6 +140,19 @@ object Testbench {
     TestbenchResult(values, failAt)
   }
 
+  /** adds a random value for every undefined (None) input */
+  def addRandomInput(sys: TransitionSystem, tb: Testbench, rnd: scala.util.Random): Testbench = {
+    val inputs = sys.inputs.map(ii => ii.name -> ii.width).toMap
+    val values = tb.values.map { values =>
+      values.zip(tb.signals).map {
+        case (None, name) if inputs.contains(name) =>
+          Some(BigInt(inputs(name), rnd))
+        case (value, _) => value
+      }
+    }
+    tb.copy(values = values)
+  }
+
 }
 
 case class TestbenchResult(values: Seq[Map[String, BigInt]], failAt: Int = -1) {

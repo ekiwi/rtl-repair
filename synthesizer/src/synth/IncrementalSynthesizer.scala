@@ -21,12 +21,14 @@ object IncrementalSynthesizer {
   ): RepairResult = {
     // randomly init system
     val initialized = initSys(sys, RandomInit, rnd)
+    // random undefined inputs
+    val randInputTb = Testbench.addRandomInput(sys, tb, rnd)
     // disable all synthesis variables
     val noChange = noSynth(initialized)
 
     // execute testbench on system
     if (config.verbose) println("Executing system with testbench to find first failing output")
-    val exec = Testbench.run(noChange, tb, verbose = config.verbose)
+    val exec = Testbench.run(noChange, randInputTb, verbose = config.verbose, vcd = Some(os.pwd / "fail.vcd"))
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
       return NoRepairNecessary
@@ -35,7 +37,7 @@ object IncrementalSynthesizer {
     val ks = Seq(0, 2, 3, 4, 8, 16, 32)
     ks.filter(_ <= exec.failAt).foreach { k =>
       if (config.verbose) println(s"Searching for solution with unrolling of k=$k")
-      findSolutionWithUnrolling(sys, initialized, tb, config, synthVars, exec, k) match {
+      findSolutionWithUnrolling(sys, initialized, randInputTb, config, synthVars, exec, k) match {
         case Some(value) => return RepairSuccess(value)
         case None        =>
       }
@@ -80,7 +82,7 @@ object IncrementalSynthesizer {
     def checkSolution(assignment: Assignment): Boolean = {
       if (config.verbose) println(s"Solution: " + getChangesInAssignment(assignment).mkString(", "))
       val withFix = applySynthAssignment(initialized, assignment)
-      val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose)
+      val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose, vcd = Some(os.pwd / "repaired.vcd"))
       if (config.verbose) {
         if (fixedExec.failed) {
           println(s"Old failure was at ${exec.failAt}, new failure at ${fixedExec.failAt}")
