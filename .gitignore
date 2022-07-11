@@ -33,6 +33,7 @@ target/
 
 # Python
 __pycache__/
+/venv/
 
 # working directory for testing the python code
 /working-dir/
