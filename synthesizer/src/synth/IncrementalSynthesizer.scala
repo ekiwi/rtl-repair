@@ -72,47 +72,40 @@ object IncrementalSynthesizer {
     val enc = encodeSystem(sysWithStartValues, ctx, config)
 
     // unroll for k, applying the appropriate inputs and outputs
-    // TODO: zero by default might need to be updated if we do anything more fancy in the simulator
-    def zeroByDefault(sym: BVSymbol, ii: Int): Option[BVExpr] = Some(BVLiteral(0, sym.width))
-    instantiateTestbench(ctx, enc, sysWithStartValues, shortTb, zeroByDefault _, assertDontAssumeOutputs = false)
-
+    instantiateTestbench(ctx, enc, sysWithStartValues, shortTb, noUninitialized _, assertDontAssumeOutputs = false)
     sanityCheckErrorWithSolver(ctx, synthVars)
 
-    // define how to check solution
-    def checkSolution(assignment: Assignment): Boolean = {
-      if (config.verbose) println(s"Solution: " + getChangesInAssignment(assignment).mkString(", "))
-      val withFix = applySynthAssignment(initialized, assignment)
-      val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose, vcd = Some(os.pwd / "repaired.vcd"))
-      if (config.verbose) {
-        if (fixedExec.failed) {
-          println(s"Old failure was at ${exec.failAt}, new failure at ${fixedExec.failAt}")
-        } else { println("Works!") }
-      }
-      !fixedExec.failed
-    }
-
     // find a minimal solutions
-    synthesizeMultiple(ctx, synthVars, config.verbose, checkSolution)
+    val candidates = synthesizeMultiple(ctx, synthVars, config.verbose, checkSolution(initialized, tb, config))
+
+    candidates.find(_.correct) match {
+      case Some(value) => // return correct solution if it exists
+        Some(value.assignment)
+      case None => // otherwise, we analyze the solutions that did not work
+        None
+    }
   }
 
-  private def sanityCheckErrorWithSolver(ctx: SolverContext, synthVars: SynthVars): Unit = {
-    // make sure that the shortened system actually fails!
-    // TODO: this check is not necessary and is only used for debugging
-    ctx.push()
-    performNChanges(ctx, synthVars, 0)
-    assert(ctx.check().isUnSat, "Found a solution that does not require any changes at all!")
-    ctx.pop()
-  }
+  /** throws an error if called, can be used with instantiateTestbench if no inputs should be "free" */
+  private def noUninitialized(sym: BVSymbol, ii: Int): Option[BVExpr] =
+    throw new RuntimeException(s"Uninitialized input $sym@$ii")
 
-  private def sanityCheckErrorWithSim(
-    sysWithStartValues: TransitionSystem,
-    shortTb:            Testbench,
-    verbose:            Boolean,
-    k:                  Int
-  ): Unit = {
-    val replayExec = Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = verbose)
-    assert(replayExec.failed, "cannot replay failure!")
-    assert(replayExec.failAt == k, s"the replay should always fail at exactly k=$k")
+  private def checkSolution(
+    initialized: TransitionSystem,
+    tb:          Testbench,
+    config:      Config
+  )(assignment:  Assignment
+  ): Int = {
+    if (config.verbose) println(s"Solution: " + getChangesInAssignment(assignment).mkString(", "))
+    val withFix = applySynthAssignment(initialized, assignment)
+    val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose, vcd = Some(os.pwd / "repaired.vcd"))
+    if (fixedExec.failed) {
+      if (config.verbose) println(s"New failure at ${fixedExec.failAt}")
+      fixedExec.failAt
+    } else {
+      if (config.verbose) println("Works!")
+      -1
+    }
   }
 
   private def setInitValues(sys: TransitionSystem, values: Map[String, BigInt]): TransitionSystem = {
@@ -132,11 +125,11 @@ object IncrementalSynthesizer {
     ctx:           SolverContext,
     synthVars:     SynthVars,
     verbose:       Boolean,
-    checkSolution: Assignment => Boolean
-  ): Option[Assignment] = {
+    checkSolution: Assignment => Int
+  ): List[CandidateSolution] = {
     val solution = synthesize(ctx, synthVars, verbose) match {
       case Some(values) => values
-      case None         => return None // no solution
+      case None         => return List() // no solution
     }
 
     // check size of solution
@@ -146,19 +139,24 @@ object IncrementalSynthesizer {
   }
 
   type Assignment = List[(String, BigInt)]
+  private case class CandidateSolution(assignment: Assignment, failAt: Int = -1) {
+    def failed:  Boolean = failAt >= 0
+    def correct: Boolean = !failed
+  }
 
+  /** Finds solutions of size [[size]]. Aborts as soon as a correct solution is found. */
   private def findSolutionOfSize(
     ctx:           SolverContext,
     synthVars:     SynthVars,
     size:          Int,
-    checkSolution: Assignment => Boolean
-  ): Option[Assignment] = {
+    checkSolution: Assignment => Int
+  ): List[CandidateSolution] = {
     // restrict size of solution to known minimal size
     ctx.push()
     performNChanges(ctx, synthVars, size)
 
     // keep track of solutions
-    var solutions = List[Assignment]()
+    var solutions = List[CandidateSolution]()
 
     // search for new solutions until none left
     var done = false
@@ -167,20 +165,24 @@ object IncrementalSynthesizer {
         case IsSat =>
           val assignment = synthVars.readAssignment(ctx)
           blockSolution(ctx, assignment)
-          solutions = assignment +: solutions
-          val success = checkSolution(assignment)
-          if (success) return Some(assignment)
+          val failAt = checkSolution(assignment)
+          val candidate = CandidateSolution(assignment, failAt)
+          solutions = candidate +: solutions
+          if (candidate.correct) {
+            // early exit when a working solution is found
+            done = true
+          }
         case IsUnSat   => done = true
         case IsUnknown => done = true
       }
     }
     ctx.pop()
 
-    // none of the solutions seem to work on the complete testbench
-    None
+    // return evaluated candidate solutions
+    solutions
   }
 
-  private def blockSolution(ctx: SolverContext, assignment: List[(String, BigInt)]): Unit = {
+  private def blockSolution(ctx: SolverContext, assignment: Assignment): Unit = {
     val changes = assignment.filter(_._1.startsWith(SynthChangePrefix)).map {
       case (name, value) if value == 0 => BVNot(BVSymbol(name, 1))
       case (name, _)                   => BVSymbol(name, 1)
@@ -189,7 +191,7 @@ object IncrementalSynthesizer {
     ctx.assert(constraint)
   }
 
-  private def applySynthAssignment(sys: TransitionSystem, assignment: List[(String, BigInt)]): TransitionSystem = {
+  private def applySynthAssignment(sys: TransitionSystem, assignment: Assignment): TransitionSystem = {
     val nameToValue = assignment.toMap
     // this assumes that all synthesis variables states have already been removed
     def onExpr(e: SMTExpr): SMTExpr = e match {
@@ -225,4 +227,23 @@ object IncrementalSynthesizer {
     sys.copy(signals = signals)
   }
 
+  private def sanityCheckErrorWithSolver(ctx: SolverContext, synthVars: SynthVars): Unit = {
+    // make sure that the shortened system actually fails!
+    // TODO: this check is not necessary and is only used for debugging
+    ctx.push()
+    performNChanges(ctx, synthVars, 0)
+    assert(ctx.check().isUnSat, "Found a solution that does not require any changes at all!")
+    ctx.pop()
+  }
+
+  private def sanityCheckErrorWithSim(
+    sysWithStartValues: TransitionSystem,
+    shortTb:            Testbench,
+    verbose:            Boolean,
+    k:                  Int
+  ): Unit = {
+    val replayExec = Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = verbose)
+    assert(replayExec.failed, "cannot replay failure!")
+    assert(replayExec.failAt == k, s"the replay should always fail at exactly k=$k")
+  }
 }
