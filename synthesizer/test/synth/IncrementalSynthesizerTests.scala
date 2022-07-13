@@ -13,8 +13,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
       CirFixDir / "sdram_controller" / "orig_tb.csv",
       DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental() // .showSolverCommunication()
     )
-    // TODO: improve solver algorithm to actually find a solution here!
-    assert(r.cannotRepair)
+    assert(r.isSuccess)
   }
 
   it should "synthesize a fix for decoder_3_to_8_wadden_buggy1 with original testbench and literal replacer template" in {
@@ -23,8 +22,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
       CirFixDir / "decoder_3_to_8" / "orig_tb.csv",
       DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental()
     )
-    // currently the incremental solver fails because looking at a single failure case is not enough
-    assert(r.cannotRepair)
+    assert(r.isSuccess)
   }
 
   it should "report no solution for sdram_controller_wadden_buggy1_replace_literals with original testbench" in {
