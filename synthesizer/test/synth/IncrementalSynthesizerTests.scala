@@ -35,7 +35,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     assert(r.cannotRepair)
   }
 
-  it should "synthesize a solution for sdram_controller_wadden_buggy1_assign_const with original testbench" in {
+  it should "fail to synthesize a solution for sdram_controller_wadden_buggy1_assign_const with original testbench" in {
     val r = Synthesizer.run(
       BenchmarkDir / "sdram_controller_wadden_buggy1_assign_const.btor",
       CirFixDir / "sdram_controller" / "orig_tb.csv",
@@ -43,6 +43,16 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     )
     // this version of assign constant should not be solvable
     assert(r.cannotRepair)
+  }
+
+  it should "synthesize a solution for sdram_controller_wadden_buggy1_assign_const_fixed with original testbench" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "sdram_controller_wadden_buggy1_assign_const_fixed.btor",
+      CirFixDir / "sdram_controller" / "orig_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental() // .showSolverCommunication()
+    )
+    // this version of assign constant assigns at the end of blocks and thus should work
+    assert(r.isSuccess)
   }
 
   it should "signal no repair for (linter cleaned) sdram_controller_kgoliya_buggy2_replace_literals" in {

@@ -39,27 +39,27 @@ class ConstAssigner(RepairTemplate):
         self.assigned_vars = [var for var in analysis.assigned_vars if isinstance(var, vast.Identifier)]
         self.use_blocking = analysis.blocking_count > 0
         # add assignments to beginning of process
-        node.statement = self.prepend_assignments(self.visit(node.statement))
+        node.statement = self.add_assignments(self.visit(node.statement))
         self.assigned_vars = []
         return node
 
     def visit_IfStatement(self, node: vast.IfStatement):
         if len(self.assigned_vars) > 0:
-            node.true_statement = self.prepend_assignments(self.visit(node.true_statement))
-            node.false_statement = self.prepend_assignments(self.visit(node.false_statement))
+            node.true_statement = self.add_assignments(self.visit(node.true_statement))
+            node.false_statement = self.add_assignments(self.visit(node.false_statement))
         return node
 
     def visit_Case(self, node: vast.Case):
         if len(self.assigned_vars) > 0:
-            node.statement = self.prepend_assignments(self.visit(node.statement))
+            node.statement = self.add_assignments(self.visit(node.statement))
         return node
 
-    def prepend_assignments(self, stmt):
+    def add_assignments(self, stmt):
         if stmt is None:
             return None
         block = ensure_block(stmt)
-        # add assignments to beginning of process
-        block.statements = tuple(self.make_assignments(stmt.lineno) + list(block.statements))
+        # add assignments to the end of the block
+        block.statements = tuple(list(block.statements) + self.make_assignments(stmt.lineno))
         return block
 
     def make_assignments(self, lineno: int):

@@ -95,7 +95,12 @@ class TestSdRamController(SynthesisTest):
         # requires two changes since the constant is used in two places
         # only completes in a resonable amount of time when using the incremental solver
         # TODO: currently the solver replaces b10000 with b11100, instead of the expected b10001
+        #       but that might be OK after all since it does it in both locations
         self.synth_success(sd_dir, "sdram_controller_wadden_buggy2.v", "orig_tb.csv", incremental=True)
+
+    def test_wadden_buggy1_orig_tb(self):
+        # missing reset (only one of the two removed is actually needed)
+        self.synth_success(sd_dir, "sdram_controller_wadden_buggy1.v", "orig_tb.csv", incremental=True)
 
     def test_kgoliya_buggy2_orig_tb(self):
         # missing default case
