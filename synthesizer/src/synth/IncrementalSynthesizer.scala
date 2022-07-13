@@ -36,8 +36,7 @@ object IncrementalSynthesizer {
 
     val ks = Seq(0, 2, 3, 4, 8, 16, 32)
     ks.filter(_ <= exec.failAt).foreach { k =>
-      if (config.verbose) println(s"Searching for solution with unrolling of k=$k")
-      findSolutionWithUnrolling(sys, initialized, randInputTb, config, synthVars, exec, k) match {
+      findSolutionWithUnrolling(sys, initialized, randInputTb, config, synthVars, exec, pastK = k, futureK = 0) match {
         case Some(value) => return RepairSuccess(value)
         case None        =>
       }
@@ -54,16 +53,20 @@ object IncrementalSynthesizer {
     config:      Config,
     synthVars:   SynthVars,
     exec:        TestbenchResult,
-    k:           Int
+    pastK:       Int,
+    futureK:     Int
   ): Option[Assignment] = {
+    val k = pastK + futureK
+    if (config.verbose) println(s"Searching for solution with unrolling of k=${pastK + futureK}")
+
     // start k steps before failure
-    val start = Seq(exec.failAt - k, 0).max
+    val start = Seq(exec.failAt - pastK, 0).max
     val startValues = exec.values(start)
     val sysWithStartValues = setInitValues(sys, startValues)
 
     // ensure that we can concretely replay the failure
     val shortTb = tb.slice(start, start + k + 1)
-    sanityCheckErrorWithSim(sysWithStartValues, shortTb, config.verbose, k)
+    sanityCheckErrorWithSim(sysWithStartValues, shortTb, config.verbose, pastK)
 
     // start solver and declare system
     val ctx = startSolver(config)
@@ -77,6 +80,7 @@ object IncrementalSynthesizer {
 
     // find a minimal solutions
     val candidates = synthesizeMultiple(ctx, synthVars, config.verbose, checkSolution(initialized, tb, config))
+    ctx.close()
 
     candidates.find(_.correct) match {
       case Some(value) => // return correct solution if it exists
@@ -240,10 +244,10 @@ object IncrementalSynthesizer {
     sysWithStartValues: TransitionSystem,
     shortTb:            Testbench,
     verbose:            Boolean,
-    k:                  Int
+    pastK:              Int
   ): Unit = {
     val replayExec = Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = verbose)
     assert(replayExec.failed, "cannot replay failure!")
-    assert(replayExec.failAt == k, s"the replay should always fail at exactly k=$k")
+    assert(replayExec.failAt == pastK, s"the replay should always fail at exactly k=$pastK")
   }
 }

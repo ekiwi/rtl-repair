@@ -170,9 +170,13 @@ private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: 
   /** releases all native resources */
   override def close(): Unit = {
     writeCommand("(exit)")
-    proc.stdin.flush()
-    Thread.sleep(5)
-    proc.destroyForcibly()
+    try {
+      proc.stdin.flush()
+    } catch { case _: java.io.IOException => /* ignore any IO exceptions */ }
+    if (proc.isAlive()) {
+      Thread.sleep(5)
+      proc.destroyForcibly()
+    }
   }
   override protected def doSetLogic(logic: String): Unit = getLogic match {
     case None      => writeCommand(serialize(SetLogic(logic)))
