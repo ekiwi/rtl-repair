@@ -25,7 +25,7 @@ def preprocess(filename: Path, working_dir: Path):
 
     # run linter up to two times
     changed = False
-    for ii in range(2):
+    for ii in range(4):
         warnings = run_linter(ii, filename, preprocess_dir)
 
         if len(warnings) == 0:

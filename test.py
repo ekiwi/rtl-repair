@@ -22,6 +22,7 @@ flip_flop_dir = benchmark_dir / "cirfix" / "flip_flop"
 counter_dir = benchmark_dir / "cirfix" / "first_counter_overflow"
 fsm_dir = benchmark_dir / "cirfix" / "fsm_full"
 left_shift_dir = benchmark_dir / "cirfix" / "lshift_reg"
+mux_dir = benchmark_dir / "cirfix" / "mux_4_1"
 sd_dir = benchmark_dir / "cirfix" / "sdram_controller"
 
 
@@ -105,6 +106,13 @@ class TestSdRamController(SynthesisTest):
     def test_kgoliya_buggy2_orig_tb(self):
         # missing default case
         self.synth_success(sd_dir, "sdram_controller_kgoliya_buggy2.v", "orig_tb.csv", incremental=True)
+
+
+class TestMux(SynthesisTest):
+
+    @unittest.skip("Currently fails because the replace literals repair template creates a latch.")
+    def test_orig_orig_tb(self):
+        self.synth_no_repair(mux_dir, "mux_4_1.v", "orig_tb.csv")
 
 
 class TestLeftShiftReg(SynthesisTest):
