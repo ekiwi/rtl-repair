@@ -205,6 +205,18 @@ class TestFirstCounter(SynthesisTest):
         # this can be repaired through the assign_const template
         self.synth_success(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "orig_tb.csv")
 
+    def test_buggy_counter_orig_tb(self):
+        # can be solved by a literal replacement
+        self.synth_success(counter_dir, "first_counter_buggy_counter.v", "orig_tb.csv")
+
+    def test_buggy_overflow_orig_tb(self):
+        # can be solved by a literal replacement
+        self.synth_success(counter_dir, "first_counter_buggy_overflow.v", "orig_tb.csv")
+
+    def test_buggy_all_orig_tb(self):
+        #can be solved by three literal replacements
+        self.synth_success(counter_dir, "first_counter_buggy_all.v", "orig_tb.csv", max_changes=3)
+
 
 class TestDecoder(SynthesisTest):
 

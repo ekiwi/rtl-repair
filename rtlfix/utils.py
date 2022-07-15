@@ -15,6 +15,7 @@ _parser_tmp_dir = _root_dir / ".pyverilog"
 
 
 def parse_verilog(filename: Path) -> vast.Source:
+    assert filename.exists(), f"cannot parse {filename}, does not exist"
     ast, directives = parse([filename],
                             preprocess_include=[],
                             preprocess_define=[],
