@@ -23,7 +23,7 @@ def preprocess(filename: Path, working_dir: Path):
         shutil.rmtree(preprocess_dir)
     os.mkdir(preprocess_dir)
 
-    # run linter up to two times
+    # run linter up to four times
     changed = False
     for ii in range(4):
         warnings = run_linter(ii, filename, preprocess_dir)
