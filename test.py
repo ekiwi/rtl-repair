@@ -331,7 +331,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({None: 1, 1: 5, 4: 16, 8: 17}, hist)
+        self.assertEqual({None: 1, 1: 13, 4: 8, 8: 17}, hist)
 
     def test_counter_widths(self):
         from rtlfix import parse_verilog
@@ -339,7 +339,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({None: 1, 1: 8, 4: 7}, hist)
+        self.assertEqual({None: 1, 1: 10, 4: 5}, hist)
 
     def test_fsm_widths(self):
         from rtlfix import parse_verilog
@@ -355,7 +355,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(left_shift_dir / "lshift_reg.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({None: 1, 1: 3, 8: 7, 32: 6}, hist)
+        self.assertEqual({None: 1, 1: 4, 8: 7, 32: 5}, hist)
 
     def test_sdram_controller_widths(self):
         from rtlfix import parse_verilog
@@ -364,7 +364,7 @@ class TestTypeInference(unittest.TestCase):
         # ast.show()
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        expected = {None: 1, 32: 26, 5: 60, 8: 17, 2: 7, 13: 4, 1: 14, 10: 7, 4: 7, 24: 4, 16: 5, 9: 2, 3: 1}
+        expected = {None: 1, 32: 24, 5: 50, 8: 17, 2: 7, 13: 4, 1: 26, 10: 7, 4: 7, 24: 4, 16: 5, 9: 2, 3: 1}
         self.assertEqual(expected, hist)
 
     def test_reed_solomon_widths(self):
