@@ -39,6 +39,8 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incr
 _minimal_btor_conversion = [
     "proc -noopt",
     "async2sync", # required for designs with async reset
+    "flatten",
+    "dffunmap",
 ]
 # inspired by the commands used by SymbiYosys
 _btor_conversion = [
@@ -57,14 +59,20 @@ _btor_conversion = [
 ]
 
 
-def _to_btor(filename: Path):
+def _to_btor(filename: Path, additional_sources: list, top: str):
+    for src in additional_sources:
+        assert src.exists(), f"{src} does not exist"
+    assert filename.exists(), f"{filename} does not exist"
     cwd = filename.parent
     assert cwd.exists(), f"directory {cwd} does not exist"
     r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
     assert r.returncode == 0, f"failed to find yosys {r}"
     btor_name = filename.stem + ".btor"
     conversion = _minimal_btor_conversion
-    yosys_cmd = [f"read_verilog {filename.name}"] + conversion + [f"write_btor -x {btor_name}"]
+    read_cmd = [f"read_verilog {filename.name}"] + [f"read_verilog {src.resolve()}" for src in additional_sources]
+    if top is not None:
+        read_cmd += [f"prep -top {top}"]
+    yosys_cmd = read_cmd + conversion + [f"write_btor -x {btor_name}"]
     cmd = ["yosys", "-p", " ; ".join(yosys_cmd)]
     subprocess.run(cmd, check=True, cwd=cwd, stdout=subprocess.PIPE)
     assert (cwd / btor_name).exists()
@@ -77,13 +85,13 @@ class Synthesizer:
         pass
 
     def run(self, name: str, working_dir: Path, ast: vast.Source, testbench: Path, solver: str, init: str,
-            incremental: bool) -> dict:
+            incremental: bool, additional_sources: list, top: str) -> dict:
         synth_filename = working_dir / name
         with open(synth_filename, "w") as f:
             f.write(serialize(ast))
 
         # convert file and run synthesizer
-        btor_filename = _to_btor(synth_filename)
+        btor_filename = _to_btor(synth_filename, additional_sources, top)
         result = _run_synthesizer(btor_filename, testbench, solver, init, incremental)
         status = result["status"]
         with open(working_dir / "status", "w") as f:

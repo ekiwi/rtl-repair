@@ -28,7 +28,7 @@ opencores_dir = benchmark_dir / "cirfix" / "opencores"
 reed_dir = opencores_dir / "reed_solomon_decoder"
 
 
-def run_synth(source: Path, testbench: Path, solver='z3', init='any', incremental=True, other_files=None):
+def run_synth(source: Path, testbench: Path, solver='z3', init='any', incremental=True, other_files=None, top=None):
     if not working_dir.exists():
         os.mkdir(working_dir)
     dir_name = source.stem + "_" + testbench.stem
@@ -48,6 +48,8 @@ def run_synth(source: Path, testbench: Path, solver='z3', init='any', incrementa
         for ff in other_files:
             assert ff.exists()
             args += ["--source", str(ff.resolve())]
+    if top is not None:
+        args += ["--top", top]
     cmd = ["./rtlfix.py"] + args
     try:
         r = subprocess.run(cmd, stdout=subprocess.PIPE, check=True, cwd=root_dir)
@@ -70,29 +72,29 @@ def run_synth(source: Path, testbench: Path, solver='z3', init='any', incrementa
 class SynthesisTest(unittest.TestCase):
 
     def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
-                      incremental: bool = False, max_changes: int = 2, other_files: list = None):
+                      incremental: bool = False, max_changes: int = 2, other_files: list = None, top = None):
         start = time.monotonic()
         other_files = None if other_files is None else [dir / ff for ff in other_files]
-        status, changes, template = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files)
+        status, changes, template = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files, top)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
             print(f"SUCCESS: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
     def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
-                        incremental: bool = False, other_files: list = None):
+                        incremental: bool = False, other_files: list = None, top = None):
         start = time.monotonic()
         other_files = None if other_files is None else [dir / ff for ff in other_files]
-        status, _, _ = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files)
+        status, _, _ = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files, top)
         self.assertEqual("no-repair", status)
         if _print_time:
             print(f"NO-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
     def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
-                            incremental: bool = False, other_files: list = None):
+                            incremental: bool = False, other_files: list = None, top = None):
         start = time.monotonic()
         other_files = None if other_files is None else [dir / ff for ff in other_files]
-        status, _, _ = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files)
+        status, _, _ = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files, top)
         self.assertEqual("cannot-repair", status)
         if _print_time:
             print(f"CANNOT-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
@@ -132,7 +134,7 @@ class TestReedSolomon(SynthesisTest):
 
     @unittest.skip("TODO")
     def test_orig_orig_tb(self):
-        self.synth_no_repair(reed_dir, "BM_lamda.v", "orig_tb.csv", init='zero', other_files=reed_files)
+        self.synth_no_repair(reed_dir, "BM_lamda.v", "orig_tb.csv", init='zero', other_files=reed_files, top="RS_dec")
 
 
 class TestMux(SynthesisTest):

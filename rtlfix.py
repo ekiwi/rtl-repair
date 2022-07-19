@@ -25,6 +25,7 @@ NoRepair = "no-repair"
 @dataclass
 class Config:
     source: Path
+    top: str
     testbench: Path
     working_dir: Path
     solver: str
@@ -50,6 +51,7 @@ def parse_args() -> Config:
                         action='store_true')
     parser.add_argument('--parallel', dest='parallel', help='try to apply repair templates in parallel',
                         action='store_true')
+    parser.add_argument('--top', dest='top', help='name of the toplevel module (may be needed for yosys)')
     args = parser.parse_args()
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
@@ -58,7 +60,7 @@ def parse_args() -> Config:
     assert len(all_sources) >= 1
     source = all_sources[0]
     additional_sources = all_sources[1:]
-    return Config(source, Path(args.testbench), Path(args.working_dir), args.solver, args.init,
+    return Config(source, args.top, Path(args.testbench), Path(args.working_dir), args.solver, args.init,
                   args.show_ast, args.parallel, args.incremental, additional_sources)
 
 
@@ -97,7 +99,8 @@ def try_template(config: Config, ast, prefix: str, template):
     synth_start_time = time.monotonic()
     synth = Synthesizer()
     result = synth.run(config.source.name, template_dir, ast,
-                       config.testbench, config.solver, config.init, config.incremental)
+                       config.testbench, config.solver, config.init, config.incremental,
+                       config.additional_sources, config.top)
     synth_time = time.monotonic() - synth_start_time
     # add some metadata to result
     result["template"] = template_name
