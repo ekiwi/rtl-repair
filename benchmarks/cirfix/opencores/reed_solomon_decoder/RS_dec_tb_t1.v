@@ -17,7 +17,6 @@ wire CEO;
 wire Valid_out;
 
 integer f;
-string path;
 
 RS_dec  DUT 
 (
@@ -56,7 +55,7 @@ initial begin
 		@(posedge clk);
 		//$fwrite(f, "%g,%b,%b,%b,%b,%b,%b,%b,%b,%b,%b\n",
 		//$time,Out_byte[7],Out_byte[6],Out_byte[5],Out_byte[4],Out_byte[3],Out_byte[2],Out_byte[1],Out_byte[0],CEO,Valid_out);
-		$fwrite(f, "%g,%d,%d,%d,%d,%d,%d,%d\n",$time,clk,reset,CE,input_byte,Out_byte,CEO,Valid_out);
+		$fwrite(f, "%d,%d,%d,%d,%d,%d,%d,%d\n",$time,clk,reset,CE,input_byte,Out_byte,CEO,Valid_out);
 	end
 end
 
