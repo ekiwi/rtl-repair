@@ -24,9 +24,11 @@ fsm_dir = benchmark_dir / "cirfix" / "fsm_full"
 left_shift_dir = benchmark_dir / "cirfix" / "lshift_reg"
 mux_dir = benchmark_dir / "cirfix" / "mux_4_1"
 sd_dir = benchmark_dir / "cirfix" / "sdram_controller"
+opencores_dir = benchmark_dir / "cirfix" / "opencores"
+reed_dir = opencores_dir / "reed_solomon_decoder"
 
 
-def run_synth(source: Path, testbench: Path, solver='z3', init='any', incremental=True):
+def run_synth(source: Path, testbench: Path, solver='z3', init='any', incremental=True, other_files=None):
     if not working_dir.exists():
         os.mkdir(working_dir)
     dir_name = source.stem + "_" + testbench.stem
@@ -42,6 +44,10 @@ def run_synth(source: Path, testbench: Path, solver='z3', init='any', incrementa
         args += ["--incremental"]
     if _parallel:
         args += ["--parallel"]
+    if other_files is not None:
+        for ff in other_files:
+            assert ff.exists()
+            args += ["--source", str(ff.resolve())]
     cmd = ["./rtlfix.py"] + args
     try:
         r = subprocess.run(cmd, stdout=subprocess.PIPE, check=True, cwd=root_dir)
@@ -64,23 +70,30 @@ def run_synth(source: Path, testbench: Path, solver='z3', init='any', incrementa
 class SynthesisTest(unittest.TestCase):
 
     def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
-                      incremental: bool = False, max_changes: int = 2):
+                      incremental: bool = False, max_changes: int = 2, other_files: list = None):
         start = time.monotonic()
-        status, changes, template = run_synth(dir / design, dir / testbench, solver, init, incremental)
+        other_files = None if other_files is None else [dir / ff for ff in other_files]
+        status, changes, template = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
             print(f"SUCCESS: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
-    def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any'):
+    def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
+                        incremental: bool = False, other_files: list = None):
         start = time.monotonic()
-        self.assertEqual("no-repair", run_synth(dir / design, dir / testbench, solver, init)[0])
+        other_files = None if other_files is None else [dir / ff for ff in other_files]
+        status, _, _ = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files)
+        self.assertEqual("no-repair", status)
         if _print_time:
             print(f"NO-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
-    def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any'):
+    def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
+                            incremental: bool = False, other_files: list = None):
         start = time.monotonic()
-        self.assertEqual("cannot-repair", run_synth(dir / design, dir / testbench, solver, init)[0])
+        other_files = None if other_files is None else [dir / ff for ff in other_files]
+        status, _, _ = run_synth(dir / design, dir / testbench, solver, init, incremental, other_files)
+        self.assertEqual("cannot-repair", status)
         if _print_time:
             print(f"CANNOT-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
@@ -106,6 +119,19 @@ class TestSdRamController(SynthesisTest):
     def test_kgoliya_buggy2_orig_tb(self):
         # missing default case
         self.synth_success(sd_dir, "sdram_controller_kgoliya_buggy2.v", "orig_tb.csv", incremental=True)
+
+
+reed_files = [
+    "RS_dec.v", "GF_matrix_dec.v", "GF_matrix_ascending_binary.v", "input_syndromes.v",
+    "lamda_roots.v", "transport_in2out.v", "DP_RAM.v", "out_stage.v", "error_correction.v", "Omega_Phy.v",
+    "GF_mult_add_syndromes.v"
+]
+
+
+class TestReedSolomon(SynthesisTest):
+
+    def test_orig_orig_tb(self):
+        self.synth_no_repair(reed_dir, "BM_lamda.v", "orig_tb.csv", init='zero', other_files=reed_files)
 
 
 class TestMux(SynthesisTest):
@@ -339,6 +365,13 @@ class TestTypeInference(unittest.TestCase):
         hist = _make_histogram(widths)
         expected = {None: 1, 32: 26, 5: 60, 8: 17, 2: 7, 13: 4, 1: 14, 10: 7, 4: 7, 24: 4, 16: 5, 9: 2, 3: 1}
         self.assertEqual(expected, hist)
+
+    def test_reed_solomon_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(reed_dir / "BM_lamda.v")
+        ast.show()
+        widths = infer_widths(ast)
 
 
 if __name__ == '__main__':
