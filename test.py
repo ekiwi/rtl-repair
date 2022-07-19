@@ -130,6 +130,7 @@ reed_files = [
 
 class TestReedSolomon(SynthesisTest):
 
+    @unittest.skip("TODO")
     def test_orig_orig_tb(self):
         self.synth_no_repair(reed_dir, "BM_lamda.v", "orig_tb.csv", init='zero', other_files=reed_files)
 
