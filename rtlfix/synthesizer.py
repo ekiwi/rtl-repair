@@ -37,7 +37,8 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incr
 
 
 _minimal_btor_conversion = [
-    "proc -noopt"
+    "proc -noopt",
+    "async2sync", # required for designs with async reset
 ]
 # inspired by the commands used by SymbiYosys
 _btor_conversion = [

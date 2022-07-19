@@ -3,7 +3,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 from rtlfix.visitor import AstVisitor
-from rtlfix.utils import parse_width, parse_verilog_int_literal
+from rtlfix.utils import parse_verilog_int_literal
 import pyverilog.vparser.ast as vast
 
 
@@ -13,7 +13,6 @@ def infer_widths(ast: vast.Source) -> dict:
 
 _cmp_op = {vast.LessThan, vast.GreaterThan, vast.LessEq, vast.GreaterEq, vast.Eq, vast.NotEq, vast.Eql, vast.NotEql}
 _context_dep_bops = {vast.Plus, vast.Minus, vast.Times, vast.Divide, vast.Mod, vast.And, vast.Or, vast.Xor, vast.Xnor}
-
 
 class InferWidths(AstVisitor):
     """ Very basic, very buggy version of type checking/inference for Verilog
@@ -79,14 +78,14 @@ class InferWidths(AstVisitor):
             if env_width is not None and env_width > width:
                 width = env_width
         elif type(node) in _cmp_op:
-            width_left = self.expr_width(node.left, None)
-            width_right = self.expr_width(node.right, None)
-            if width_right is None or width_left is None:
-                print(f"{node=} {width_left=} {width_right=}")
-                print(f"{self.vars=}")
-                print(f"{self.params=}")
-                raise NotImplementedError("Unexpected None width")
-            width = max(width_left, width_right)
+            _width_left = self.expr_width(node.left, None)
+            _width_right = self.expr_width(node.right, None)
+            width = 1
+        elif isinstance(node, vast.Land) or isinstance(node, vast.Lor):
+            # _L_ogical or/and (as opposed to bit-wise)
+            _width_left = self.expr_width(node.left, None)
+            _width_right = self.expr_width(node.right, None)
+            width = 1
         elif isinstance(node, vast.Partselect):
             # this is a bit slice or bit select
             msb = self.eval(node.msb)

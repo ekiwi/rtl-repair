@@ -370,8 +370,10 @@ class TestTypeInference(unittest.TestCase):
         from rtlfix import parse_verilog
         from rtlfix.types import infer_widths
         ast = parse_verilog(reed_dir / "BM_lamda.v")
-        ast.show()
         widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        expected = {None: 1, 1: 26, 3: 1, 4: 5, 5: 4, 8: 99, 9: 9, 32: 32}
+        self.assertEqual(expected, hist)
 
 
 if __name__ == '__main__':
