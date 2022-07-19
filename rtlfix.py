@@ -10,6 +10,7 @@ import os
 import shutil
 import subprocess
 import time
+from collections import OrderedDict
 from multiprocessing import Pool
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,11 +32,12 @@ class Config:
     show_ast: bool
     parallel: bool
     incremental: bool
+    additional_sources: list
 
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='Repair Verilog file')
-    parser.add_argument('--source', dest='source', help='Verilog source file', required=True)
+    parser.add_argument('--source', dest='source', help='Verilog source file', required=True, action='append')
     parser.add_argument('--testbench', dest='testbench', help='Testbench in CSV format', required=True)
     parser.add_argument('--working-dir', dest='working_dir', help='Working directory, files might be overwritten!',
                         required=True)
@@ -51,8 +53,13 @@ def parse_args() -> Config:
     args = parser.parse_args()
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
-    return Config(Path(args.source), Path(args.testbench), Path(args.working_dir), args.solver, args.init,
-                  args.show_ast, args.parallel, args.incremental)
+    # we can get multiple sources, but only one file will be repaired
+    all_sources = list(OrderedDict.fromkeys(Path(aa) for aa in args.source))
+    assert len(all_sources) >= 1
+    source = all_sources[0]
+    additional_sources = all_sources[1:]
+    return Config(source, Path(args.testbench), Path(args.working_dir), args.solver, args.init,
+                  args.show_ast, args.parallel, args.incremental, additional_sources)
 
 
 def create_working_dir(working_dir: Path):
