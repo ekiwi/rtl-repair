@@ -14,10 +14,11 @@ _root_dir = _script_dir.parent.resolve()
 _parser_tmp_dir = _root_dir / ".pyverilog"
 
 
-def parse_verilog(filename: Path) -> vast.Source:
+def parse_verilog(filename: Path, include: Path = None) -> vast.Source:
     assert filename.exists(), f"cannot parse {filename}, does not exist"
+    include = [] if include is None else [str(include.resolve())]
     ast, directives = parse([filename],
-                            preprocess_include=[],
+                            preprocess_include=include,
                             preprocess_define=[],
                             outputdir=".",
                             debug=True)

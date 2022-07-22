@@ -85,7 +85,7 @@ class Synthesizer:
         pass
 
     def run(self, name: str, working_dir: Path, ast: vast.Source, testbench: Path, solver: str, init: str,
-            incremental: bool, additional_sources: list, top: str) -> dict:
+            incremental: bool, additional_sources: list, top: str, include: Path) -> dict:
         synth_filename = working_dir / name
         with open(synth_filename, "w") as f:
             f.write(serialize(ast))

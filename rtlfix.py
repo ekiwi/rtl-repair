@@ -34,6 +34,7 @@ class Config:
     parallel: bool
     incremental: bool
     additional_sources: list
+    include: Path
 
 
 def parse_args() -> Config:
@@ -52,6 +53,7 @@ def parse_args() -> Config:
     parser.add_argument('--parallel', dest='parallel', help='try to apply repair templates in parallel',
                         action='store_true')
     parser.add_argument('--top', dest='top', help='name of the toplevel module (may be needed for yosys)')
+    parser.add_argument('--include', help='include directory')
     args = parser.parse_args()
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
@@ -60,8 +62,9 @@ def parse_args() -> Config:
     assert len(all_sources) >= 1
     source = all_sources[0]
     additional_sources = all_sources[1:]
+    include = None if args.include is None else Path(args.include)
     return Config(source, args.top, Path(args.testbench), Path(args.working_dir), args.solver, args.init,
-                  args.show_ast, args.parallel, args.incremental, additional_sources)
+                  args.show_ast, args.parallel, args.incremental, additional_sources, include)
 
 
 def create_working_dir(working_dir: Path):
@@ -100,7 +103,7 @@ def try_template(config: Config, ast, prefix: str, template):
     synth = Synthesizer()
     result = synth.run(config.source.name, template_dir, ast,
                        config.testbench, config.solver, config.init, config.incremental,
-                       config.additional_sources, config.top)
+                       config.additional_sources, config.top, config.include)
     synth_time = time.monotonic() - synth_start_time
     # add some metadata to result
     result["template"] = template_name
@@ -171,9 +174,9 @@ def main():
     create_working_dir(config.working_dir)
 
     # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
-    filename, preprocess_changed = preprocess(config.source, config.working_dir)
+    filename, preprocess_changed = preprocess(config.source, config.working_dir, config.include)
 
-    ast = parse_verilog(filename)
+    ast = parse_verilog(filename, config.include)
     if config.show_ast:
         ast.show()
 
