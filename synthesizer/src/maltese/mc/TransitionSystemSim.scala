@@ -11,14 +11,20 @@ import scala.collection.mutable
 
 /** A new and improved transition system simulator. */
 class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
-  sys.signals.foreach(s => assert(s.e.isInstanceOf[BVExpr], s"array signals are not supported! $s"))
-  sys.states.foreach(s => assert(s.sym.isInstanceOf[BVExpr], s"array states are not supported! $s"))
-
+  private val allSymbols = sys.inputs ++ sys.states.map(_.sym) ++ sys.signals.map(_.sym)
+  private val bvSymbols = allSymbols.collect{ case b: BVSymbol => b }
+  private val arraySymbols = allSymbols.collect{ case a: ArraySymbol => a }
   private val data = mutable.HashMap[String, BigInt]()
+  private val memData = mutable.HashMap[String, Memory]()
   private var stepCount = -1
   def getStepCount: Int = stepCount
 
   private def getDefault(width: Int): BigInt = 0
+  private def assignDefault(name: String, tpe: SMTType): Unit = tpe match {
+    case BVType(width) => data(name) = getDefault(width)
+    case ArrayType(indexWidth, dataWidth) =>
+      memData(name) = evalCtx.constArray(indexWidth, getDefault(dataWidth)).asInstanceOf[Memory]
+  }
 
   private def init(): Unit = {
     stepCount = 0
@@ -26,11 +32,15 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     sys.inputs.foreach { in =>
       data(in.name) = getDefault(in.width)
     }
+    // initialize all states to a default value in order to be able to update the signals
+    sys.states.foreach(st => assignDefault(st.name, st.sym.tpe))
+    // update signals because memory init might depend on it
+    updateSignals()
     // init states to their init value or default
     sys.states.foreach { st =>
-      data(st.name) = st.init match {
-        case Some(value: BVExpr) => eval(value)
-        case None => getDefault(st.sym.asInstanceOf[BVSymbol].width)
+      st.init match {
+        case Some(value) => assignSignal(st.name, value)
+        case None => assignDefault(st.name, st.sym.tpe)
       }
     }
     vcdWriter.foreach(updateVcd)
@@ -39,7 +49,10 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     updateSignals()
   }
 
-  def poke(name:   String, value: BigInt): Unit = data(name) = value
+  def poke(name:   String, value: BigInt): Unit = {
+    assert(data.contains(name))
+    data(name) = value
+  }
   def poke(inputs: Map[String, BigInt]): Unit = inputs.foreach { case (name, value) => poke(name, value) }
 
   def update(): Unit = {
@@ -53,9 +66,9 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     // update states to next step
     sys.states.foreach { st =>
       st.next match {
-        case Some(value: BVExpr) =>
-          data(st.name) = eval(value)
-        case None => // ignore
+        case Some(value) =>
+          assignSignal(st.name, value)
+        case None => // ignore TODO: should get some sort of default value
       }
     }
     stepCount += 1
@@ -64,6 +77,17 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
   }
 
   def peek(name: String): BigInt = data(name)
+  def peekMem(name: String): IndexedSeq[BigInt] = memData(name).data
+
+  def getSnapshot(): StateSnapshot = {
+    Snapshot(data.toMap, memData.toMap.map{ case (n, v) => n -> v.data })
+  }
+  def restoreSnapshot(snapshot: StateSnapshot): Unit = {
+    val snap = snapshot.asInstanceOf[Snapshot]
+    data.clear() ; data ++= snap.data
+    memData.clear()
+    snap.mem.foreach { case (n, v) => memData(n) = new Memory(v) }
+  }
 
   // adds an arbitrary signal and value to the output vcd if one is being produced, ignored otherwise
   def printSignal(name: String, value: BigInt, width: Int = 1): Unit =
@@ -78,10 +102,13 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
   }
 
   private def updateSignals(): Unit = {
-    sys.signals.foreach { sig =>
-      val value = eval(sig.e.asInstanceOf[BVExpr])
-      data(sig.name) = value
-    }
+    sys.signals.foreach { s => assignSignal(s.name, s.e) }
+  }
+
+  // update a signal, works with both BV and Array signals
+  private def assignSignal(name: String, expr: SMTExpr): Unit = expr match {
+    case e: BVExpr => data(name) = eval(e)
+    case e: ArrayExpr => memData(name) = evalArray(e)
   }
 
   private val CheckWidths = true
@@ -95,13 +122,16 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     }
     value
   }
+  private def evalArray(expr: ArrayExpr): Memory = SMTExprEval.evalArray(expr)(evalCtx).asInstanceOf[Memory]
+  private def arrayDepth(indexWidth: Int): Int = (BigInt(1) << indexWidth).toInt
 
   private val evalCtx: SMTEvalCtx = new SMTEvalCtx {
     override def getBVSymbol(name:        String): BigInt = data(name)
-    override def getArraySymbol(name:     String): ArrayValue = ???
+    override def getArraySymbol(name:     String): ArrayValue = memData(name)
     override def startVariableScope(name: String, value: BigInt): Unit = ???
     override def endVariableScope(name:   String): Unit = ???
-    override def constArray(indexWidth:   Int, value: BigInt): ArrayValue = ???
+    override def constArray(indexWidth:   Int, value: BigInt): ArrayValue =
+      Memory(IndexedSeq.fill(arrayDepth(indexWidth))(value))
   }
 
   // VCD support
@@ -110,10 +140,7 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
   private def initVcd(): vcd.VCD = {
     val vv = vcd.VCD(sys.name)
     vv.addWire("Step", 64)
-    val allBV = sys.inputs ++ sys.states.map(_.sym.asInstanceOf[BVSymbol]) ++ sys.signals.map(s =>
-      BVSymbol(s.name, s.e.asInstanceOf[BVExpr].width)
-    )
-    allBV.foreach(s => vv.addWire(s.name, s.width))
+    bvSymbols.foreach(s => vv.addWire(s.name, s.width))
     vv
   }
 
@@ -125,4 +152,27 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
 
   // start with initialized data
   init()
+}
+
+sealed trait StateSnapshot
+private case class Snapshot(data: Map[String, BigInt], mem: Map[String, IndexedSeq[BigInt]]) extends StateSnapshot
+
+private case class Memory(data: IndexedSeq[BigInt]) extends ArrayValue {
+  def depth: Int = data.size
+  def write(index: Option[BigInt], value: BigInt): Memory = {
+    index match {
+      case None => Memory(IndexedSeq.fill(depth)(value))
+      case Some(ii) =>
+        assert(ii >= 0 && ii < depth, s"index ($ii) needs to be non-negative smaller than the depth ($depth)!")
+        Memory(data.updated(ii.toInt, value))
+    }
+  }
+  def read(index: BigInt): BigInt = {
+    assert(index >= 0 && index < depth, s"index ($index) needs to be non-negative smaller than the depth ($depth)!")
+    data(index.toInt)
+  }
+  def ==(other: ArrayValue): Boolean = {
+    assert(other.isInstanceOf[Memory])
+    other.asInstanceOf[Memory].data == this.data
+  }
 }

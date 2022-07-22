@@ -90,7 +90,12 @@ object Synthesizer {
         } else {
           val init = state.init match {
             case Some(value) => value
-            case None        => getValue(state.sym.asInstanceOf[BVSymbol].width)
+            case None        => state.sym match {
+              case BVSymbol(_, width) => getValue(width)
+              case ArraySymbol(_, indexWidth, dataWidth) =>
+                // TODO: consider different values for different entries
+                ArrayConstant(getValue(dataWidth), indexWidth)
+            }
           }
           state.copy(init = Some(init))
         }
