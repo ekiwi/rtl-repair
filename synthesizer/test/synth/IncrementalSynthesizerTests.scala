@@ -64,4 +64,24 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     assert(r.noRepairNecessary)
   }
 
+  // TODO: why is this failing?
+  it should "signal no repair for i2c_master_top with no changes and replace literals" ignore {
+    val r = Synthesizer.run(
+      BenchmarkDir / "i2c_master_top_replace_literals.btor",
+      CirFixDir / "opencores" / "i2c" / "orig_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").useIncremental().makeVerbose()
+    )
+    assert(r.noRepairNecessary)
+  }
+
+  // TODO: currently the simulator is too slow to solve this in a reasonable time
+  //       we are simulating at around 10Hz and need to execute ~160k cycles just to check a solution
+  it should "signal no repair for original (not buggy) reed solomon decoder" ignore {
+    val r = Synthesizer.run(
+      BenchmarkDir / "reed_BM_lamda_orig_tb_replace_literals.btor",
+      CirFixDir / "opencores" / "reed_solomon_decoder" / "orig_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").useIncremental().makeVerbose()
+    )
+    assert(r.noRepairNecessary)
+  }
 }

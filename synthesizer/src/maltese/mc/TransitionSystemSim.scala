@@ -12,14 +12,14 @@ import scala.collection.mutable
 /** A new and improved transition system simulator. */
 class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
   private val allSymbols = sys.inputs ++ sys.states.map(_.sym) ++ sys.signals.map(_.sym)
-  private val bvSymbols = allSymbols.collect{ case b: BVSymbol => b }
-  private val arraySymbols = allSymbols.collect{ case a: ArraySymbol => a }
+  private val bvSymbols = allSymbols.collect { case b: BVSymbol => b }
+  private val arraySymbols = allSymbols.collect { case a: ArraySymbol => a }
   private val data = mutable.HashMap[String, BigInt]()
   private val memData = mutable.HashMap[String, Memory]()
   private var stepCount = -1
   def getStepCount: Int = stepCount
 
-  private def getDefault(width: Int): BigInt = 0
+  private def getDefault(width:   Int): BigInt = 0
   private def assignDefault(name: String, tpe: SMTType): Unit = tpe match {
     case BVType(width) => data(name) = getDefault(width)
     case ArrayType(indexWidth, dataWidth) =>
@@ -40,7 +40,7 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     sys.states.foreach { st =>
       st.init match {
         case Some(value) => assignSignal(st.name, value)
-        case None => assignDefault(st.name, st.sym.tpe)
+        case None        => assignDefault(st.name, st.sym.tpe)
       }
     }
     vcdWriter.foreach(updateVcd)
@@ -49,7 +49,7 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     updateSignals()
   }
 
-  def poke(name:   String, value: BigInt): Unit = {
+  def poke(name: String, value: BigInt): Unit = {
     assert(data.contains(name))
     data(name) = value
   }
@@ -76,15 +76,15 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     vcdWriter.foreach(_.incrementTime())
   }
 
-  def peek(name: String): BigInt = data(name)
+  def peek(name:    String): BigInt = data(name)
   def peekMem(name: String): IndexedSeq[BigInt] = memData(name).data
 
   def getSnapshot(): StateSnapshot = {
-    Snapshot(data.toMap, memData.toMap.map{ case (n, v) => n -> v.data })
+    Snapshot(data.toMap, memData.toMap.map { case (n, v) => n -> v.data })
   }
   def restoreSnapshot(snapshot: StateSnapshot): Unit = {
     val snap = snapshot.asInstanceOf[Snapshot]
-    data.clear() ; data ++= snap.data
+    data.clear(); data ++= snap.data
     memData.clear()
     snap.mem.foreach { case (n, v) => memData(n) = new Memory(v) }
   }
@@ -107,7 +107,7 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
 
   // update a signal, works with both BV and Array signals
   private def assignSignal(name: String, expr: SMTExpr): Unit = expr match {
-    case e: BVExpr => data(name) = eval(e)
+    case e: BVExpr    => data(name) = eval(e)
     case e: ArrayExpr => memData(name) = evalArray(e)
   }
 
@@ -122,8 +122,8 @@ class TransitionSystemSim(sys: TransitionSystem, vcdFilename: Option[os.Path]) {
     }
     value
   }
-  private def evalArray(expr: ArrayExpr): Memory = SMTExprEval.evalArray(expr)(evalCtx).asInstanceOf[Memory]
-  private def arrayDepth(indexWidth: Int): Int = (BigInt(1) << indexWidth).toInt
+  private def evalArray(expr:        ArrayExpr): Memory = SMTExprEval.evalArray(expr)(evalCtx).asInstanceOf[Memory]
+  private def arrayDepth(indexWidth: Int):       Int = (BigInt(1) << indexWidth).toInt
 
   private val evalCtx: SMTEvalCtx = new SMTEvalCtx {
     override def getBVSymbol(name:        String): BigInt = data(name)

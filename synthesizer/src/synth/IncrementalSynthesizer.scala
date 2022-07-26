@@ -28,7 +28,7 @@ object IncrementalSynthesizer {
 
     // execute testbench on system
     if (config.verbose) println("Executing system with testbench to find first failing output")
-    val exec = Testbench.run(noChange, randInputTb, verbose = config.verbose, vcd = Some(os.pwd / "fail.vcd"))
+    val exec = Testbench.run(noChange, randInputTb, verbose = config.verbose) // , vcd = Some(os.pwd / "fail.vcd"))
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
       return NoRepairNecessary
@@ -116,7 +116,7 @@ object IncrementalSynthesizer {
   ): Int = {
     if (config.verbose) println(s"Solution: " + getChangesInAssignment(assignment).mkString(", "))
     val withFix = applySynthAssignment(initialized, assignment)
-    val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose, vcd = Some(os.pwd / "repaired.vcd"))
+    val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose) //, vcd = Some(os.pwd / "repaired.vcd"))
     if (fixedExec.failed) {
       if (config.verbose) println(s"New failure at ${fixedExec.failAt}")
       fixedExec.failAt
