@@ -85,7 +85,8 @@ initial
 	begin
 		//adr = 32'hxxxx_xxxx;
 		//adr = 0;
-		adr  = {awidth{1'bx}};
+		// NOTE: changed to 0 from x to avoid x-prop issues
+		adr  = {awidth{1'b0}};
 		dout = {dwidth{1'bx}};
 		cyc  = 1'b0;
 		stb  = 1'bx;
@@ -129,7 +130,8 @@ task wb_write;
 		#1;
 		cyc  = 1'b0;
 		stb  = 1'bx;
-		adr  = {awidth{1'bx}};
+		// NOTE: changed to 0 from x to avoid x-prop issues
+		adr  = {awidth{1'b0}};
 		dout = {dwidth{1'bx}};
 		we   = 1'hx;
 		sel  = {dwidth/8{1'bx}};
@@ -171,7 +173,8 @@ task wb_read;
 		#1;
 		cyc  = 1'b0;
 		stb  = 1'bx;
-		adr  = {awidth{1'bx}};
+		// NOTE: changed to 0 from x to avoid x-prop issues
+		adr  = {awidth{1'b0}};
 		dout = {dwidth{1'bx}};
 		we   = 1'hx;
 		sel  = {dwidth/8{1'bx}};
