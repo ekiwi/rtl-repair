@@ -116,6 +116,11 @@ module tst_bench_top();
 	integer f;
 	// possible outputs: adr[31],adr[30],adr[29],adr[28],adr[27],adr[26],adr[25],adr[24],adr[23],adr[22],adr[21],adr[20],adr[19],adr[18],adr[17],adr[16],adr[15],adr[14],adr[13],adr[12],adr[11],adr[10],adr[9],adr[8],adr[7],adr[6],adr[5],adr[4],adr[3],adr[2],adr[1],adr[0],,dat_o[7],dat_o[6],dat_o[5],dat_o[4],dat_o[3],dat_o[2],dat_o[1],dat_o[0],cyc,stb,we,sda
 	
+
+	wire wb_ack_o;
+	wire wb_inta_o;
+
+
 	// hookup wishbone master model
 	wb_master_model #(8, 32) u0 (
 		.clk(clk),
@@ -127,7 +132,7 @@ module tst_bench_top();
 		.stb(stb),
 		.we(we),
 		.sel(),
-		.ack(ack),
+		.ack(ack || wb_ack_o),
 		.err(1'b0),
 		.rty(1'b0)
 	);
@@ -136,6 +141,7 @@ module tst_bench_top();
 	wire stb1 = stb &  adr[3];
 
 	assign dat_i = ({{8'd8}{stb0}} & dat0_i) | ({{8'd8}{stb1}} & dat1_i);
+
 
 	// hookup wishbone_i2c_master core
 	i2c_master_top i2c_top (
@@ -150,8 +156,8 @@ module tst_bench_top();
 		.wb_we_i(we),
 		.wb_stb_i(stb0),
 		.wb_cyc_i(cyc),
-		.wb_ack_o(ack),
-		.wb_inta_o(inta),
+		.wb_ack_o(wb_ack_o),
+		.wb_inta_o(wb_inta_o),
 
 		// i2c signals
 		.scl_pad_i(scl),
@@ -212,7 +218,7 @@ module tst_bench_top();
 			$time,clk,1'b0,rstn,adr[2:0],dat_o,we,stb0,cyc,scl,sda);
 			#1;
 			// sample outputs delyed by one because the register updates are delayed by one
-			$fwrite(f, "%d,%d,%d,%d,%d\n" ,dat0_i,ack,inta,scl0_o,scl0_oen);
+			$fwrite(f, "%d,%d,%d,%d,%d\n" ,dat0_i,wb_ack_o,wb_inta_o,scl0_o,scl0_oen);
 		end
 	end
 
@@ -229,8 +235,8 @@ module tst_bench_top();
 
 	      $display("\nstatus: %t Testbench started\n\n", $time);
 
-//	      $dumpfile("bench.vcd");
-//	      $dumpvars(1, tst_bench_top);
+	      $dumpfile("bench.vcd");
+	      $dumpvars(0, tst_bench_top);
 //	      $dumpvars(1, tst_bench_top.i2c_slave);
 
 	      // initially values
