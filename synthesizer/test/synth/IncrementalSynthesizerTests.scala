@@ -64,12 +64,11 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     assert(r.noRepairNecessary)
   }
 
-  // TODO: why is this failing?
-  it should "signal no repair for i2c_master_top with no changes and replace literals" ignore {
+  it should "signal no repair for i2c_master_top with no changes and replace literals" in {
     val r = Synthesizer.run(
       BenchmarkDir / "i2c_master_top_replace_literals.btor",
-      CirFixDir / "opencores" / "i2c" / "orig_tb.csv",
-      DefaultConfig.changeSolver("bitwuzla").useIncremental().makeVerbose()
+      CirFixDir / "opencores" / "i2c" / "fixed_x_prop_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
     )
     assert(r.noRepairNecessary)
   }
