@@ -27,6 +27,7 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incr
     if incremental:
         args += ["--incremental"]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
+    cmd_str = ' '.join(str(p) for p in cmd) # for debugging
     r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
     try:
         return json.loads(r.stdout.decode('utf-8'))

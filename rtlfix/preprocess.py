@@ -30,6 +30,9 @@ def preprocess(filename: Path, working_dir: Path, include: Path):
     for ii in range(4):
         warnings = run_linter(ii, filename, preprocess_dir, include)
 
+        # for now we ignore all warnings that are not part of the repair file
+        warnings = [w for w in warnings if w.filename.name == filename.name]
+
         if len(warnings) == 0:
             break  # no warnings -> nothing to fix
 
@@ -81,7 +84,7 @@ def remove_blank_lines(lines: list) -> list:
 @dataclass
 class LintWarning:
     tpe: str
-    filename: str
+    filename: Path
     line: int
     col: int
     msg: str
@@ -95,7 +98,7 @@ def parse_linter_output(lines: list) -> list:
         m = _verilator_re.search(line)
         if m is not None:
             (tpe, filename, line, col, msg) = m.groups()
-            out.append(LintWarning(tpe, filename, int(line), int(col), msg.strip()))
+            out.append(LintWarning(tpe, Path(filename), int(line), int(col), msg.strip()))
         elif len(out) > 0:
             out[0].msg += "\n" + line
     return out
