@@ -6,6 +6,8 @@ package synth
 
 import maltese.mc.{IsOutput, TransitionSystem, TransitionSystemSim, TransitionSystemSimulator}
 
+import java.io.PrintWriter
+
 case class Testbench(signals: Seq[String], values: Seq[Seq[Option[BigInt]]]) {
   def length: Int = values.length
   def slice(from: Int, until: Int): Testbench = copy(values = values.slice(from, until))
@@ -31,6 +33,20 @@ object Testbench {
       }
       .toSeq
     Testbench(signals, values)
+  }
+
+  def save(filename: os.Path, tb: Testbench): Unit = {
+    val out = new PrintWriter(os.write.outputStream(filename))
+    def outLine(line: String): Unit = out.println(line)
+    outLine(tb.signals.mkString(", "))
+    tb.values.foreach { values =>
+      val line = values.map {
+        case Some(value) => value.toString(10)
+        case None        => "x"
+      }.mkString(", ")
+      outLine(line)
+    }
+    out.close()
   }
 
   def removeRow(name: String, tb: Testbench): Testbench = {
