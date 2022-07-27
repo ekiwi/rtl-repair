@@ -73,6 +73,9 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     .text(
       "use incremental solver"
     )
+  opt[Unit]("verbose")
+    .action((_, args) => args.copy(config = args.config.makeVerbose()))
+    .text("output debug messages")
   opt[String]("solver").action { (a, args) =>
     args.copy(config = args.config.changeSolver(a))
   }
