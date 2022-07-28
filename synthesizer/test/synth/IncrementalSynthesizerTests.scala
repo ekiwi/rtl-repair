@@ -11,7 +11,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     val r = Synthesizer.run(
       BenchmarkDir / "sdram_controller_wadden_buggy2_replace_literals.btor",
       CirFixDir / "sdram_controller" / "orig_tb.csv",
-      DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental() // .showSolverCommunication()
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
     )
     assert(r.isSuccess)
   }
@@ -20,7 +20,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     val r = Synthesizer.run(
       BenchmarkDir / "decoder_3_to_8_wadden_buggy1_with_literals_replaced.btor",
       CirFixDir / "decoder_3_to_8" / "orig_tb.csv",
-      DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental()
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
     )
     assert(r.isSuccess)
   }
@@ -30,7 +30,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     val r = Synthesizer.run(
       BenchmarkDir / "sdram_controller_wadden_buggy1_replace_literals.btor",
       CirFixDir / "sdram_controller" / "orig_tb.csv",
-      DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental() // .showSolverCommunication()
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
     )
     assert(r.cannotRepair)
   }
@@ -39,7 +39,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     val r = Synthesizer.run(
       BenchmarkDir / "sdram_controller_wadden_buggy1_assign_const.btor",
       CirFixDir / "sdram_controller" / "orig_tb.csv",
-      DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental() // .showSolverCommunication()
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
     )
     // this version of assign constant should not be solvable
     assert(r.cannotRepair)
@@ -49,7 +49,7 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     val r = Synthesizer.run(
       BenchmarkDir / "sdram_controller_wadden_buggy1_assign_const_fixed.btor",
       CirFixDir / "sdram_controller" / "orig_tb.csv",
-      DefaultConfig.changeSolver("bitwuzla").makeVerbose().useIncremental() // .showSolverCommunication()
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
     )
     // this version of assign constant assigns at the end of blocks and thus should work
     assert(r.isSuccess)
