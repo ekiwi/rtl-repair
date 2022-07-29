@@ -4,7 +4,9 @@
 
 package synth
 
-class IncrementalSynthesizerTests extends SynthesizerSpec {
+import org.scalatest.ParallelTestExecution
+
+class IncrementalSynthesizerTests extends SynthesizerSpec with ParallelTestExecution {
   behavior.of("IncrementalSynthesizer")
 
   it should "synthesize a solution for sdram_controller_wadden_buggy2_replace_literals with original testbench" in {
