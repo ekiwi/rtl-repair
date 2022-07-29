@@ -32,8 +32,8 @@ object IncrementalSynthesizer {
       noChange,
       randInputTb,
       verbose = config.verbose,
-      earlyExitAfter = 4,
-      vcd = Some(os.pwd / "fail.vcd")
+      earlyExitAfter = 4
+      // vcd = Some(os.pwd / "fail.vcd")
     )
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
@@ -268,7 +268,11 @@ object IncrementalSynthesizer {
     pastK:              Int
   ): Unit = {
     val replayExec =
-      Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = verbose, vcd = Some(os.pwd / "short_replay.vcd"))
+      Testbench.run(
+        noSynth(sysWithStartValues),
+        shortTb,
+        verbose = verbose
+      ) // , vcd = Some(os.pwd / "short_replay.vcd"))
     assert(replayExec.failed, "cannot replay failure!")
     assert(replayExec.failAt == pastK, s"the replay should always fail at exactly k=$pastK")
   }
