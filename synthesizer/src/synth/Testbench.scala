@@ -7,6 +7,7 @@ package synth
 import maltese.mc.{IsOutput, TransitionSystem, TransitionSystemSim, TransitionSystemSimulator}
 
 import java.io.PrintWriter
+import scala.collection.mutable
 
 case class Testbench(signals: Seq[String], values: Seq[Seq[Option[BigInt]]]) {
   def length: Int = values.length
@@ -115,14 +116,27 @@ object Testbench {
   }
 
   /** concretely execute the testbench on the given transition system */
-  def run(sys: TransitionSystem, tb: Testbench, verbose: Boolean, vcd: Option[os.Path] = None): TestbenchResult = {
+  def run(
+    sys:            TransitionSystem,
+    tb:             Testbench,
+    verbose:        Boolean,
+    vcd:            Option[os.Path] = None,
+    earlyExitAfter: Int = -1
+  ): TestbenchResult = {
     // we need all starting states to be concrete
     sys.states.foreach(s => assert(s.init.isDefined, s"uninitialized state $s"))
     val inputs = filterInputs(sys, tb)
     val outputs = filterOutputs(sys, tb)
     val sim = new TransitionSystemSim(sys, vcd)
     var failAt = -1
-    val values = tb.values.map { values =>
+    val observed = mutable.ListBuffer[Map[String, BigInt]]()
+    tb.values.foreach { values =>
+      val step = sim.getStepCount
+      // early exit
+      if (earlyExitAfter >= 0 && failAt >= 0 && (step - failAt) > earlyExitAfter) {
+        sim.finish()
+        return TestbenchResult(observed.toSeq, failAt)
+      }
       // apply input and evaluate signals
       sim.poke(getValueMap(inputs, values))
       sim.update()
@@ -133,10 +147,10 @@ object Testbench {
           case Some(expected) =>
             val correct = if (expected != actual) {
               if (failAt < 0) {
-                failAt = sim.getStepCount
+                failAt = step
               }
-              if (sim.getStepCount == failAt) {
-                if (verbose) println(s"$expected != $actual $name@${sim.getStepCount}")
+              if (step == failAt) {
+                if (verbose) println(s"$expected != $actual $name@$step")
               }
               0
             } else { 1 }
@@ -150,10 +164,10 @@ object Testbench {
       // advance state
       sim.step()
       // report output and state values
-      (outVals ++ state).toMap
+      observed.append((outVals ++ state).toMap)
     }
     sim.finish()
-    TestbenchResult(values, failAt)
+    TestbenchResult(observed.toSeq, failAt)
   }
 
   /** adds a random value for every undefined (None) input */

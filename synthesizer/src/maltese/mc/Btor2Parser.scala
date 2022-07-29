@@ -175,8 +175,8 @@ private object Btor2Parser {
       // the number of arguments taken by the expression
       def getNodeName(pos: Int): String =
         if (parts.length > pos) {
-          // yosys likes to use a lot of $ and . in the signal names, we want to avoid that for readability reasons
-          val name = parts(pos).replace('$', '_').replace('.', '_')
+          // yosys likes to use a lot of $ in the signal names, we want to avoid that for readability reasons
+          val name = parts(pos).replace('$', '_')
           namespace.newName(name)
         } else { namespace.newName("s" + id) }
 

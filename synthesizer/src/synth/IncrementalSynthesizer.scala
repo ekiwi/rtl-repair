@@ -28,7 +28,13 @@ object IncrementalSynthesizer {
 
     // execute testbench on system
     if (config.verbose) println("Executing system with testbench to find first failing output")
-    val exec = Testbench.run(noChange, randInputTb, verbose = config.verbose) // , vcd = Some(os.pwd / "fail.vcd"))
+    val exec = Testbench.run(
+      noChange,
+      randInputTb,
+      verbose = config.verbose,
+      earlyExitAfter = 4,
+      vcd = Some(os.pwd / "fail.vcd")
+    )
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
       return NoRepairNecessary
@@ -116,7 +122,8 @@ object IncrementalSynthesizer {
   ): Int = {
     if (config.verbose) println(s"Solution: " + getChangesInAssignment(assignment).mkString(", "))
     val withFix = applySynthAssignment(initialized, assignment)
-    val fixedExec = Testbench.run(withFix, tb, verbose = config.verbose) //, vcd = Some(os.pwd / "repaired.vcd"))
+    val fixedExec =
+      Testbench.run(withFix, tb, verbose = config.verbose, earlyExitAfter = 1) //, vcd = Some(os.pwd / "repaired.vcd"))
     if (fixedExec.failed) {
       if (config.verbose) println(s"New failure at ${fixedExec.failAt}")
       fixedExec.failAt
@@ -128,11 +135,11 @@ object IncrementalSynthesizer {
 
   private def setInitValues(sys: TransitionSystem, values: Map[String, BigInt]): TransitionSystem = {
     val states = sys.states.map { st =>
-      st.init match {
-        case Some(_) => st
-        case None =>
+      values.get(st.name) match {
+        case Some(value) =>
           val sym = st.sym.asInstanceOf[BVSymbol]
-          st.copy(init = Some(BVLiteral(values(sym.name), sym.width)))
+          st.copy(init = Some(BVLiteral(value, sym.width)))
+        case None => st
       }
     }
     sys.copy(states = states)
@@ -201,7 +208,7 @@ object IncrementalSynthesizer {
   }
 
   private def blockSolution(ctx: SolverContext, assignment: Assignment): Unit = {
-    val changes = assignment.filter(_._1.startsWith(SynthChangePrefix)).map {
+    val changes = assignment.filter(t => isChangeSynthName(t._1)).map {
       case (name, value) if value == 0 => BVNot(BVSymbol(name, 1))
       case (name, _)                   => BVSymbol(name, 1)
     }
@@ -260,7 +267,8 @@ object IncrementalSynthesizer {
     verbose:            Boolean,
     pastK:              Int
   ): Unit = {
-    val replayExec = Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = verbose)
+    val replayExec =
+      Testbench.run(noSynth(sysWithStartValues), shortTb, verbose = verbose, vcd = Some(os.pwd / "short_replay.vcd"))
     assert(replayExec.failed, "cannot replay failure!")
     assert(replayExec.failAt == pastK, s"the replay should always fail at exactly k=$pastK")
   }

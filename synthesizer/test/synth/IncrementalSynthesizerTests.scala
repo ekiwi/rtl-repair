@@ -73,6 +73,30 @@ class IncrementalSynthesizerTests extends SynthesizerSpec {
     assert(r.noRepairNecessary)
   }
 
+  it should "report no solution for i2c_master_bit_ctrl_kgoliya_buggy1_replace_literals " in {
+    // we run out of window size when a failure way in the future is detected for the only solution we have
+    val r = Synthesizer.run(
+      BenchmarkDir / "i2c_master_bit_ctrl_kgoliya_buggy1_replace_literals.btor",
+      CirFixDir / "opencores" / "i2c" / "fixed_x_prop_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").useIncremental().changeInit(ZeroInit)
+    )
+    assert(r.cannotRepair)
+  }
+
+  it should "report no solution for i2c_master_bit_ctrl_kgoliya_buggy1_replace_literals and random init " in {
+    // we run out of window size when a failure way in the future is detected for the only solution we have:
+    // > Searching for solution with unrolling of pastK=14, futureK = 0, k=14
+    // > Solution: byte_controller.bit_controller.__synth_change_literal_78
+    // > New failure at 2360
+    // > updating futureK from 0 to 1122
+    val r = Synthesizer.run(
+      BenchmarkDir / "i2c_master_bit_ctrl_kgoliya_buggy1_replace_literals.btor",
+      CirFixDir / "opencores" / "i2c" / "fixed_x_prop_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").useIncremental()
+    )
+    assert(r.cannotRepair)
+  }
+
   // TODO: currently the simulator is too slow to solve this in a reasonable time
   //       we are simulating at around 10Hz and need to execute ~160k cycles just to check a solution
   it should "signal no repair for original (not buggy) reed solomon decoder" ignore {

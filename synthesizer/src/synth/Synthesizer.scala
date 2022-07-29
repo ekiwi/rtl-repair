@@ -105,13 +105,25 @@ object Synthesizer {
     case AnyInit => sys
   }
 
-  def isSynthName(name: String): Boolean =
-    name.startsWith(SynthVarPrefix) || name.startsWith(SynthChangePrefix)
+  def isSynthName(name: String): Boolean = {
+    val suffix = name.split('.').last
+    suffix.startsWith(SynthVarPrefix) || suffix.startsWith(SynthChangePrefix)
+  }
+
+  def isFreeSynthName(name: String): Boolean = {
+    val suffix = name.split('.').last
+    suffix.startsWith(SynthVarPrefix) && !suffix.startsWith(SynthChangePrefix)
+  }
+
+  def isChangeSynthName(name: String): Boolean = {
+    val suffix = name.split('.').last
+    suffix.startsWith(SynthChangePrefix)
+  }
 
   def collectSynthesisVars(sys: TransitionSystem): (TransitionSystem, SynthVars) = {
-    val changed = sys.states.map(_.sym).filter(_.name.startsWith(SynthChangePrefix)).map(_.asInstanceOf[BVSymbol])
+    val changed = sys.states.map(_.sym).filter(s => isChangeSynthName(s.name)).map(_.asInstanceOf[BVSymbol])
     val free =
-      sys.states.map(_.sym).filter(s => s.name.startsWith(SynthVarPrefix) && !s.name.startsWith(SynthChangePrefix))
+      sys.states.map(_.sym).filter(s => isFreeSynthName(s.name))
     val isSynthVar = (changed ++ free).map(_.name).toSet
     val signals = sys.signals.filterNot(s => s.name.endsWith(".next") && isSynthVar(s.name.dropRight(".next".length)))
     val states = sys.states.filterNot(s => isSynthVar(s.name))
@@ -139,10 +151,10 @@ object Synthesizer {
   }
 
   def countChangesInAssignment(assignment: List[(String, BigInt)]): Int =
-    assignment.filter(t => t._1.startsWith(SynthChangePrefix)).map(_._2).sum.toInt
+    assignment.filter(t => isChangeSynthName(t._1)).map(_._2).sum.toInt
 
   def getChangesInAssignment(assignment: List[(String, BigInt)]): List[String] =
-    assignment.filter(_._2 == 1).map(_._1).filter(_.startsWith(SynthChangePrefix))
+    assignment.filter(_._2 == 1).map(_._1).filter(isChangeSynthName)
 
   def startSolver(config: Config): SolverContext = {
     // create solver context
