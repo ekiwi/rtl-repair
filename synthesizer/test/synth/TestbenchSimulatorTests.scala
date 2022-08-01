@@ -32,6 +32,24 @@ class TestbenchSimulatorTests extends AnyFlatSpec {
     assert(!r.failed)
   }
 
+  it should "correctly execute i2c master testbench with async resets converted to sync" in {
+    val tb = Testbench.load(CirFixDir / "opencores" / "i2c" / "fixed_x_prop_tb.csv")
+    assert(tb.length == 171957)
+
+    val sys = Btor2.load(BenchmarkDir / "i2c_master_sync.btor")
+
+    // pick random starting state
+    val seed: Long = 1
+    val rnd = new scala.util.Random(seed)
+    val initialized = initSys(sys, RandomInit, rnd)
+
+    // pick random inputs for Xs
+    val randInputTb = Testbench.addRandomInput(sys, tb, rnd)
+
+    val r = Testbench.run(initialized, randInputTb, verbose = true)
+    assert(!r.failed)
+  }
+
   // this is the code we used to generate the x-prop fix
   it should "fix x-prop issues with the i2c testbench" in {
     val tb = Testbench.load(CirFixDir / "opencores" / "i2c" / "orig_tb.csv")

@@ -1,7 +1,7 @@
 # Copyright 2022 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
-
+import copy
 import subprocess
 import json
 from pathlib import Path
@@ -10,6 +10,8 @@ import pyverilog.vparser.ast as vast
 
 
 # the synthesizer is written in Scala, the source code lives in src
+from rtlfix.visitor import AstVisitor
+
 _jar_rel = Path("target") / "scala-2.13" / "bug-fix-synthesizer-assembly-0.1.jar"
 _synthesizer_dir = _root_dir / "synthesizer"
 _jar = _synthesizer_dir / _jar_rel
@@ -75,6 +77,7 @@ def _to_btor(filename: Path, additional_sources: list, top: str):
         read_cmd += [f"prep -top {top}"]
     yosys_cmd = read_cmd + conversion + [f"write_btor -x {btor_name}"]
     cmd = ["yosys", "-p", " ; ".join(yosys_cmd)]
+    cmd_str = ' '.join(str(p) for p in cmd) # for debugging
     subprocess.run(cmd, check=True, cwd=cwd, stdout=subprocess.PIPE)
     assert (cwd / btor_name).exists()
     return cwd / btor_name
@@ -88,6 +91,7 @@ class Synthesizer:
     def run(self, name: str, working_dir: Path, ast: vast.Source, testbench: Path, solver: str, init: str,
             incremental: bool, additional_sources: list, top: str, include: Path) -> dict:
         synth_filename = working_dir / name
+        ast = _remove_async_reset(ast)
         with open(synth_filename, "w") as f:
             f.write(serialize(ast))
 
@@ -99,3 +103,122 @@ class Synthesizer:
             f.write(status + "\n")
 
         return result
+
+
+def _remove_async_reset(ast: vast.Source) -> vast.Source:
+    """ We need to turn asynchronous resets into synchronous resets in order to be able
+        to synthesize our repair templates with yosys.
+        This is OK since we need to make this change anyways (with the asyn2sync command).
+        This function makes a copy of the AST and then analyzes all processes to find synchronous processes,
+        distinguish between clock and reset (the clock is never used in the process) and then remove the
+        reset from the sensitivity list.
+        Example: always@(posedge clk or negedge rst) --> always@(posedge clk)
+    """
+    ast = copy.deepcopy(ast)
+    phase1 = SyncReset()
+    phase1.run(ast)
+    phase2 = SyncResetMux(phase1.registers)
+    phase2.run(ast)
+    return ast
+
+
+class SyncResetMux(AstVisitor):
+    """ adds a mux to all r-value uses of a register with asynchronous reset """
+    def __init__(self, registers: dict):
+        super().__init__()
+        self.registers = registers
+
+
+    def run(self, ast: vast.Source):
+        self.visit(ast)
+
+
+    def visit_Lvalue(self, node: vast.Lvalue):
+        """ ignore all l-values """
+        return node
+
+    def visit_Identifier(self, node: vast.Identifier):
+        if node.name not in self.registers:
+            return node
+        # add mux
+        (init_expr, reset_name, high_active) = self.registers[node.name]
+        reset_expr = vast.Identifier(reset_name)
+        if not high_active:
+            reset_expr = vast.Ulnot(reset_expr)
+        return vast.Cond(reset_expr, init_expr, node)
+
+
+class SyncReset(AstVisitor):
+    """ identifies all registers with asynchronous reset and removes the asynchronous reset from the sensitivity list """
+    def __init__(self):
+        super().__init__()
+        self.registers = {}
+
+
+    def run(self, ast: vast.Source):
+        self.registers = {}
+        self.visit(ast)
+
+
+    def visit_Always(self, node: vast.Always):
+        # check to see if there are exactly two posedge / negedge arguments in the sensitivity list
+        types = { e.type for e in node.sens_list.list }
+        is_edge_sensitive = 'posedge' in types or 'negedge' in types
+        if not is_edge_sensitive or len(node.sens_list.list) < 2:
+            return node
+
+        # we have 2+ edge sensitive signals and need to determine which one is a reset and which one is a clock
+        names = {e.sig.name for e in node.sens_list.list}
+        assert len(names) == 2
+        finder = ResetProcessAnalyzer(names)
+        finder.visit(node.statement)
+        assert finder.reset is not None, "failed to identify reset!"
+        self.registers.update(finder.registers)
+
+        # update sense list
+        node.sens_list.list = [e for e in node.sens_list.list if e.sig.name != finder.reset]
+
+        return node
+
+
+
+class ResetProcessAnalyzer(AstVisitor):
+    """ determines the reset signal name (from the sens list candidates) + registers and their reset values """
+    def __init__(self, reset_candidates: set):
+        super().__init__()
+        self.candidates = reset_candidates
+        self.reset = None
+        self.high_active = True
+        self.registers = {}
+
+    def _is_reset_expr(self, node):
+        if isinstance(node, vast.Identifier) and node.name in self.candidates:
+            return node.name, True
+        if isinstance(node, vast.Ulnot) or isinstance(node, vast.Unot):
+            (name, high_active) = self._is_reset_expr(node.right)
+            if name is not None:
+                return name, not high_active
+        return None, None
+
+    def visit_IfStatement(self, node: vast.IfStatement):
+        # check to see if this might be the reset if statement
+        (name, high_active) = self._is_reset_expr(node.cond)
+        if name is None:
+            # we skip this block if the condition it is not a reset expression
+            return
+        if self.reset is not None:
+            assert self.reset == name
+            assert self.high_active == high_active
+        else:
+            self.reset = name
+            self.high_active = high_active
+        # visit reset block
+        self.visit(node.true_statement)
+
+    def visit_NonblockingSubstitution(self, node: vast.NonblockingSubstitution):
+        """ this should only be visited in the context of a just discovered reset branch """
+        reg_name = node.left.var.name
+        init_value = node.right
+        assert reg_name not in self.registers
+        self.registers[reg_name] = (copy.deepcopy(init_value), self.reset, self.high_active)
+
