@@ -174,7 +174,7 @@ module i2c_master_top(
 	end
 
 	// generate registers
-	always @(posedge wb_clk_i or negedge rst_i)
+	always @(posedge wb_clk_i)
 	  if (!rst_i)
 	    begin
 	        prer <= #1 16'h0000;
@@ -198,7 +198,7 @@ module i2c_master_top(
 	      endcase
 
 	// generate command register (special case)
-	always @(posedge wb_clk_i or negedge rst_i)
+	always @(posedge wb_clk_i)
 	  if (!rst_i)
 	    cr <= #1 8'h0;
 	  else if (wb_rst_i)
@@ -257,7 +257,7 @@ module i2c_master_top(
 	);
 
 	// status register block + interrupt request signal
-	always @(posedge wb_clk_i or negedge rst_i)
+	always @(posedge wb_clk_i)
 	  if (!rst_i)
 	    begin
 	        al       <= #1 1'b0;
@@ -281,7 +281,7 @@ module i2c_master_top(
 	    end
 
 	// generate interrupt request signals
-	always @(posedge wb_clk_i or negedge rst_i)
+	always @(posedge wb_clk_i)
 	  if (!rst_i)
 	    wb_inta_o <= #1 1'b0;
 	  else if (wb_rst_i)
