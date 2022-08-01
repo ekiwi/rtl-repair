@@ -34,7 +34,7 @@ class TestbenchSimulatorTests extends AnyFlatSpec {
 
   // this is the code we used to generate the x-prop fix
   it should "fix x-prop issues with the i2c testbench" in {
-    val tb = Testbench.load(CirFixDir / "opencores" / "i2c" / "orig_tb.csv")
+    val tb = Testbench.load(CirFixDir / "opencores" / "i2c" / "orig_tb_sync_reset.csv")
     assert(tb.length == 171957)
 
     val sys = Btor2.load(BenchmarkDir / "i2c_master.btor")
