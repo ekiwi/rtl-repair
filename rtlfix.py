@@ -111,6 +111,10 @@ def try_template(config: Config, ast, prefix: str, template):
     result["directory"] = template_dir.name
     status = result["status"]
 
+    # write preliminary results to disk
+    with open(template_dir / "result.json", "w") as f:
+        json.dump(result, f, indent=2)
+
     if status == Success:
         # execute synthesized repair
         changes = do_repair(ast, result["assignment"])

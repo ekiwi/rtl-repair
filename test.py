@@ -135,6 +135,11 @@ class TestI2C(SynthesisTest):
     def test_orig_fixed_x_prop_tb(self):
         self.synth_no_repair(i2c_dir, "i2c_master_top.v", "fixed_x_prop_tb.csv", init='zero', other_files=i2c_files, top=i2c_top, incremental=True)
 
+    def test_kgoliya_buggy1(self):
+        self.synth_success(i2c_dir, "i2c_master_bit_ctrl_kgoliya_buggy1.v", "fixed_x_prop_tb.csv", init='zero',
+                             other_files=["i2c_master_top.v", "i2c_master_byte_ctrl.v"],
+                             top=i2c_top, incremental=True)
+
 
 reed_files = [
     "RS_dec.v", "GF_matrix_dec.v", "GF_matrix_ascending_binary.v", "input_syndromes.v",

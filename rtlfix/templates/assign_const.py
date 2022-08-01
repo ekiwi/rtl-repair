@@ -58,8 +58,8 @@ class ConstAssigner(RepairTemplate):
         if stmt is None:
             return None
         block = ensure_block(stmt)
-        # add assignments to the end of the block
-        block.statements = tuple(list(block.statements) + self.make_assignments(stmt.lineno))
+        # add assignments to the beginning and to the end of the block
+        block.statements = tuple(self.make_assignments(stmt.lineno) + list(block.statements) + self.make_assignments(stmt.lineno))
         return block
 
     def make_assignments(self, lineno: int):
