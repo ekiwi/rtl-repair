@@ -170,7 +170,7 @@ module i2c_master_byte_ctrl (
 	assign dout = sr;
 
 	// generate shift register
-	always @(posedge clk or negedge nReset)
+	always @(posedge clk)
 	  if (!nReset)
 	    sr <= #1 8'h0;
 	  else if (rst)
@@ -181,7 +181,7 @@ module i2c_master_byte_ctrl (
 	    sr <= #1 {sr[6:0], core_rxd};
 
 	// generate counter
-	always @(posedge clk or negedge nReset)
+	always @(posedge clk)
 	  if (!nReset)
 	    dcnt <= #1 3'h0;
 	  else if (rst)
@@ -198,7 +198,7 @@ module i2c_master_byte_ctrl (
 	//
 	reg [4:0] c_state; // synopsys enum_state
 
-	always @(posedge clk or negedge nReset)
+	always @(posedge clk)
 	  if (!nReset)
 	    begin
 	        core_cmd <= #1 `I2C_CMD_NOP;
