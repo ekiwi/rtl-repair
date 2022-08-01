@@ -391,6 +391,14 @@ class TestTypeInference(unittest.TestCase):
         expected = {None: 1, 1: 26, 3: 1, 4: 5, 5: 4, 8: 99, 9: 9, 32: 32}
         self.assertEqual(expected, hist)
 
+    def test_i2c_bit_widths(self):
+        from rtlfix import parse_verilog
+        from rtlfix.types import infer_widths
+        ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.v", i2c_dir)
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        expected = {None: 1, 1: 69, 2: 15, 3: 11, 4: 5, 14: 4, 16: 6, 18: 19, 32: 2}
+        self.assertEqual(expected, hist)
 
 if __name__ == '__main__':
     # ignore warnings because pyverilog is not good about closing some files it opens

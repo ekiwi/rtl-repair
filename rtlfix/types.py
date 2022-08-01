@@ -13,6 +13,7 @@ def infer_widths(ast: vast.Source) -> dict:
 
 _cmp_op = {vast.LessThan, vast.GreaterThan, vast.LessEq, vast.GreaterEq, vast.Eq, vast.NotEq, vast.Eql, vast.NotEql}
 _context_dep_bops = {vast.Plus, vast.Minus, vast.Times, vast.Divide, vast.Mod, vast.And, vast.Or, vast.Xor, vast.Xnor}
+_shift_ops = {vast.Srl, vast.Sra, vast.Sll, vast.Sla, vast.Power}
 
 class InferWidths(AstVisitor):
     """ Very basic, very buggy version of type checking/inference for Verilog
@@ -81,6 +82,11 @@ class InferWidths(AstVisitor):
             _width_left = self.expr_width(node.left, None)
             _width_right = self.expr_width(node.right, None)
             width = 1
+        elif type(node) in _shift_ops:
+            # shift and power ops have the width of the first expression
+            _width_left = self.expr_width(node.left, None)
+            _width_right = self.expr_width(node.right, None)
+            width = _width_left
         elif isinstance(node, vast.Land) or isinstance(node, vast.Lor):
             # _L_ogical or/and (as opposed to bit-wise)
             _width_left = self.expr_width(node.left, None)
