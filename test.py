@@ -157,9 +157,15 @@ class TestReedSolomon(SynthesisTest):
 
 class TestMux(SynthesisTest):
 
-    @unittest.skip("Currently fails because the replace literals repair template creates a latch.")
     def test_orig_orig_tb(self):
-        self.synth_no_repair(mux_dir, "mux_4_1.v", "orig_tb.csv")
+        # the blocking assignment is turned into a non-blocking one, which is why a "SUCCESS" is reported
+        self.synth_success(mux_dir, "mux_4_1.v", "orig_tb.csv")
+
+    def test_wadden_buggy1_orig_tb(self):
+        self.synth_success(mux_dir, "mux_4_1_wadden_buggy1.v", "orig_tb.csv")
+
+    def test_wadden_buggy2_orig_tb(self):
+        self.synth_success(mux_dir, "mux_4_1_wadden_buggy2.v", "orig_tb.csv")
 
 
 class TestLeftShiftReg(SynthesisTest):
