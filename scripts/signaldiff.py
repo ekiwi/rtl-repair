@@ -158,6 +158,12 @@ def compare(original: typing.TextIO, buggy: typing.TextIO, external: list):
     signals = normalize_signals(signals)
     is_external = set(external)
 
+    # check to see if there are any internal signals
+    internal_signals = [s for s in signals if not s in is_external]
+    print(f"all signals: {signals}")
+    print(f"external signals: {external}")
+    print(f"internal signals: {internal_signals}")
+
     # iterate over lines together
     ii = 0
     disagreements = []
@@ -168,9 +174,13 @@ def compare(original: typing.TextIO, buggy: typing.TextIO, external: list):
         disagree = compare_line(ii, o, b, signals, is_external)
         disagreements += disagree
         # early exit for when we find the first external divergence
+        any_external = False
         for d in disagree:
             if d.external:
+                any_external = True
                 break
+        if any_external:
+            break
         ii += 1
 
     return disagreements
@@ -205,7 +215,7 @@ def main():
         for d in disagreements:
             ext = " (E)" if d.external else ""
             print(f"{d.signal}@{d.step}: {d.actual} != {d.expected}{ext}")
-        
+
 
         first_external = next(d.step for d in disagreements if d.external)
         try:
