@@ -16,14 +16,20 @@ class Config:
     original: Path
     buggy: Path
     testbench: Path
+    logfile: Path
+    tmp_dir: Path
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='Compare VCDs')
     parser.add_argument('--o', dest='original', help='original vcd', required=True)
     parser.add_argument('--b', dest='buggy', help='buggy vcd', required=True)
     parser.add_argument('--testbench', dest='testbench', help='Testbench in CSV format', required=True)
+    parser.add_argument('--log', dest='logfile', help='File to log to.')
+    parser.add_argument('--tmp', dest='tmp_dir', help='Working directory to store temporary files in.')
     args = parser.parse_args()
-    return Config(Path(args.original), Path(args.buggy), Path(args.testbench))
+    logfile = None if args.logfile is None else Path(args.logfile)
+    tmp_dir = None if args.tmp_dir is None else Path(args.tmp_dir)
+    return Config(Path(args.original), Path(args.buggy), Path(args.testbench), logfile, tmp_dir)
 
 @dataclass
 class Disagreement:
@@ -32,6 +38,22 @@ class Disagreement:
     external: bool
     expected: str
     actual: str
+
+_logfile: typing.Optional[typing.TextIO] = None
+def info(msg: str):
+    if _logfile is None:
+        print(msg)
+    else:
+        _logfile.write(msg + "\n")
+def start_logger(logfile: typing.Optional[Path]):
+    global _logfile
+    if logfile is not None:
+        _logfile = open(logfile, "w")
+def end_logger():
+    global _logfile
+    if _logfile is not None:
+        _logfile.close()
+
 
 def find_clock(names: list) -> str:
     candidates = ["clock", "clk"]
@@ -61,11 +83,14 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         refs = [ (k,v) for k,v in vcd.references_to_ids.items() ]
         refs = sorted(refs, key=lambda e: e[0])
         self.id_to_index = { e[1]: i for i,e  in enumerate(refs) }
-        self.values = ["x"] * len(self.id_to_index)
+        self.values = ["x"] * len(refs)
         names = [e[0] for e in refs]
+        info(f"Found {len(refs)} signals")
         self.clock = find_clock(names)
         self.clock_id = vcd.references_to_ids[self.clock]
-        self.values[self.id_to_index[self.clock_id]] = "0"
+        clock_index = self.id_to_index[self.clock_id]
+        info(f"{clock_index=} {len(self.values)=}")
+        self.values[clock_index] = "0"
         header = ', '.join(names)
         self.out.write(header + '\n')
 
@@ -93,8 +118,12 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         self.values[self.id_to_index[identifier_code]] = value
 
 
-def vcd_to_csv(vcd_path: Path) -> typing.TextIO:
-    csv_file = tempfile.SpooledTemporaryFile(mode='wt')
+def vcd_to_csv(vcd_path: Path, tmp_dir: typing.Optional[Path]) -> typing.TextIO:
+    if tmp_dir is None:
+        csv_file = tempfile.SpooledTemporaryFile(mode='wt')
+    else:
+        assert tmp_dir.exists() and tmp_dir.is_dir(), f"{tmp_dir} does not exists or is not a directory!"
+        csv_file = tempfile.TemporaryFile(mode='wt', dir=tmp_dir)
     vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=VCDConverter(csv_file), store_tvs=False)
     csv_file.seek(0)
     return csv_file
@@ -160,30 +189,35 @@ def compare(original: typing.TextIO, buggy: typing.TextIO, external: list):
 
     # check to see if there are any internal signals
     internal_signals = [s for s in signals if not s in is_external]
-    print(f"all signals: {signals}")
-    print(f"external signals: {external}")
-    print(f"internal signals: {internal_signals}")
+    info(f"all signals: {signals}")
+    info(f"external signals: {external}")
+    info(f"internal signals: {internal_signals}")
 
     # iterate over lines together
     ii = 0
-    disagreements = []
+
+    first_internal_disagreement = -1
+    first_external_disagreement = -1
+
 
     for o_line, b_line in zip(original, buggy):
         o = parse_csv_line(o_line)
         b = parse_csv_line(b_line)
         disagree = compare_line(ii, o, b, signals, is_external)
-        disagreements += disagree
-        # early exit for when we find the first external divergence
-        any_external = False
+        if first_internal_disagreement == -1 and len(disagree) > 0:
+            first_internal_disagreement = ii
         for d in disagree:
             if d.external:
-                any_external = True
-                break
-        if any_external:
+                first_external_disagreement = ii
+            ext = " (E)" if d.external else ""
+            info(f"{d.signal}@{d.step}: {d.actual} != {d.expected}{ext}")
+
+        # early exit for when we find the first external divergence
+        if first_external_disagreement > -1:
             break
         ii += 1
 
-    return disagreements
+    return first_internal_disagreement, first_external_disagreement
 
 
 def main():
@@ -191,37 +225,27 @@ def main():
     assert conf.original.exists(), f"Cannot find {conf.original}"
     assert conf.buggy.exists(), f"Cannot find {conf.buggy}"
     assert conf.testbench.exists(), f"Cannot find {conf.testbench}"
+    start_logger(conf.logfile)
     # extract signal names from testbench
     external_signals = get_signal_names(conf.testbench)
     # filter out the "time" signal, which does not correspond to a circuit pin
     external_signals = [e for e in external_signals if e != "time"]
 
     # convert VCD files into CSV tables for easier (line-by-line) comparison
-    original_vcd = vcd_to_csv(conf.original)
-    buggy_vcd = vcd_to_csv(conf.buggy)
+    original_vcd = vcd_to_csv(conf.original, conf.tmp_dir)
+    buggy_vcd = vcd_to_csv(conf.buggy, conf.tmp_dir)
 
     # debug code to print out CSV
     #print(original_vcd.read())
     #original_vcd.seek(0)
 
     # do the comparison
-    disagreements = compare(original_vcd, buggy_vcd, external_signals)
+    (first_internal, first_external)  = compare(original_vcd, buggy_vcd, external_signals)
 
-    if len(disagreements) == 0:
+    if first_internal == -1:
         print("no disagreements found")
 
     else:
-        # show disagreements:
-        for d in disagreements:
-            ext = " (E)" if d.external else ""
-            print(f"{d.signal}@{d.step}: {d.actual} != {d.expected}{ext}")
-
-
-        first_external = next(d.step for d in disagreements if d.external)
-        try:
-            first_internal = next(d.step for d in disagreements if not d.external)
-        except StopIteration:
-            first_internal = first_external
         assert first_internal <= first_external
 
         print(f"first internal divergence: {first_internal}")
@@ -229,6 +253,7 @@ def main():
         print(f"delta: {first_external - first_internal}")
 
     # release resources
+    end_logger()
     original_vcd.close()
     buggy_vcd.close()
 
