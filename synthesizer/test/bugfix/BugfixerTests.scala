@@ -159,7 +159,8 @@ class BugfixerDecoderTests extends BugFixerSpec {
     assert(res.isSuccess, res.toString)
   }
 
-  it should "fix decoder_3_to_8_wadden_buggy1 with complete minimized testbench" in {
+  // ignored because it takes too long
+  it should "fix decoder_3_to_8_wadden_buggy1 with complete minimized testbench" ignore {
     val dir = CirFixDir / "decoder_3_to_8"
     val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "complete_min_tb.csv", DefaultConfig)
     assert(res.isSuccess, res.toString)
