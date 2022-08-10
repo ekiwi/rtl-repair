@@ -52,6 +52,12 @@ object Synthesizer {
     if (config.solver.isDefined) {
       if (config.incremental) {
         IncrementalSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config, rnd)
+      } else if (config.angelic) {
+        assert(
+          synthVars.isEmpty,
+          f"Cannot use angelic solver with system that had a repair template applied:\n$synthVars"
+        )
+        AngelicSynthesizer.doRepair(noSynthVarSys, tb, config, rnd)
       } else {
         SmtSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
       }

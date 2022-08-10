@@ -18,12 +18,14 @@ case class Config(
   checker:     Option[IsModelChecker] = None,
   init:        InitType = AnyInit,
   incremental: Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
+  angelic:     Boolean = false, // selects angelic synthesis, does not require any synthesis variables
   seed:        Long = 0, // currently used to seed random state init if the option is selected
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
   unroll:      Boolean = false,
   verbose:     Boolean = false) {
   require(solver.isEmpty != checker.isEmpty, "need exactly one checker OR solver, not both or neither")
+  require(!(angelic && incremental), "Angelic and incremental solver are mutually exclusive!")
   def changeSolver(name: String): Config = {
     name match {
       case "z3"          => copy(solver = Some(Z3SMTLib), checker = None)
@@ -41,6 +43,7 @@ case class Config(
   def forceUnroll():             Config = copy(unroll = true)
   def changeInit(tpe: InitType): Config = copy(init = tpe)
   def useIncremental(): Config = copy(incremental = true)
+  def useAngelic():     Config = copy(angelic = true)
 }
 
 sealed trait InitType
@@ -72,6 +75,11 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     .action((_, args) => args.copy(config = args.config.useIncremental()))
     .text(
       "use incremental solver"
+    )
+  opt[Unit]("angelic")
+    .action((_, args) => args.copy(config = args.config.useAngelic()))
+    .text(
+      "use angelic solver (requires circuit without repair template / synthesis variables)"
     )
   opt[Unit]("verbose")
     .action((_, args) => args.copy(config = args.config.makeVerbose()))

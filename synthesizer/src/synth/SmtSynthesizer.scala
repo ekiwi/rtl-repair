@@ -277,5 +277,5 @@ case class SynthVars(change: List[BVSymbol], free: List[SMTSymbol]) {
     val value = assignment(sym.name)
     ctx.assert(BVEqual(sym, BVLiteral(value, sym.width)))
   }
-
+  def isEmpty: Boolean = change.isEmpty && free.isEmpty
 }
