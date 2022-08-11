@@ -282,7 +282,7 @@ object BVAnd {
       case (a, b)       => BVOp(Op.And, a, b)
     }
   }
-  def apply(exprs: List[BVExpr]): BVExpr = {
+  def apply(exprs: Seq[BVExpr]): BVExpr = {
     assert(exprs.nonEmpty, "Don't know what to do with an empty list!")
     val nonTriviallyTrue = exprs.filterNot(_ == True())
     nonTriviallyTrue.distinct match {

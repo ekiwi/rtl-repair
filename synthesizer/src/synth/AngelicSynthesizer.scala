@@ -6,8 +6,6 @@ package synth
 
 import maltese.mc._
 import maltese.smt._
-import synth.SmtSynthesizer.{instantiateTestbench, synthesize}
-import synth.Synthesizer.{encodeSystem, initSys, startSolver}
 
 import scala.collection.mutable
 
@@ -15,6 +13,8 @@ import scala.collection.mutable
   * angelic values.
   */
 object AngelicSynthesizer {
+  import synth.SmtSynthesizer._
+  import synth.Synthesizer._
 
   def doRepair(sys: TransitionSystem, tb: Testbench, config: Config, rnd: scala.util.Random): RepairResult = {
     // randomly init system
@@ -31,37 +31,90 @@ object AngelicSynthesizer {
 
     // add angelic instrumentation
     val (angelicSys, angelicVars) = new AngelicInstrumentation().run(initialized)
+    val angelicChanges = angelicVars.map(_.changeSym)
 
     // declare angelic change variables
     val ctx = startSolver(config)
-    angelicVars.foreach(v => ctx.runCommand(DeclareFunction(v.changeSym, Seq())))
+    angelicChanges.foreach(v => ctx.runCommand(DeclareFunction(v, Seq())))
     val enc = encodeSystem(angelicSys, ctx, config)
 
     // instantiate the testbench with inputs _and_ outputs assumed to be correct
     instantiateTestbench(ctx, enc, angelicSys, randInputTb, noUninitialized _, assertDontAssumeOutputs = false)
 
     // try to minimize the number of changes while fixing the problem
-    val success = synthesize(ctx, angelicVars.map(_.changeSym), verbose = config.verbose)
+    val success = synthesize(ctx, angelicChanges, verbose = config.verbose)
     if (!success) {
       if (config.verbose) { println("Cannot find a solution!") }
       return CannotRepair
     }
 
-    // extract solution
-    val changes = angelicVars.filter(v => ctx.getValue(v.changeSym).get > 0)
+    // extract one solution
+    val changes = readChanges(ctx, angelicChanges)
     ctx.pop()
-    if (config.verbose) println(s"Found solution using ${changes.length} angelic variables.")
+    if (config.verbose) println(s"Found solution using ${changes.length} angelic variables: " + changes.mkString(", "))
+
+    // extract all other solutions of the same size
+    val solutions = findSolutionOfSize(ctx, angelicChanges, changes.length)
+    if (config.verbose)
+      println(s"Found ${solutions.length} different solutions using ${changes.length} angelic variables each.")
+
+    // sample more solutions
+    val solutionsPlusOne = findSolutionOfSize(ctx, angelicChanges, changes.length + 1)
+    if (config.verbose)
+      println(
+        s"Found ${solutionsPlusOne.length} different solutions using ${changes.length + 1} angelic variables each."
+      )
 
     // remove all other variables from system
 
-    //println(angelicSys.serialize)
+    println(angelicSys.serialize)
 
     ???
   }
 
+  private def readChanges(ctx: SolverContext, minimize: Seq[BVSymbol]): Seq[BVSymbol] =
+    minimize.filter(v => ctx.getValue(v).get > 0)
+
   /** throws an error if called, can be used with instantiateTestbench if no inputs should be "free" */
   private def noUninitialized(sym: BVSymbol, ii: Int): Option[BVExpr] =
     throw new RuntimeException(s"Uninitialized input $sym@$ii")
+
+  /** Note that this function only returns other angelic variable candidates of the same number,
+    * it does not actually produce a solution since angelic bug fixing is a 2-step process.
+    * (This different from `findSolutionOfSize` in the [[IncrementalSynthesizer]] which will actually
+    *  enumerate full solutions)
+    */
+  private def findSolutionOfSize(
+    ctx:      SolverContext,
+    minimize: Seq[BVSymbol],
+    size:     Int
+  ): List[Seq[BVSymbol]] = {
+    // restrict size of solution to known minimal size
+    ctx.push()
+    performNChanges(ctx, minimize, size)
+
+    // keep track of solutions
+    var solutions = List[Seq[BVSymbol]]()
+
+    // search for new solutions until none left
+    var done = false
+    while (!done) {
+      ctx.check() match {
+        case IsSat =>
+          val assignment = readChanges(ctx, minimize)
+          // block solution
+          ctx.assert(BVNot(BVAnd(assignment)))
+          // remember assignment
+          solutions = assignment +: solutions
+        case IsUnSat   => done = true
+        case IsUnknown => done = true
+      }
+    }
+    ctx.pop()
+
+    solutions
+  }
+
 }
 
 private case class AngelicVar(change: String, value: String, width: Int, isCond: Boolean) {
