@@ -169,6 +169,10 @@ def normalize_signals(signals: list) -> list:
     return signals
 
 
+def do_skip(values: list, skip: list) -> list:
+    assert len(values) == len(skip)
+    return [v for v,s in zip(values, skip) if not s]
+
 def compare_line(ii: int, original: list, buggy: list, signals: list, externals: set) -> list:
     disagree = []
     for ((o, b), name) in zip(zip(original, buggy), signals):
@@ -178,14 +182,25 @@ def compare_line(ii: int, original: list, buggy: list, signals: list, externals:
             disagree.append(Disagreement(ii, name, name in externals, o.lower(), b.lower()))
     return disagree
 
+def create_skip_lists(signals: list, buggy_signals: list):
+    in_a = set(signals)
+    in_b = set(buggy_signals)
+    skip_a = [s not in in_b for s in signals]
+    skip_b = [s not in in_a for s in buggy_signals]
+    common = [s for s in signals if s in in_b]
+    return common, skip_a, skip_b
+
+
 
 def compare(original: typing.TextIO, buggy: typing.TextIO, external: list):
-    # make sure both VCDs include the same signals
-    signals = parse_csv_line(original.readline())
+    original_signals = parse_csv_line(original.readline())
     buggy_signals = parse_csv_line(buggy.readline())
-    assert signals == buggy_signals, f"Mismatch!\n{signals}\n{buggy_signals}"
+    signals, skip_o, skip_b = create_skip_lists(original_signals, buggy_signals)
     signals = normalize_signals(signals)
     is_external = set(external)
+
+    # is there any value we need to skip?
+    need_to_skip = max(skip_o) or max(skip_b)
 
     # check to see if there are any internal signals
     internal_signals = [s for s in signals if not s in is_external]
@@ -203,6 +218,9 @@ def compare(original: typing.TextIO, buggy: typing.TextIO, external: list):
     for o_line, b_line in zip(original, buggy):
         o = parse_csv_line(o_line)
         b = parse_csv_line(b_line)
+        if need_to_skip:
+            o = do_skip(o, skip_o)
+            b = do_skip(b, skip_b)
         disagree = compare_line(ii, o, b, signals, is_external)
         if first_internal_disagreement == -1 and len(disagree) > 0:
             first_internal_disagreement = ii
