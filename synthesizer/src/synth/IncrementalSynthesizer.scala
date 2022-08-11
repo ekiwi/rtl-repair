@@ -178,7 +178,7 @@ object IncrementalSynthesizer {
   ): List[CandidateSolution] = {
     // restrict size of solution to known minimal size
     ctx.push()
-    performNChanges(ctx, synthVars, size)
+    performNChanges(ctx, synthVars.change, size)
 
     // keep track of solutions
     var solutions = List[CandidateSolution]()
@@ -256,7 +256,7 @@ object IncrementalSynthesizer {
     // make sure that the shortened system actually fails!
     // TODO: this check is not necessary and is only used for debugging
     ctx.push()
-    performNChanges(ctx, synthVars, 0)
+    performNChanges(ctx, synthVars.change, 0)
     assert(ctx.check().isUnSat, "Found a solution that does not require any changes at all!")
     ctx.pop()
   }

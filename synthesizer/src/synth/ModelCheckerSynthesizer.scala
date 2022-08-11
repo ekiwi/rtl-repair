@@ -128,7 +128,7 @@ object ModelCheckerSynthesizer {
   private def performNChanges(sys: TransitionSystem, synthVars: SynthVars, n: Int): TransitionSystem = {
     require(n >= 0)
     require(n <= synthVars.change.length)
-    val sum = countChanges(synthVars)
+    val sum = countChanges(synthVars.change)
     val constraint = Signal(s"change_exactly_$n", BVEqual(sum, BVLiteral(n, sum.width)), IsConstraint)
     sys.copy(signals = sys.signals :+ constraint)
   }

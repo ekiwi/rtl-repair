@@ -4,6 +4,7 @@
 
 package synth
 
+import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 
 abstract class SynthesizerSpec extends AnyFlatSpec {
@@ -12,8 +13,8 @@ abstract class SynthesizerSpec extends AnyFlatSpec {
   val DefaultConfig = Config()
 }
 
-class SynthesizerDecoderTests extends SynthesizerSpec {
-  behavior.of("Synthesizer on Decoder")
+class SynthesizerTests extends SynthesizerSpec with ParallelTestExecution {
+  behavior.of("Synthesizer")
 
   it should "synthesize a fix for decoder_3_to_8_wadden_buggy1 with original testbench and literal replacer template" in {
     val r = Synthesizer.run(

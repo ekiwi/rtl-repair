@@ -61,31 +61,49 @@ object SmtSynthesizer {
     RepairSuccess(results)
   }
 
-  /** automatically selects the correct synthesis function depending on config and solver capabilities. */
+  /** Searches for an assignment of free variables that minimizes the changes in the synthesis variables */
   def synthesize(
     ctx:       SolverContext,
     synthVars: SynthVars,
     verbose:   Boolean
-  ): Option[List[(String, BigInt)]] = if (ctx.solver.supportsSoftAssert) { maxSmtSynthesis(ctx, synthVars, verbose) }
-  else { customSynthesis(ctx, synthVars, verbose) }
+  ): Option[List[(String, BigInt)]] = {
+    val success = synthesize(ctx, synthVars.change, verbose = verbose)
+    if (success) {
+      if (verbose) println("Solution found:")
+      val result = Some(synthVars.readAssignment(ctx))
+      ctx.pop() // pop after reading
+      result
+    } else {
+      if (verbose) println("No possible solution found. Cannot repair. :(")
+      ctx.close()
+      None
+    }
+  }
+
+  /** Searches for an assignment of free variables that minimizes the number of true values in minimize */
+  def synthesize(
+    ctx:      SolverContext,
+    minimize: Seq[BVExpr],
+    verbose:  Boolean
+  ): Boolean = {
+    minimize.foreach(m => assert(m.width == 1, s"$m"))
+    if (ctx.solver.supportsSoftAssert) { maxSmtSynthesis(ctx, minimize, verbose) }
+    else { customSynthesis(ctx, minimize, verbose) }
+  }
 
   private def maxSmtSynthesis(
-    ctx:       SolverContext,
-    synthVars: SynthVars,
-    verbose:   Boolean
-  ): Option[List[(String, BigInt)]] = {
+    ctx:      SolverContext,
+    minimize: Seq[BVExpr],
+    verbose:  Boolean
+  ): Boolean = {
+    ctx.push()
     // try to minimize the change
-    synthVars.minimizeChange(ctx)
+    minimize.foreach(m => ctx.softAssert(BVNot(m)))
 
     // try to synthesize constants
     ctx.check() match {
-      case IsSat =>
-        if (verbose) println("Solution found:")
-        Some(synthVars.readAssignment(ctx))
-      case IsUnSat =>
-        if (verbose) println("No possible solution found. Cannot repair. :(")
-        ctx.close()
-        None
+      case IsSat   => true
+      case IsUnSat => false
       case IsUnknown =>
         ctx.close()
         throw new RuntimeException(s"Unknown result from solver.")
@@ -94,39 +112,34 @@ object SmtSynthesizer {
 
   /** uses multiple calls to a regular SMT solver which does not support MaxSMT natively to minimize the number of changes in a solution */
   private def customSynthesis(
-    ctx:       SolverContext,
-    synthVars: SynthVars,
-    verbose:   Boolean
-  ): Option[List[(String, BigInt)]] = {
+    ctx:      SolverContext,
+    minimize: Seq[BVExpr],
+    verbose:  Boolean
+  ): Boolean = {
     // first we check to see if any solution exists at all or if we cannot repair
     // (as is often the case if the repair template does not actually work for the problem we are trying to solve)
     val maxAssignment = ctx.check() match {
       case IsSat => // OK
-        synthVars.readAssignment(ctx)
+        minimize.map(m => ctx.getValue(m).get)
       case IsUnSat =>
-        if (verbose) println("No possible solution found. Cannot repair. :(")
-        ctx.close(); return None
+        return false
       case IsUnknown => ctx.close(); throw new RuntimeException(s"Unknown result from solver.")
     }
-    val maxSize = countChangesInAssignment(maxAssignment)
+    val maxSize = maxAssignment.sum
     if (verbose) println(s"Solution with $maxSize changes found.")
     assert(maxSize > 0)
     if (maxSize == 1) { // if by chance we get a 1-change solution, there is not more need to search for a solution
-      return Some(maxAssignment)
+      return true
     }
 
     // no we are going to search from 1 to N to find the smallest number of changes that will make this repair work
-    val ns = 1 until synthVars.change.length
+    val ns = 1 until minimize.length
     ns.foreach { n =>
       if (verbose) println(s"Searching for solution with $n changes")
       ctx.push()
-      performNChanges(ctx, synthVars, n)
+      performNChanges(ctx, minimize, n)
       ctx.check() match {
-        case IsSat =>
-          if (verbose) println("Solution found:")
-          val assignment = synthVars.readAssignment(ctx)
-          ctx.pop()
-          return Some(assignment)
+        case IsSat     => return true
         case IsUnSat   => // continue
         case IsUnknown => ctx.close(); throw new RuntimeException(s"Unknown result from solver.")
       }
@@ -135,10 +148,10 @@ object SmtSynthesizer {
     throw new RuntimeException(s"Should not get here!")
   }
 
-  def performNChanges(ctx: SolverContext, synthVars: SynthVars, n: Int): Unit = {
+  def performNChanges(ctx: SolverContext, minimize: Seq[BVExpr], n: Int): Unit = {
     require(n >= 0)
-    require(n <= synthVars.change.length)
-    val sum = countChanges(synthVars)
+    require(n <= minimize.length)
+    val sum = countChanges(minimize)
     val constraint = BVEqual(sum, BVLiteral(n, sum.width))
     ctx.assert(constraint)
   }
