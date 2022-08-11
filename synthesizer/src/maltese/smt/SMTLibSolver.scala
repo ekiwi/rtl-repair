@@ -128,7 +128,7 @@ private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: 
     _stackDepth += 1
   }
   override def pop(): Unit = {
-    require(_stackDepth > 0)
+    require(_stackDepth > 0, "cannot pop because the stack is empty")
     writeCommand("(pop 1)")
     _stackDepth -= 1
   }

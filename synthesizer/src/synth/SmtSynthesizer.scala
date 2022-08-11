@@ -31,6 +31,7 @@ object SmtSynthesizer {
       case None        => ctx.close(); return NoRepairNecessary // testbench does not in fact fail
     }
     ctx.pop()
+    assert(ctx.stackDepth == 0)
 
     ctx.push()
     // use the failing assignment for free vars
@@ -116,6 +117,8 @@ object SmtSynthesizer {
     minimize: Seq[BVExpr],
     verbose:  Boolean
   ): Boolean = {
+    // we expect there to be a frame that can be removed after exiting synthesis
+    ctx.push()
     // first we check to see if any solution exists at all or if we cannot repair
     // (as is often the case if the repair template does not actually work for the problem we are trying to solve)
     val maxAssignment = ctx.check() match {
@@ -136,7 +139,6 @@ object SmtSynthesizer {
     val ns = 1 until minimize.length
     ns.foreach { n =>
       if (verbose) println(s"Searching for solution with $n changes")
-      ctx.push()
       performNChanges(ctx, minimize, n)
       ctx.check() match {
         case IsSat     => return true
@@ -144,6 +146,7 @@ object SmtSynthesizer {
         case IsUnknown => ctx.close(); throw new RuntimeException(s"Unknown result from solver.")
       }
       ctx.pop()
+      ctx.push()
     }
     throw new RuntimeException(s"Should not get here!")
   }
