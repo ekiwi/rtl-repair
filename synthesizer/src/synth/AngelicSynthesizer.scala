@@ -6,7 +6,7 @@ package synth
 
 import maltese.mc._
 import maltese.smt._
-import synth.SmtSynthesizer.instantiateTestbench
+import synth.SmtSynthesizer.{instantiateTestbench, synthesize}
 import synth.Synthesizer.{encodeSystem, initSys, startSolver}
 
 import scala.collection.mutable
@@ -34,15 +34,27 @@ object AngelicSynthesizer {
 
     // declare angelic change variables
     val ctx = startSolver(config)
-    angelicVars.vars.foreach(v => ctx.runCommand(DeclareFunction(v.changeSym, Seq())))
+    angelicVars.foreach(v => ctx.runCommand(DeclareFunction(v.changeSym, Seq())))
     val enc = encodeSystem(angelicSys, ctx, config)
 
     // instantiate the testbench with inputs _and_ outputs assumed to be correct
     instantiateTestbench(ctx, enc, angelicSys, randInputTb, noUninitialized _, assertDontAssumeOutputs = false)
 
     // try to minimize the number of changes while fixing the problem
+    val success = synthesize(ctx, angelicVars.map(_.changeSym), verbose = config.verbose)
+    if (!success) {
+      if (config.verbose) { println("Cannot find a solution!") }
+      return CannotRepair
+    }
 
-    println(angelicSys.serialize)
+    // extract solution
+    val changes = angelicVars.filter(v => ctx.getValue(v.changeSym).get > 0)
+    ctx.pop()
+    if (config.verbose) println(s"Found solution using ${changes.length} angelic variables.")
+
+    // remove all other variables from system
+
+    //println(angelicSys.serialize)
 
     ???
   }
@@ -51,8 +63,6 @@ object AngelicSynthesizer {
   private def noUninitialized(sym: BVSymbol, ii: Int): Option[BVExpr] =
     throw new RuntimeException(s"Uninitialized input $sym@$ii")
 }
-
-private case class AngelicVars(vars: Seq[AngelicVar])
 
 private case class AngelicVar(change: String, value: String, width: Int, isCond: Boolean) {
   require(width > 0)
@@ -69,7 +79,7 @@ private class AngelicInstrumentation() {
     *   - 1) assignments to named signals not starting with `_`
     *   - 2) conditional assignments
     */
-  def run(sys: TransitionSystem): (TransitionSystem, AngelicVars) = {
+  def run(sys: TransitionSystem): (TransitionSystem, Seq[AngelicVar]) = {
     counter = 0; vars.clear()
 
     val iteSignals = mutable.HashSet[String]()
@@ -84,7 +94,7 @@ private class AngelicInstrumentation() {
     // turn value vars into inputs
     val inputs = sys.inputs ++ vars.map(_.valueSym)
 
-    (sys.copy(signals = signals, inputs = inputs), AngelicVars(vars.toList))
+    (sys.copy(signals = signals, inputs = inputs), vars.toList)
   }
 
   private def onExpr(e: SMTExpr, isIteSignal: String => Boolean): SMTExpr = e match {
