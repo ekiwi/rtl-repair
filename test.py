@@ -28,6 +28,8 @@ opencores_dir = benchmark_dir / "cirfix" / "opencores"
 reed_dir = opencores_dir / "reed_solomon_decoder"
 sha_dir = opencores_dir / "sha3" / "low_throughput_core"
 i2c_dir = opencores_dir / "i2c"
+chisel_dir = benchmark_dir / "chisel"
+chisel_counter_dir = chisel_dir / "counter"
 
 
 def run_synth(source: Path, testbench: Path, include: Path, solver='z3', init='any',
@@ -102,6 +104,17 @@ class SynthesisTest(unittest.TestCase):
         self.assertEqual("cannot-repair", status)
         if _print_time:
             print(f"CANNOT-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
+
+
+class TestChiselCounter(SynthesisTest):
+    def test_full_tb(self):
+        self.synth_success(chisel_counter_dir, "counter_bug.v", "tb_full.csv")
+
+    def test_formal_tb(self):
+        self.synth_success(chisel_counter_dir, "counter_bug.v", "tb_formal.csv")
+
+    def test_random_tb(self):
+        self.synth_success(chisel_counter_dir, "counter_bug.v", "tb_rand.csv")
 
 
 class TestSdRamController(SynthesisTest):

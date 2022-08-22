@@ -64,8 +64,28 @@ class RepairTemplate(AstVisitor):
         self.synth_vars.append((name, width))
         return name
 
-    def visit_Decl(self, node: vast.Decl):
-        # by default we ignore any declarations
+    def visit_Wire(self, node: vast.Wire):
+        # by default we ignore any wire declarations
+        return node
+
+    def visit_Reg(self, node: vast.Reg):
+        # by default we ignore any reg declarations
+        return node
+
+    def visit_Input(self, node: vast.Input):
+        # by default we ignore any input declarations
+        return node
+
+    def visit_Output(self, node: vast.Output):
+        # by default we ignore any output declarations
+        return node
+
+    def visit_Inout(self, node: vast.Inout):
+        # by default we ignore any inout declarations
+        return node
+
+    def visit_Parameter(self, node: vast.Parameter):
+        # by default we ignore any parameter declarations
         return node
 
     def visit_Lvalue(self, node: vast.Lvalue):
