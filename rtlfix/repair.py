@@ -88,6 +88,10 @@ class RepairTemplate(AstVisitor):
         # by default we ignore any parameter declarations
         return node
 
+    def visit_Integer(self, node: vast.Integer):
+        # by default we ignore any integer declarations
+        return node
+
     def visit_Lvalue(self, node: vast.Lvalue):
         # by default we ignore any lvalues
         return node
