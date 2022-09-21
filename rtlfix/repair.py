@@ -64,6 +64,26 @@ class RepairTemplate(AstVisitor):
         self.synth_vars.append((name, width))
         return name
 
+    def visit_Decl(self, node: vast.Decl):
+        # the only nodes we want to visit by default are wire assignment which result from statements like:
+        # wire x = 'd1;
+        wires = set()
+        children = []
+        for child in node.list:
+            if isinstance(child, vast.Wire):
+                wires.add(child.name)
+                children.append(child)
+            elif (isinstance(child, vast.Assign) and
+                  isinstance(child.left, vast.Lvalue) and
+                  isinstance(child.left.var, vast.Identifier) and
+                  child.left.var.name in wires):
+                  # visit wires assignments
+                children.append(self.visit(child))
+            else:
+                children.append(child)
+
+        pass
+
     def visit_Wire(self, node: vast.Wire):
         # by default we ignore any wire declarations
         return node
