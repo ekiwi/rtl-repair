@@ -8,7 +8,6 @@ from pathlib import Path
 from rtlfix.utils import _root_dir, serialize
 import pyverilog.vparser.ast as vast
 
-
 # the synthesizer is written in Scala, the source code lives in src
 _jar_rel = Path("target") / "scala-2.13" / "bug-fix-synthesizer-assembly-0.1.jar"
 _synthesizer_dir = _root_dir / "synthesizer"
@@ -27,7 +26,7 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incr
     if incremental:
         args += ["--incremental"]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
-    cmd_str = ' '.join(str(p) for p in cmd) # for debugging
+    cmd_str = ' '.join(str(p) for p in cmd)  # for debugging
     r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
     try:
         return json.loads(r.stdout.decode('utf-8'))
@@ -39,7 +38,7 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incr
 
 _minimal_btor_conversion = [
     "proc -noopt",
-    "async2sync", # required for designs with async reset
+    "async2sync",  # required for designs with async reset
     "flatten",
     "dffunmap",
 ]
@@ -82,6 +81,7 @@ def _to_btor(filename: Path, additional_sources: list, top: str):
 
 class Synthesizer:
     """ generates assignments to synthesis variables which fix the design according to a provided testbench """
+
     def __init__(self):
         pass
 

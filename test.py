@@ -78,17 +78,18 @@ def run_synth(source: Path, testbench: Path, include: Path, solver='z3', init='a
 class SynthesisTest(unittest.TestCase):
 
     def synth_success(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
-                      incremental: bool = False, max_changes: int = 2, other_files: list = None, top = None):
+                      incremental: bool = False, max_changes: int = 2, other_files: list = None, top=None):
         start = time.monotonic()
         other_files = None if other_files is None else [dir / ff for ff in other_files]
-        status, changes, template = run_synth(dir / design, dir / testbench, dir, solver, init, incremental, other_files, top)
+        status, changes, template = run_synth(dir / design, dir / testbench, dir, solver, init, incremental,
+                                              other_files, top)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
             print(f"SUCCESS: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
     def synth_no_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
-                        incremental: bool = False, other_files: list = None, top = None):
+                        incremental: bool = False, other_files: list = None, top=None):
         start = time.monotonic()
         other_files = None if other_files is None else [dir / ff for ff in other_files]
         status, _, _ = run_synth(dir / design, dir / testbench, dir, solver, init, incremental, other_files, top)
@@ -97,7 +98,7 @@ class SynthesisTest(unittest.TestCase):
             print(f"NO-REPAIR: {dir / design} w/ {solver} in {time.monotonic() - start}s")
 
     def synth_cannot_repair(self, dir: Path, design: str, testbench: str, solver: str = _default_solver, init='any',
-                            incremental: bool = False, other_files: list = None, top = None):
+                            incremental: bool = False, other_files: list = None, top=None):
         start = time.monotonic()
         other_files = None if other_files is None else [dir / ff for ff in other_files]
         status, _, _ = run_synth(dir / design, dir / testbench, dir, solver, init, incremental, other_files, top)
@@ -143,15 +144,17 @@ class TestSdRamController(SynthesisTest):
 i2c_files = ["i2c_master_top.v", "i2c_master_byte_ctrl.v", "i2c_master_bit_ctrl.v"]
 i2c_top = "i2c_master_top"
 
+
 class TestI2C(SynthesisTest):
 
     def test_orig_fixed_x_prop_tb(self):
-        self.synth_no_repair(i2c_dir, "i2c_master_top.v", "fixed_x_prop_tb.csv", init='zero', other_files=i2c_files, top=i2c_top, incremental=True)
+        self.synth_no_repair(i2c_dir, "i2c_master_top.v", "fixed_x_prop_tb.csv", init='zero', other_files=i2c_files,
+                             top=i2c_top, incremental=True)
 
     def test_kgoliya_buggy1(self):
         self.synth_success(i2c_dir, "i2c_master_bit_ctrl_kgoliya_buggy1.v", "fixed_x_prop_tb.csv", init='zero',
-                             other_files=["i2c_master_top.v", "i2c_master_byte_ctrl.v"],
-                             top=i2c_top, incremental=True)
+                           other_files=["i2c_master_top.v", "i2c_master_byte_ctrl.v"],
+                           top=i2c_top, incremental=True)
 
 
 reed_files = [
@@ -288,7 +291,7 @@ class TestFirstCounter(SynthesisTest):
         self.synth_success(counter_dir, "first_counter_buggy_overflow.v", "orig_tb.csv")
 
     def test_buggy_all_orig_tb(self):
-        #can be solved by three literal replacements
+        # can be solved by three literal replacements
         self.synth_success(counter_dir, "first_counter_buggy_all.v", "orig_tb.csv", max_changes=3)
 
 
@@ -423,6 +426,17 @@ class TestTypeInference(unittest.TestCase):
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 69, 2: 15, 3: 11, 4: 5, 14: 4, 16: 6, 18: 19, 32: 2}
         self.assertEqual(expected, hist)
+
+
+class TestExposeBranches(unittest.TestCase):
+    """ unittests for code in rtlfix/expose_branches.py """
+
+    def test_flip_flop(self):
+        from rtlfix import parse_verilog
+        from rtlfix.expose_branches import expose_branches
+        ast = parse_verilog(flip_flop_dir / "tff.v")
+        expose_branches(ast)
+
 
 if __name__ == '__main__':
     # ignore warnings because pyverilog is not good about closing some files it opens
