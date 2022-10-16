@@ -265,7 +265,7 @@ class TestFlipFlop(SynthesisTest):
 class TestFirstCounter(SynthesisTest):
 
     def test_orig_orig_tb(self):
-        self.synth_no_repair(counter_dir, "first_counter_overflow.v", "orig_tb.csv")
+        self.synth_no_repair(counter_dir, "first_counter_overflow.v", "orig_tb.csv", init='random')
 
     # wadden_buggy1 is a sens list bug and thus won't be solvable by our approach
     def test_wadden_buggy1_orig_tb(self):
@@ -276,23 +276,23 @@ class TestFirstCounter(SynthesisTest):
     def test_wadden_buggy2_orig_tb(self):
         # cannot be repaired with just literal replacement
         # this would need an if() condition to modified
-        self.synth_cannot_repair(counter_dir, "first_counter_overflow_wadden_buggy2.v", "orig_tb.csv")
+        self.synth_cannot_repair(counter_dir, "first_counter_overflow_wadden_buggy2.v", "orig_tb.csv", init='random')
 
     def test_kgoliya_buggy1_orig_tb(self):
         # this can be repaired through the assign_const template
-        self.synth_success(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "orig_tb.csv")
+        self.synth_success(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "orig_tb.csv", init='random')
 
     def test_buggy_counter_orig_tb(self):
         # can be solved by a literal replacement
-        self.synth_success(counter_dir, "first_counter_buggy_counter.v", "orig_tb.csv")
+        self.synth_success(counter_dir, "first_counter_buggy_counter.v", "orig_tb.csv", init='random')
 
     def test_buggy_overflow_orig_tb(self):
         # can be solved by a literal replacement
-        self.synth_success(counter_dir, "first_counter_buggy_overflow.v", "orig_tb.csv")
+        self.synth_success(counter_dir, "first_counter_buggy_overflow.v", "orig_tb.csv", init='random')
 
     def test_buggy_all_orig_tb(self):
         # can be solved by three literal replacements
-        self.synth_success(counter_dir, "first_counter_buggy_all.v", "orig_tb.csv", max_changes=3)
+        self.synth_success(counter_dir, "first_counter_buggy_all.v", "orig_tb.csv", max_changes=3, init='random')
 
 
 class TestDecoder(SynthesisTest):
