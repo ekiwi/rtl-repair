@@ -381,7 +381,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        self.assertEqual({None: 1, 1: 10, 4: 5}, hist)
+        self.assertEqual({None: 1, 1: 8, 4: 5}, hist)
 
     def test_fsm_widths(self):
         from rtlfix import parse_verilog
