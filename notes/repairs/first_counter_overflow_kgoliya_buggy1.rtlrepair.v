@@ -1,3 +1,5 @@
+
+
 module first_counter
 (
   clk,
@@ -19,10 +21,13 @@ module first_counter
   reg overflow_out;
 
   always @(posedge clk) begin : COUNTER
-    if(reset == 1'b1) begin
-      overflow_out <= #1 1'b0;
-end else if(enable == 1'b1) begin
-  counter_out <= #1 counter_out + 1;
+if(reset == 1'b1) begin
+  overflow_out <= #1 1'b0;
+end else begin
+  counter_out <= 4'b0;
+  if(enable == 1'b1) begin
+    counter_out <= #1 counter_out + 1;
+  end
 end
     if(counter_out == 4'b1111) begin
       overflow_out <= #1 1'b1;
@@ -31,3 +36,4 @@ end
 
 
 endmodule
+
