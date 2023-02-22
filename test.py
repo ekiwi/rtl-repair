@@ -127,7 +127,7 @@ class TestSdRamController(SynthesisTest):
 
     def test_orig_orig_tb(self):
         # this only works with zero init because otherwise the original design has some x-prop issues
-        self.synth_no_repair(sd_dir, "sdram_controller.v", "orig_tb.csv", init='zero')
+        self.synth_no_repair(sd_dir, "sdram_controller.no_tri_state.v", "orig_tb.csv", init='zero')
 
     def test_wadden_buggy2_orig_tb(self):
         # one messed up constant (READ_NOP1)
@@ -135,30 +135,30 @@ class TestSdRamController(SynthesisTest):
         # only completes in a resonable amount of time when using the incremental solver
         # TODO: currently the solver replaces b10000 with b11100, instead of the expected b10001
         #       but that might be OK after all since it does it in both locations
-        self.synth_success(sd_dir, "sdram_controller_wadden_buggy2.v", "orig_tb.csv", incremental=True)
+        self.synth_success(sd_dir, "sdram_controller_wadden_buggy2.no_tri_state.v", "orig_tb.csv", incremental=True)
 
     def test_wadden_buggy1_orig_tb(self):
         # missing reset (only one of the two removed is actually needed)
-        self.synth_success(sd_dir, "sdram_controller_wadden_buggy1.v", "orig_tb.csv", incremental=True)
+        self.synth_success(sd_dir, "sdram_controller_wadden_buggy1.no_tri_state.v", "orig_tb.csv", incremental=True)
 
     def test_kgoliya_buggy2_orig_tb(self):
         # missing default case
-        self.synth_success(sd_dir, "sdram_controller_kgoliya_buggy2.v", "orig_tb.csv", incremental=True)
+        self.synth_success(sd_dir, "sdram_controller_kgoliya_buggy2.no_tri_state.v", "orig_tb.csv", incremental=True)
 
 
-i2c_files = ["i2c_master_top.v", "i2c_master_byte_ctrl.v", "i2c_master_bit_ctrl.v"]
+i2c_files = ["i2c_master_top.sync_reset.v", "i2c_master_byte_ctrl.sync_reset.v", "i2c_master_bit_ctrl.sync_reset.v"]
 i2c_top = "i2c_master_top"
 
 
 class TestI2C(SynthesisTest):
 
     def test_orig_fixed_x_prop_tb(self):
-        self.synth_no_repair(i2c_dir, "i2c_master_top.v", "fixed_x_prop_tb.csv", init='zero', other_files=i2c_files,
+        self.synth_no_repair(i2c_dir, "i2c_master_top.sync_reset.v", "fixed_x_prop_tb.csv", init='zero', other_files=i2c_files,
                              top=i2c_top, incremental=True)
 
     def test_kgoliya_buggy1(self):
-        self.synth_success(i2c_dir, "i2c_master_bit_ctrl_kgoliya_buggy1.v", "fixed_x_prop_tb.csv", init='zero',
-                           other_files=["i2c_master_top.v", "i2c_master_byte_ctrl.v"],
+        self.synth_success(i2c_dir, "i2c_master_bit_ctrl_kgoliya_buggy1.sync_reset.v", "fixed_x_prop_tb.csv", init='zero',
+                           other_files=["i2c_master_top.sync_reset.v", "i2c_master_byte_ctrl.sync_reset.v"],
                            top=i2c_top, incremental=True)
 
 
