@@ -407,7 +407,7 @@ class TestTypeInference(unittest.TestCase):
     def test_sdram_controller_widths(self):
         from rtlfix import parse_verilog
         from rtlfix.types import infer_widths
-        ast = parse_verilog(sd_dir / "sdram_controller.v")
+        ast = parse_verilog(sd_dir / "sdram_controller.no_tri_state.v")
         # ast.show()
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
@@ -426,7 +426,7 @@ class TestTypeInference(unittest.TestCase):
     def test_i2c_bit_widths(self):
         from rtlfix import parse_verilog
         from rtlfix.types import infer_widths
-        ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.v", i2c_dir)
+        ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.sync_reset.v", i2c_dir)
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 69, 2: 15, 3: 11, 4: 5, 14: 4, 16: 6, 18: 19, 32: 2}
