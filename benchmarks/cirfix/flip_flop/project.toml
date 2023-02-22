@@ -1,0 +1,21 @@
+[project]
+directory = "."
+sources = ["tff.v"]
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "tff.v"
+buggy = "tff_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "tff.v"
+buggy = "tff_wadden_buggy2.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["tff_tb.v"]
+output = "output_tff_tb.txt"
+oracle = "oracle.txt"
+timeout = 10.0
+
