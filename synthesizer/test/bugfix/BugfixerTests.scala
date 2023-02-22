@@ -8,14 +8,14 @@ import maltese.smt.OptiMathSatSMTLib
 import org.scalatest.flatspec.AnyFlatSpec
 
 abstract class BugFixerSpec extends AnyFlatSpec {
-  val CirFixDir = os.pwd / os.up / "benchmarks" / "cirfix"
+  val BenchmarkDir = os.pwd / "test" / "bugfix" / "benchmarks"
   val DefaultConfig = Config()
   val VerboseConfig = DefaultConfig.copy(verbose = true, debugSolver = true)
 }
 
 class BugfixerMuxTests extends BugFixerSpec {
   behavior.of("Bugfixer on Mux 4 1")
-  private val Dir = CirFixDir / "mux_4_1"
+  private val Dir = BenchmarkDir
 
   it should "find that no repair is necessary for mux_4_1" in {
     val res = Bugfixer.repair(Dir / "mux_4_1.btor", Dir / "orig_tb.csv", DefaultConfig)
@@ -53,7 +53,7 @@ class BugfixerMuxTests extends BugFixerSpec {
 
 class BugfixerShiftRegTests extends BugFixerSpec {
   behavior.of("Bugfixer on ShiftReg")
-  private val Dir = CirFixDir / "lshift_reg"
+  private val Dir = BenchmarkDir
 
   it should "find that no repair is necessary for lshift_reg" in {
     val res = Bugfixer.repair(Dir / "lshift_reg.btor", Dir / "orig_tb.csv", DefaultConfig)
@@ -73,7 +73,7 @@ class BugfixerShiftRegTests extends BugFixerSpec {
 
 class BugfixerFsmFullTests extends BugFixerSpec {
   behavior.of("Bugfixer on FsmFull")
-  private val Dir = CirFixDir / "fsm_full"
+  private val Dir = BenchmarkDir
 
   it should "find that no repair is necessary for fsm_full" in {
     val res = Bugfixer.repair(Dir / "fsm_full.btor", Dir / "orig_tb.csv", DefaultConfig)
@@ -100,7 +100,7 @@ class BugfixerFsmFullTests extends BugFixerSpec {
 
 class BugfixerFlipFlopTests extends BugFixerSpec {
   behavior.of("Bugfixer on FlipFlop")
-  private val Dir = CirFixDir / "flip_flop"
+  private val Dir = BenchmarkDir
 
   it should "find that no repair is necessary for tff" in {
     val res = Bugfixer.repair(Dir / "tff.btor", Dir / "orig_tb.csv", DefaultConfig)
@@ -120,7 +120,7 @@ class BugfixerFlipFlopTests extends BugFixerSpec {
 
 class BugfixerFirstCounterOverflowTests extends BugFixerSpec {
   behavior.of("Bugfixer on FirstCounterOverflow")
-  private val Dir = CirFixDir / "first_counter_overflow"
+  private val Dir = BenchmarkDir
 
   it should "find that no repair is necessary for first_counter_overflow" in {
     val res = Bugfixer.repair(Dir / "first_counter_overflow.btor", Dir / "orig_tb.csv", DefaultConfig)
@@ -140,58 +140,51 @@ class BugfixerFirstCounterOverflowTests extends BugFixerSpec {
 
 class BugfixerDecoderTests extends BugFixerSpec {
   behavior.of("Bugfixer on Decoder")
+  private val Dir = BenchmarkDir
 
   it should "find that no repair is necessary for decoder3_to_8" in {
-    val dir = CirFixDir / "decoder_3_to_8"
-    val res = Bugfixer.repair(dir / "decoder_3_to_8.btor", dir / "orig_min_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8.btor", Dir / "orig_min_tb.csv", DefaultConfig)
     assert(res.noRepairNecessary, res.toString)
   }
 
   it should "fix decoder_3_to_8_wadden_buggy1 with minimized testbench" in {
-    val dir = CirFixDir / "decoder_3_to_8"
-    val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "orig_min_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8_wadden_buggy1.btor", Dir / "orig_min_tb.csv", DefaultConfig)
     assert(res.isSuccess, res.toString)
   }
 
   it should "fix decoder_3_to_8_wadden_buggy1 with original testbench" in {
-    val dir = CirFixDir / "decoder_3_to_8"
-    val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "orig_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8_wadden_buggy1.btor", Dir / "orig_tb.csv", DefaultConfig)
     assert(res.isSuccess, res.toString)
   }
 
   // ignored because it takes too long
   it should "fix decoder_3_to_8_wadden_buggy1 with complete minimized testbench" ignore {
-    val dir = CirFixDir / "decoder_3_to_8"
-    val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy1.btor", dir / "complete_min_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8_wadden_buggy1.btor", Dir / "complete_min_tb.csv", DefaultConfig)
     assert(res.isSuccess, res.toString)
   }
 
   it should "not be able to fix decoder_3_to_8_wadden_buggy2 with minimized testbench" in {
-    val dir = CirFixDir / "decoder_3_to_8"
-    val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy2.btor", dir / "orig_min_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8_wadden_buggy2.btor", Dir / "orig_min_tb.csv", DefaultConfig)
     // while we do return a result, it is in fact incorrect wrt the original description!
     assert(res.isSuccess, res.toString)
   }
 
   it should "not be able to fix decoder_3_to_8_wadden_buggy2 with original testbench" in {
-    val dir = CirFixDir / "decoder_3_to_8"
-    val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy2.btor", dir / "orig_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8_wadden_buggy2.btor", Dir / "orig_tb.csv", DefaultConfig)
     // while we do return a result, it is in fact incorrect wrt the original description!
     assert(res.isSuccess, res.toString)
   }
 
   // currently ignored because z3 takes around 30-40s to solve this and it gets annoying
   it should "fix decoder_3_to_8_wadden_buggy2 with complete minimized testbench" ignore {
-    val dir = CirFixDir / "decoder_3_to_8"
-    val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy2.btor", dir / "complete_min_tb.csv", DefaultConfig)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8_wadden_buggy2.btor", Dir / "complete_min_tb.csv", DefaultConfig)
     assert(res.isSuccess, res.toString)
   }
 
   // same as above, but much faster using OptiMathSAT instead of Z3
   it should "fix decoder_3_to_8_wadden_buggy2 with complete minimized testbench with optimathsat" in {
-    val dir = CirFixDir / "decoder_3_to_8"
     val config = DefaultConfig.copy(solver = OptiMathSatSMTLib)
-    val res = Bugfixer.repair(dir / "decoder_3_to_8_wadden_buggy2.btor", dir / "complete_min_tb.csv", config)
+    val res = Bugfixer.repair(Dir / "decoder_3_to_8_wadden_buggy2.btor", Dir / "complete_min_tb.csv", config)
     assert(res.isSuccess, res.toString)
   }
 }
