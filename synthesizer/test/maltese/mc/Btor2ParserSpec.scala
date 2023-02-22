@@ -184,5 +184,4 @@ class Btor2ParserSpec extends AnyFlatSpec {
     if (doPrint) println(sys.serialize)
   }
 
-
 }
