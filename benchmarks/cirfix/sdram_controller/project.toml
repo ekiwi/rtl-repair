@@ -1,0 +1,46 @@
+[project]
+directory = "."
+sources = ["sdram_controller.v"]
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "sdram_controller.v"
+buggy = "sdram_controller_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "sdram_controller.v"
+buggy = "sdram_controller_wadden_buggy2.v"
+
+[[bugs]]
+name = "kgoliya_buggy2"
+original = "sdram_controller.v"
+buggy = "sdram_controller_kgoliya_buggy2.v"
+
+[[bugs]]
+name = "buggy_num"
+original = "sdram_controller.v"
+buggy = "sdram_controller_buggy_num.v"
+
+[[bugs]]
+name = "buggy_v2"
+original = "sdram_controller.v"
+buggy = "sdram_controller_buggy_v2.v"
+
+[[bugs]]
+name = "buggy_var"
+original = "sdram_controller.v"
+buggy = "sdram_controller_buggy_var.v"
+
+[[bugs]]
+name = "buggy_githubbug"
+original = "sdram_controller.v"
+buggy = "sdram_controller_githubbug.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["sdram_controller_tb_t1.v"]
+output = "output_sdram_controller_tb_t1.txt"
+oracle = "oracle.txt"
+timeout = 5.0
+
