@@ -1,0 +1,46 @@
+[project]
+directory = "."
+sources = ["fsm_full.v"]
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "fsm_full.v"
+buggy = "fsm_full_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "fsm_full.v"
+buggy = "fsm_full_wadden_buggy2.v"
+
+[[bugs]]
+name = "ssscrazy_buggy1"
+original = "fsm_full.v"
+buggy = "fsm_full_ssscrazy_buggy1.v"
+
+[[bugs]]
+name = "ssscrazy_buggy2"
+original = "fsm_full.v"
+buggy = "fsm_full_ssscrazy_buggy2.v"
+
+[[bugs]]
+name = "buggy_num"
+original = "fsm_full.v"
+buggy = "fsm_full_buggy_num.v"
+
+[[bugs]]
+name = "buggy_var"
+original = "fsm_full.v"
+buggy = "fsm_full_buggy_var.v"
+
+[[bugs]]
+name = "super_buggy"
+original = "fsm_full.v"
+buggy = "fsm_full_super_buggy.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["fsm_full_tb_t1.v"]
+output = "output_fsm_full_tb_t1.txt"
+oracle = "oracle.txt"
+timeout = 10.0
+
