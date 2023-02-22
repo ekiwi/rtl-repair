@@ -179,7 +179,7 @@ def main():
     create_working_dir(config.working_dir)
 
     # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
-    filename, preprocess_changed = preprocess(config.source, config.working_dir, config.include)
+    filename, preprocess_changed = preprocess(config.source, config.additional_sources, config.working_dir, config.include)
 
     ast = parse_verilog(filename, config.include)
     if config.show_ast:

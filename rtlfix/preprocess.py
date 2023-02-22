@@ -14,7 +14,7 @@ from rtlfix.visitor import AstVisitor
 import pyverilog.vparser.ast as vast
 
 
-def preprocess(filename: Path, working_dir: Path, include: Path):
+def preprocess(filename: Path, other_files: list[Path], working_dir: Path, include: Path):
     """ runs a linter on the verilog file and tries to address some issues """
     # create directory
     assert working_dir.exists()
@@ -28,7 +28,7 @@ def preprocess(filename: Path, working_dir: Path, include: Path):
     changed = False
     previous_warnings = []
     for ii in range(4):
-        warnings = run_linter(ii, filename, preprocess_dir, include)
+        warnings = run_linter(ii, filename, other_files, preprocess_dir, include)
 
         # for now we ignore all warnings that are not part of the repair file
         warnings = [w for w in warnings if w.filename.name == filename.name]
@@ -63,7 +63,8 @@ def preprocess(filename: Path, working_dir: Path, include: Path):
 
 
 def _same_warnings(old: list, new: list) -> bool:
-    return {_warning_sig(w) for w in old} == { _warning_sig(w) for w in new }
+    return {_warning_sig(w) for w in old} == {_warning_sig(w) for w in new}
+
 
 def _check_for_verilator():
     r = subprocess.run(["verilator", "-version"], stdout=subprocess.PIPE)
@@ -72,7 +73,8 @@ def _check_for_verilator():
 
 # while WIDTH warnings can be indicative of a bug, they are generally too noisy to deal with easily
 # CASEOVERLAP might be an interesting warning to deal with
-_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY", "UNUSED", "EOFNEWLINE", "WIDTH", "CASEOVERLAP", "STMTDLY", "TIMESCALEMOD"}
+_ignore_warnings = {"DECLFILENAME", "ASSIGNDLY", "UNUSED", "EOFNEWLINE", "WIDTH", "CASEOVERLAP", "STMTDLY",
+                    "TIMESCALEMOD"}
 _verilator_lint_flags = ["--lint-only", "-Wno-fatal", "-Wall"] + [f"-Wno-{w}" for w in _ignore_warnings]
 _verilator_re = re.compile(r"%Warning-([A-Z]+): ([^:]+):(\d+):(\d+):([^\n]+)")
 
@@ -89,8 +91,10 @@ class LintWarning:
     col: int
     msg: str
 
+
 def _warning_sig(warn: LintWarning) -> str:
     return f"{warn.tpe}@{warn.line}"
+
 
 def parse_linter_output(lines: list) -> list:
     out = []
@@ -104,7 +108,7 @@ def parse_linter_output(lines: list) -> list:
     return out
 
 
-def run_linter(iteration: int, filename: Path, preprocess_dir: Path, include: Path) -> list:
+def run_linter(iteration: int, filename: Path, other_files: list[Path], preprocess_dir: Path, include: Path) -> list:
     """ Things we are interested in:
         - ASSIGNDLY: Unsupported: Ignoring timing control on this assignment
         - CASEINCOMPLETE: Case values incompletely covered (example pattern 0x5)
@@ -118,8 +122,8 @@ def run_linter(iteration: int, filename: Path, preprocess_dir: Path, include: Pa
     cmd = ["verilator"] + _verilator_lint_flags
     if include is not None:
         cmd += [f"-I{include.resolve()}"]
-    r = subprocess.run(cmd + [str(filename.resolve())],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    cmd += (str(f.resolve()) for f in [filename] + other_files)
+    r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     info = (r.stdout + r.stderr).decode('utf-8').splitlines()
     info = remove_blank_lines(info)
     if len(info) == 0:
