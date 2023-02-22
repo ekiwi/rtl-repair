@@ -1,0 +1,45 @@
+[project]
+directory = "."
+sources = [
+    "RS_dec.v", "BM_lamda.v", "GF_matrix_dec.v", "GF_matrix_ascending_binary.v",
+    "input_syndromes.v", "lamda_roots.v", "transport_in2out.v",
+    "DP_RAM.v", "out_stage.v", "error_correction.v", "Omega_Phy.v", "GF_mult_add_syndromes.v"
+]
+
+[[bugs]]
+name = "out_stage_ssscrazy_buggy1"
+original = "out_stage.v"
+buggy = "out_stage_ssscrazy_buggy1.v"
+
+[[bugs]]
+name = "BM_lamda_ssscrazy_buggy1"
+original = "BM_lamda.v"
+buggy = "BM_lamda_ssscrazy_buggy1.v"
+
+[[bugs]]
+name = "out_stage_buggy"
+original = "out_stage.v"
+buggy = "out_stage_buggy.v"
+
+[[bugs]]
+name = "out_stage_buggy_v2"
+original = "out_stage.v"
+buggy = "out_stage_buggy_v2.v"
+
+[[bugs]]
+name = "RS_dec_buggy"
+original = "RS_dec.v"
+buggy = "RS_dec_buggy.v"
+
+[[bugs]]
+name = "RS_dec_buggy_v2"
+original = "RS_dec.v"
+buggy = "RS_dec_buggy_v2.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["RS_dec_tb_t1.v"]
+output = "output_RS_dec_tb_t1.txt"
+oracle = "oracle.txt"
+timeout = 8.0
+
