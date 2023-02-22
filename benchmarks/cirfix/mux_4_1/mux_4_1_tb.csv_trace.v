@@ -27,10 +27,10 @@ module tb_4to1_mux;
 
    initial begin
        f = $fopen("output_mux_4_1_tb.txt");
-       $fwrite(f, "time,out[3],out[2],out[1],out[0]\n");
+       $fwrite(f, "time,a,b,c,d,sel,out\n");
        forever begin
            @(posedge clk);
-           $fwrite(f, "%g,%b,%b,%b,%b\n", $time,out[3],out[2],out[1],out[0]);
+           $fwrite(f, "%g,%d,%d,%d,%d,%d,%d\n", $time,a,b,c,d,sel,out);
        end
    end
    initial begin

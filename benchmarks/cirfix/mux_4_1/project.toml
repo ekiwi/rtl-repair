@@ -1,0 +1,31 @@
+[project]
+directory = "."
+sources = ["mux_4_1.v"]
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "mux_4_1.v"
+buggy = "mux_4_1_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "mux_4_1.v"
+buggy = "mux_4_1_wadden_buggy2.v"
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "mux_4_1.v"
+buggy = "mux_4_1_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "buggy_var"
+original = "mux_4_1.v"
+buggy = "mux_4_1_buggy_var.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["mux_4_1_tb.v"]
+output = "output_mux_4_1_tb.txt"
+oracle = "oracle.txt"
+timeout = 5.0
+
