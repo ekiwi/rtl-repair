@@ -1,0 +1,26 @@
+[project]
+directory = "."
+sources = ["first_counter_overflow.v"]
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "first_counter_overflow.v"
+buggy = "first_counter_overflow_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "first_counter_overflow.v"
+buggy = "first_counter_overflow_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "first_counter_overflow.v"
+buggy = "first_counter_overflow_wadden_buggy2.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["first_counter_tb_t3.v"]
+output = "output_first_counter_tb_t3.txt"
+oracle = "oracle.txt"
+timeout = 20.0
+

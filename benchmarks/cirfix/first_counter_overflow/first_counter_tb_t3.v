@@ -41,11 +41,11 @@ integer f;
 initial begin
     f = $fopen("output_first_counter_tb_t3.txt");
     $display("\t\ttime,\tclk,\treset,\tenable,\tcount_out,\toverflow_out\n");
-    $fwrite(f, "time,counter_out,overflow_out,reset,enable,clk\n");
+    $fwrite(f, "time,counter_out[3],counter_out[2],counter_out[1],counter_out[0],overflow_out\n");
     $monitor("%d, \t%b, \t%b, \t%b, \t%d, \t\t%b", $time, clk, reset, enable, counter_out, overflow_out);
     forever begin
     @(posedge instrument_clk);
-    $fwrite(f, "%g,%d,%d,%d,%d,%d\n", $time, counter_out, overflow_out, reset, enable, clk);
+    $fwrite(f, "%g,%b,%b,%b,%b,%b\n", $time, counter_out[3], counter_out[2], counter_out[1], counter_out[0], overflow_out);
     end
 end
 
