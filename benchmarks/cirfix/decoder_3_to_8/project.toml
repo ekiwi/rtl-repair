@@ -1,0 +1,53 @@
+[project]
+directory = "."
+sources = ["decoder_3_to_8.v"]
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "decoder_3_to_8.v"
+buggy = "decoder_3_to_8_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "decoder_3_to_8.v"
+buggy = "decoder_3_to_8_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "decoder_3_to_8.v"
+buggy = "decoder_3_to_8_wadden_buggy2.v"
+
+[[bugs]]
+name = "buggy_num"
+original = "decoder_3_to_8.v"
+buggy = "decoder_3_to_8_buggy_num.v"
+
+[[bugs]]
+name = "buggy_var"
+original = "decoder_3_to_8.v"
+buggy = "decoder_3_to_8_buggy_var.v"
+
+[[bugs]]
+name = "super_buggy"
+original = "decoder_3_to_8.v"
+buggy = "decoder_3_to_8_super_buggy.v"
+
+# This is the original testbench from CirFix
+[[testbenches]]
+name = "oracle-full"
+sources = ["decoder_3_to_8_tb_t1.v"]
+output = "output_decoder_3_to_8_tb_t1.txt"
+oracle = "oracle.txt"
+table = "orig_tb.csv"
+timeout = 7.0
+
+# Minimized version of the original testbench.
+# We removed all redundant cycles.
+[[testbenches]]
+name = "orig-min"
+table = "orig_min_tb.csv"
+
+# A testbench that actually tests all code paths in the circuit
+[[testbenches]]
+name = "complete-min"
+table = "complete_min_tb.csv"
