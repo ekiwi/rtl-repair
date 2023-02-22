@@ -1,0 +1,34 @@
+[project]
+name = "sha3_f_permutation"
+directory = "."
+sources = [
+    "padder.v", "keccak.v", "f_permutation.v", "padder1.v", "rconst.v", "round.v"
+]
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "f_permutation.v"
+buggy = "f_permutation_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "buggy"
+original = "f_permutation.v"
+buggy = "f_permutation_buggy.v"
+
+[[bugs]]
+name = "buggy_v2"
+original = "f_permutation.v"
+buggy = "f_permutation_buggy_v2.v"
+
+[[bugs]]
+name = "buggy_v3"
+original = "f_permutation.v"
+buggy = "f_permutation_buggy_v3.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["test_f_permutation_t1.v"]
+output = "output_test_f_permutation_t1.txt"
+oracle = "oracle_f_permutation.txt"
+timeout = 10.0
+

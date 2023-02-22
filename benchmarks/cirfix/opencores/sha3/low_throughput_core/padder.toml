@@ -1,0 +1,24 @@
+[project]
+name = "sha3_padder"
+directory = "."
+sources = [
+    "padder.v",
+    "keccak.v",
+    "f_permutation.v",
+    "padder1.v",
+    "rconst.v",
+    "round.v"
+]
+
+[[bugs]]
+name = "ssscrazy_buggy1"
+original = "padder.v"
+buggy = "padder_ssscrazy_buggy1.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["test_padder_t1.v"]
+output = "output_test_padder_t1.txt"
+oracle = "oracle_padder.txt"
+timeout = 10.0
+

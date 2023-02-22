@@ -1,0 +1,34 @@
+[project]
+name = "sha3_keccak"
+directory = "."
+sources = [
+    "padder.v", "keccak.v", "f_permutation.v", "padder1.v", "rconst.v", "round.v"
+]
+
+[[bugs]]
+name = "round_ssscrazy_buggy1"
+original = "round.v"
+buggy = "round_ssscrazy_buggy1.v"
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "keccak.v"
+buggy = "keccak_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "keccak.v"
+buggy = "keccak_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "keccak.v"
+buggy = "keccak_wadden_buggy2.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["test_keccak_t1.v"]
+output = "output_test_keccak_t1.txt"
+oracle = "oracle_keccak.txt"
+timeout = 5.0
+
