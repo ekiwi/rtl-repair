@@ -1,0 +1,42 @@
+[project]
+name = "i2c_master"
+directory = "."
+sources = [
+    "i2c_master_top.v",
+    "i2c_master_byte_ctrl.v",
+    "i2c_master_bit_ctrl.v"
+]
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "i2c_master_bit_ctrl.v"
+buggy = "i2c_master_bit_ctrl_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "buggy"
+original = "i2c_master_top.v"
+buggy = "i2c_master_top_buggy.v"
+
+[[bugs]]
+name = "buggy_v2"
+original = "i2c_master_top.v"
+buggy = "i2c_master_top_buggy_v2.v"
+
+[[bugs]]
+name = "more_buggy"
+original = "i2c_master_top.v"
+buggy = "i2c_master_top_more_buggy.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = [
+    # for the i2c master we treat the Verilog models as part of the testbench
+    # since they are not synthesizable
+    "wb_master_model.v",
+    "i2c_slave_model.v",
+    "tst_bench_top_t1.v"
+]
+output = "output_tst_bench_top_t1.txt"
+oracle = "oracle.txt"
+timeout = 20.0
+

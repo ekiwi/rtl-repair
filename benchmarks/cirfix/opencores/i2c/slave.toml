@@ -1,0 +1,30 @@
+[project]
+name = "i2c_slave"
+directory = "."
+sources = [
+    "i2c_slave_model.v",
+    "i2c_master_top.v",
+    "i2c_master_byte_ctrl.v",
+    "i2c_master_bit_ctrl.v"
+]
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "i2c_slave_model.v"
+buggy = "i2c_slave_model_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "i2c_slave_model.v"
+buggy = "i2c_slave_model_wadden_buggy2.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = [
+    "wb_master_model.v",
+    "tst_bench_top_t1.v"
+]
+output = "output_tst_bench_top_t1.txt"
+oracle = "oracle.txt"
+timeout = 20.0
+
