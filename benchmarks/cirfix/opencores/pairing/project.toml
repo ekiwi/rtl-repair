@@ -1,0 +1,38 @@
+[project]
+directory = "."
+sources = [
+    "f32m.v",  "f33m.v", "f36m.v", "f3m.v", "f3.v", "fun.v", "inc.v", "tate_pairing.v"
+]
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "tate_pairing.v"
+buggy = "tate_pairing_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "tate_pairing.v"
+buggy = "tate_pairing_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "tate_pairing.v"
+buggy = "tate_pairing_wadden_buggy2.v"
+
+[[bugs]]
+name = "buggy"
+original = "tate_pairing.v"
+buggy = "tate_pairing_buggy.v"
+
+[[bugs]]
+name = "buggy_v2"
+original = "tate_pairing.v"
+buggy = "tate_pairing_buggy_v2.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["test_duursma_lee_algo_t1.v"]
+output = "output_test_duursma_lee_algo_t1.txt"
+oracle = "oracle.txt"
+timeout = 40.0
+
