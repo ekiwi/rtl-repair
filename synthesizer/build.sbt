@@ -5,7 +5,7 @@ val commonSettings = Seq(
   Compile / resourceDirectory := baseDirectory.value / "src" / "resources",
   Test / scalaSource := baseDirectory.value / "test",
   Test / resourceDirectory := baseDirectory.value / "test" / "resources",
-  scalaVersion := "2.13.7",
+  scalaVersion := "2.13.10",
   scalacOptions := Seq("-deprecation", "-unchecked", "-language:reflectiveCalls", "-Xcheckinit"),
 )
 
