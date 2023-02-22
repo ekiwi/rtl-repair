@@ -10,6 +10,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 abstract class SynthesizerSpec extends AnyFlatSpec {
   val BenchmarkDir = os.pwd / "test" / "synth" / "benchmarks"
   val CirFixDir = os.pwd / os.up / "benchmarks" / "cirfix"
+  val PaperExampleDir = os.pwd / os.up / "benchmarks" / "paper_example"
   val DefaultConfig = Config()
 }
 
@@ -165,6 +166,15 @@ class SynthesizerTests extends SynthesizerSpec with ParallelTestExecution {
       DefaultConfig.changeSolver("bitwuzla").makeVerbose().changeInit(ZeroInit)
     )
     assert(r.noRepairNecessary)
+  }
+
+  it should "synthesize a solution for first_counter_tb_paper_example" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "first_counter_tb_paper_example.btor",
+      PaperExampleDir / "tb.csv",
+      DefaultConfig.changeSolver("z3").makeVerbose().changeInit(RandomInit).copy(seed = 1)
+    )
+    assert(r.cannotRepair)
   }
 
 }
