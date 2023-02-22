@@ -1,0 +1,36 @@
+[project]
+directory = "."
+sources = ["lshift_reg.v"]
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "lshift_reg.v"
+buggy = "lshift_reg_wadden_buggy1.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "lshift_reg.v"
+buggy = "lshift_reg_wadden_buggy2.v"
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "lshift_reg.v"
+buggy = "lshift_reg_kgoliya_buggy1.v"
+
+[[bugs]]
+name = "buggy_num"
+original = "lshift_reg.v"
+buggy = "lshift_reg_buggy_num.v"
+
+[[bugs]]
+name = "buggy_var"
+original = "lshift_reg.v"
+buggy = "lshift_reg_buggy_var.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["lshift_reg_tb_t1.v"]
+output = "output_lshift_reg_tb_t1.txt"
+oracle = "oracle.txt"
+timeout = 7.0
+
