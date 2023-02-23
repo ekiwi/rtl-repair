@@ -286,7 +286,13 @@ class TestFirstCounter(SynthesisTest):
 
     def test_kgoliya_buggy1_orig_tb(self):
         # this can be repaired through the assign_const template
+        # however the repair is incorrect, since it makes the enable signal behave incorrectly
         self.synth_success(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "orig_tb.csv", init='random')
+
+    def test_kgoliya_buggy1_en_test_tb(self):
+        # this uses an updated testbench that actually tests the enable signal
+        # the solution correctly adds the assignment to zero to the reset block
+        self.synth_success(counter_dir, "first_counter_overflow_kgoliya_buggy1.v", "en_test_tb.csv", init='random')
 
     def test_buggy_counter_orig_tb(self):
         # can be solved by a literal replacement
