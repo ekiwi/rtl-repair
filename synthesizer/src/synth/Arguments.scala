@@ -14,8 +14,7 @@ case class Arguments(
   config:    Config = Config())
 
 case class Config(
-  solver:      Option[Solver] = Some(Z3SMTLib),
-  checker:     Option[IsModelChecker] = None,
+  solver:      Solver = Z3SMTLib,
   init:        InitType = AnyInit,
   incremental: Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
   angelic:     Boolean = false, // selects angelic synthesis, does not require any synthesis variables
@@ -24,17 +23,15 @@ case class Config(
   debugSolver: Boolean = false,
   unroll:      Boolean = false,
   verbose:     Boolean = false) {
-  require(solver.isEmpty != checker.isEmpty, "need exactly one checker OR solver, not both or neither")
   require(!(angelic && incremental), "Angelic and incremental solver are mutually exclusive!")
   def changeSolver(name: String): Config = {
     name match {
-      case "z3"          => copy(solver = Some(Z3SMTLib), checker = None)
-      case "cvc4"        => copy(solver = Some(CVC4SMTLib), checker = None)
-      case "yices2"      => copy(solver = Some(Yices2SMTLib), checker = None)
-      case "boolector"   => copy(solver = Some(BoolectorSMTLib), checker = None)
-      case "bitwuzla"    => copy(solver = Some(BitwuzlaSMTLib), checker = None)
-      case "optimathsat" => copy(solver = Some(OptiMathSatSMTLib), checker = None)
-      case "btormc"      => copy(solver = None, checker = Some(new BtormcModelChecker))
+      case "z3"          => copy(solver = Z3SMTLib)
+      case "cvc4"        => copy(solver = CVC4SMTLib)
+      case "yices2"      => copy(solver = Yices2SMTLib)
+      case "boolector"   => copy(solver = BoolectorSMTLib)
+      case "bitwuzla"    => copy(solver = BitwuzlaSMTLib)
+      case "optimathsat" => copy(solver = OptiMathSatSMTLib)
       case other         => throw new RuntimeException(s"Unknown solver $other")
     }
   }

@@ -13,7 +13,7 @@ import scala.collection.mutable
   * angelic values.
   */
 object AngelicSynthesizer {
-  import synth.SmtSynthesizer._
+  import synth.BasicSynthesizer._
   import synth.Synthesizer._
 
   def doRepair(sys: TransitionSystem, tb: Testbench, config: Config, rnd: scala.util.Random): RepairResult = {

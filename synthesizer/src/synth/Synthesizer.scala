@@ -54,25 +54,16 @@ object Synthesizer {
     // find synthesis variables and remove them from the system for now
     val (noSynthVarSys, synthVars) = collectSynthesisVars(initializedSys)
 
-    // println(noSynthVarSys.serialize)
-
-    if (config.solver.isDefined) {
-      if (config.incremental) {
-        IncrementalSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config, rnd)
-      } else if (config.angelic) {
-        assert(
-          synthVars.isEmpty,
-          f"Cannot use angelic solver with system that had a repair template applied:\n$synthVars"
-        )
-        AngelicSynthesizer.doRepair(noSynthVarSys, tb, config, rnd)
-      } else {
-        SmtSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
-      }
+    if (config.incremental) {
+      IncrementalSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config, rnd)
+    } else if (config.angelic) {
+      assert(
+        synthVars.isEmpty,
+        f"Cannot use angelic solver with system that had a repair template applied:\n$synthVars"
+      )
+      AngelicSynthesizer.doRepair(noSynthVarSys, tb, config, rnd)
     } else {
-      assert(!config.incremental)
-      assert(config.checker.isDefined)
-      // it is important that we pass the system _with_ synthesis variables!
-      ModelCheckerSynthesizer.doRepair(initializedSys, tb, synthVars, config)
+      BasicSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config)
     }
   }
 
@@ -171,7 +162,7 @@ object Synthesizer {
 
   def startSolver(config: Config): SolverContext = {
     // create solver context
-    val solver = config.solver.get
+    val solver = config.solver
     val ctx = solver.createContext(debugOn = config.debugSolver)
     if (solver.name.contains("z3")) {
       ctx.setLogic("ALL")

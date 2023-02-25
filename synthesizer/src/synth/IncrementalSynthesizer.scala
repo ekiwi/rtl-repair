@@ -10,7 +10,7 @@ import maltese.smt._
 /** Tries to synthesize a solution without completely unrolling the system. */
 object IncrementalSynthesizer {
   import synth.Synthesizer._
-  import synth.SmtSynthesizer._
+  import synth.BasicSynthesizer._
 
   def doRepair(
     sys:       TransitionSystem,

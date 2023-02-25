@@ -9,7 +9,7 @@ import maltese.smt._
 import synth.Synthesizer.encodeSystem
 
 /** Takes in a Transition System with synthesis variables +  a testbench and tries to find a valid synthesis assignment. */
-object SmtSynthesizer {
+object BasicSynthesizer {
   import synth.Synthesizer.{countChanges, countChangesInAssignment, startSolver}
 
   def doRepair(sys: TransitionSystem, tb: Testbench, synthVars: SynthVars, config: Config): RepairResult = {

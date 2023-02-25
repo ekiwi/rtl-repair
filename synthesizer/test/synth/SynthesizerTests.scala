@@ -26,29 +26,11 @@ class SynthesizerTests extends SynthesizerSpec with ParallelTestExecution {
     assert(r.isSuccess)
   }
 
-  it should "synthesize a fix for decoder_3_to_8_wadden_buggy1 with original testbench and literal replacer template using btormc" in {
-    val r = Synthesizer.run(
-      BenchmarkDir / "decoder_3_to_8_wadden_buggy1_with_literals_replaced.btor",
-      CirFixDir / "decoder_3_to_8" / "orig_tb.csv",
-      DefaultConfig.changeSolver("btormc")
-    )
-    assert(r.isSuccess)
-  }
-
   it should "synthesize a fix for decoder_3_to_8_buggy_var using optimathsat" in {
     val r = Synthesizer.run(
       BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
       CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
       DefaultConfig.changeSolver("optimathsat")
-    )
-    assert(r.isSuccess)
-  }
-
-  it should "synthesize a fix for decoder_3_to_8_buggy_var using btormc" in {
-    val r = Synthesizer.run(
-      BenchmarkDir / "decoder_3_to_8_buggy_var.btor",
-      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
-      DefaultConfig.changeSolver("btormc")
     )
     assert(r.isSuccess)
   }
@@ -125,16 +107,6 @@ class SynthesizerTests extends SynthesizerSpec with ParallelTestExecution {
       BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
       CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
       DefaultConfig.changeSolver("bitwuzla")
-    )
-    assert(r.cannotRepair)
-  }
-
-  // this is generally much faster (~1.5s)
-  it should "recognize that there is not solution for decoder_3_to_8_buggy_var_replace_literals using btormc" in {
-    val r = Synthesizer.run(
-      BenchmarkDir / "decoder_3_to_8_buggy_var_replace_literals.btor",
-      CirFixDir / "decoder_3_to_8" / "complete_min_tb.csv",
-      DefaultConfig.changeSolver("btormc")
     )
     assert(r.cannotRepair)
   }
