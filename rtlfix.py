@@ -117,8 +117,10 @@ def try_template(config: Config, ast, prefix: str, template):
         json.dump(result, f, indent=2)
 
     if status == Success:
+        # we pick the first solution for now
+        solution = result["solutions"][0]
         # execute synthesized repair
-        changes = do_repair(ast, result["assignment"])
+        changes = do_repair(ast, solution["assignment"])
         result["num_changes"] = len(changes)
         with open(template_dir / "changes.txt", "w") as f:
             f.write(f"{template_name}\n")

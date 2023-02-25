@@ -22,13 +22,20 @@ object Synthesizer {
     result match {
       case NoRepairNecessary => println("""{"status":"no-repair"}""")
       case CannotRepair      => println("""{"status":"cannot-repair"}""")
-      case RepairSuccess(assignments) =>
+      case RepairSuccess(solutions) =>
+        val solutionJSON = solutions.map { case Solution(assignments) =>
+          val assignmentJSON = assignments.map { case (name, value) => s"""     "$name": $value""" }.mkString(",\n")
+          s"""  { "assignment" : {
+             |$assignmentJSON
+             |   }
+             |  }
+             |""".stripMargin
+        }.mkString(",\n")
+
         println("""{"status":"success",""")
-        println(""" "assignment": {""")
-        println(assignments.map { case (name, value) =>
-          s"""   "$name": $value"""
-        }.mkString(",\n"))
-        println(" }")
+        println(""" "solutions": [""")
+        println(solutionJSON)
+        println(" ]")
         println("}")
     }
   }
@@ -206,6 +213,10 @@ case object CannotRepair extends RepairResult {
 }
 
 /** indicates that the repair was successful and provides the repaired system */
-case class RepairSuccess(assignments: Seq[(String, BigInt)]) extends RepairResult {
+case class RepairSuccess(solutions: Seq[Solution]) extends RepairResult {
+  require(solutions.nonEmpty, "A success requires at least one solution.")
   override def isSuccess: Boolean = true
 }
+
+/** A solution to the repair problem. */
+case class Solution(assignments: Seq[(String, BigInt)])

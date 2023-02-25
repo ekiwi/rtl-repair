@@ -40,7 +40,7 @@ object ModelCheckerSynthesizer {
     if (config.verbose) println(s"Solution with $maxSize changes found.")
     assert(maxSize > 0)
     if (maxSize == 1) { // if by chance we get a 1-change solution, there is not more need to search for a solution
-      return RepairSuccess(maxSolution)
+      return RepairSuccess(Seq(Solution(maxSolution)))
     }
 
     // try to solve with the minimal number of changes
@@ -61,7 +61,7 @@ object ModelCheckerSynthesizer {
             )
           case None => // all good, no more failure
         }
-        RepairSuccess(synthVarAssignment)
+        RepairSuccess(Seq(Solution(synthVarAssignment)))
     }
   }
 

@@ -59,7 +59,7 @@ object SmtSynthesizer {
     }
     ctx.pop()
     ctx.close()
-    RepairSuccess(results)
+    RepairSuccess(Seq(Solution(results)))
   }
 
   /** Searches for an assignment of free variables that minimizes the changes in the synthesis variables */

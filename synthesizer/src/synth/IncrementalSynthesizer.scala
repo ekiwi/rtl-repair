@@ -48,7 +48,7 @@ object IncrementalSynthesizer {
       val candidates = findSolutionWithUnrolling(sys, initialized, randInputTb, config, synthVars, exec, pastK, futureK)
       candidates.find(_.correct) match {
         case Some(value) => // return correct solution if it exists
-          return RepairSuccess(value.assignment)
+          return RepairSuccess(Seq(Solution(value.assignment)))
         case None => // otherwise, we analyze the solutions that did not work
           val failureDistance = candidates.map(c => c.failAt - exec.failAt)
           val maxFailureDistance = (0 +: failureDistance).max
