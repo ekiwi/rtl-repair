@@ -14,13 +14,15 @@ case class Arguments(
   config:    Config = Config())
 
 case class Config(
-  solver:      Solver = Z3SMTLib,
-  init:        InitType = AnyInit,
-  incremental: Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
-  angelic:     Boolean = false, // selects angelic synthesis, does not require any synthesis variables
-  seed:        Long = 0, // currently used to seed random state init if the option is selected
+  solver:         Solver = Z3SMTLib,
+  init:           InitType = AnyInit,
+  incremental:    Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
+  angelic:        Boolean = false, // selects angelic synthesis, does not require any synthesis variables
+  seed:           Long = 0, // currently used to seed random state init if the option is selected
   sampleUpToSize: Option[Int] = None, // None => return first solution
-                                      // Some(0) => return all solutions that have the minimal number of changes
+  // Some(0) => return all solutions that have the minimal number of changes
+  checkCorrectForAll: Boolean = false, // performs a formal check to see if there are any starting states or
+  // free inputs that would make a solution fail
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
   unroll:      Boolean = false,
@@ -45,6 +47,7 @@ case class Config(
   def useIncremental(): Config = copy(incremental = true)
   def useAngelic():     Config = copy(angelic = true)
   def doSampleSolutionsUpTo(ii: Int): Config = copy(sampleUpToSize = Some(ii))
+  def doCheckCorrectForAll(): Config = copy(checkCorrectForAll = true)
 }
 
 sealed trait InitType
@@ -103,4 +106,9 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     args.copy(config = args.config.doSampleSolutionsUpTo(i))
   }
     .text("sample more than one solution")
+  opt[Unit]("check-correct-for-all")
+    .action((_, args) => args.copy(config = args.config.doCheckCorrectForAll()))
+    .text(
+      "make the basic synthesizer check to see if there exists a starting state or undefined input that will make the repaired system fail"
+    )
 }

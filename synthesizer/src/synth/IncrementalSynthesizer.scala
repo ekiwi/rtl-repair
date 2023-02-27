@@ -163,7 +163,6 @@ object IncrementalSynthesizer {
     findSolutionOfSize(ctx, synthVars, size, earlyExit = true, checkSolution)
   }
 
-
   private def applySynthAssignment(sys: TransitionSystem, assignment: Assignment): TransitionSystem = {
     val nameToValue = assignment.toMap
     // this assumes that all synthesis variables states have already been removed

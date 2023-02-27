@@ -56,6 +56,23 @@ object BasicSynthesizer {
     ctx.pop()
 
     // check to see if the synthesized constants work
+    if (config.checkCorrectForAll) {
+      checkCorrectForAll(ctx, synthVars, sys, tb, freeVars, config, solutions)
+    }
+
+    ctx.close()
+    RepairSuccess(solutions)
+  }
+
+  private def checkCorrectForAll(
+    ctx:       SolverContext,
+    synthVars: SynthVars,
+    sys:       TransitionSystem,
+    tb:        Testbench,
+    freeVars:  FreeVars,
+    config:    Config,
+    solutions: Seq[Solution]
+  ): Unit = {
     solutions.foreach { case Solution(results) =>
       ctx.push()
       synthVars.assumeAssignment(ctx, results.toMap)
@@ -68,11 +85,14 @@ object BasicSynthesizer {
       }
       ctx.pop()
     }
-    ctx.close()
-    RepairSuccess(solutions)
   }
 
-  private def sampleMultipleSolutions(ctx: SolverContext, synthVars: SynthVars, minSize: Int, maxSize: Int): Seq[Solution] = {
+  private def sampleMultipleSolutions(
+    ctx:       SolverContext,
+    synthVars: SynthVars,
+    minSize:   Int,
+    maxSize:   Int
+  ): Seq[Solution] = {
     require(minSize > 0)
     require(maxSize >= minSize)
     var solutions = List[Solution]()
@@ -94,10 +114,10 @@ object BasicSynthesizer {
 
   /** Finds solutions of size `size`. If `earlyExit` is true, it will abort as soon as one working solution is found. */
   def findSolutionOfSize(
-    ctx: SolverContext,
-    synthVars: SynthVars,
-    size: Int,
-    earlyExit: Boolean,
+    ctx:           SolverContext,
+    synthVars:     SynthVars,
+    size:          Int,
+    earlyExit:     Boolean,
     checkSolution: Assignment => Int = (_ => -1) // by default we assume that all solutions work
   ): List[CandidateSolution] = {
     // restrict size of solution to known minimal size
@@ -121,7 +141,7 @@ object BasicSynthesizer {
             // early exit when a working solution is found
             done = true
           }
-        case IsUnSat => done = true
+        case IsUnSat   => done = true
         case IsUnknown => done = true
       }
     }
@@ -134,12 +154,11 @@ object BasicSynthesizer {
   def blockSolution(ctx: SolverContext, assignment: Assignment): Unit = {
     val changes = assignment.filter(t => isChangeSynthName(t._1)).map {
       case (name, value) if value == 0 => BVNot(BVSymbol(name, 1))
-      case (name, _) => BVSymbol(name, 1)
+      case (name, _)                   => BVSymbol(name, 1)
     }
     val constraint = BVNot(BVAnd(changes))
     ctx.assert(constraint)
   }
-
 
   /** Searches for an assignment of free variables that minimizes the changes in the synthesis variables */
   def synthesize(
