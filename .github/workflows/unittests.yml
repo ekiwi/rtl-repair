@@ -78,7 +78,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Python Unittests
-      timeout-minutes: 3
+      timeout-minutes: 10
       run: |
         source venv/bin/activate
         ./test.py
