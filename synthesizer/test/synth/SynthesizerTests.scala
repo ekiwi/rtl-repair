@@ -149,4 +149,17 @@ class SynthesizerTests extends SynthesizerSpec with ParallelTestExecution {
     assert(r.cannotRepair)
   }
 
+
+  it should "synthesize multiple solutions for counter overflow kgoliya with assign const template and orig_tb" in {
+    val r = Synthesizer.run(
+      BenchmarkDir / "first_counter_overflow_kgoliya_buggy1_assign_const.btor",
+      CirFixDir / "first_counter_overflow" / "orig_tb.csv",
+      DefaultConfig
+        .changeSolver("bitwuzla")
+        .makeVerbose()
+        .changeInit(RandomInit).copy(seed = 1)
+        .doSampleSolutionsUpTo(0)
+    )
+    println(r)
+  }
 }

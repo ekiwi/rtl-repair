@@ -160,61 +160,9 @@ object IncrementalSynthesizer {
     // check size of solution
     val size = countChangesInAssignment(solution)
 
-    findSolutionOfSize(ctx, synthVars, size, checkSolution)
+    findSolutionOfSize(ctx, synthVars, size, earlyExit = true, checkSolution)
   }
 
-  type Assignment = List[(String, BigInt)]
-  private case class CandidateSolution(assignment: Assignment, failAt: Int = -1) {
-    def failed:  Boolean = failAt >= 0
-    def correct: Boolean = !failed
-  }
-
-  /** Finds solutions of size [[size]]. Aborts as soon as a correct solution is found. */
-  private def findSolutionOfSize(
-    ctx:           SolverContext,
-    synthVars:     SynthVars,
-    size:          Int,
-    checkSolution: Assignment => Int
-  ): List[CandidateSolution] = {
-    // restrict size of solution to known minimal size
-    ctx.push()
-    performNChanges(ctx, synthVars.change, size)
-
-    // keep track of solutions
-    var solutions = List[CandidateSolution]()
-
-    // search for new solutions until none left
-    var done = false
-    while (!done) {
-      ctx.check() match {
-        case IsSat =>
-          val assignment = synthVars.readAssignment(ctx)
-          blockSolution(ctx, assignment)
-          val failAt = checkSolution(assignment)
-          val candidate = CandidateSolution(assignment, failAt)
-          solutions = candidate +: solutions
-          if (candidate.correct) {
-            // early exit when a working solution is found
-            done = true
-          }
-        case IsUnSat   => done = true
-        case IsUnknown => done = true
-      }
-    }
-    ctx.pop()
-
-    // return evaluated candidate solutions
-    solutions
-  }
-
-  private def blockSolution(ctx: SolverContext, assignment: Assignment): Unit = {
-    val changes = assignment.filter(t => isChangeSynthName(t._1)).map {
-      case (name, value) if value == 0 => BVNot(BVSymbol(name, 1))
-      case (name, _)                   => BVSymbol(name, 1)
-    }
-    val constraint = BVNot(BVAnd(changes))
-    ctx.assert(constraint)
-  }
 
   private def applySynthAssignment(sys: TransitionSystem, assignment: Assignment): TransitionSystem = {
     val nameToValue = assignment.toMap

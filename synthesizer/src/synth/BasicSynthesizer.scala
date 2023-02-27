@@ -6,9 +6,9 @@ package synth
 
 import maltese.mc._
 import maltese.smt._
-import synth.Synthesizer.encodeSystem
+import synth.Synthesizer.{encodeSystem, isChangeSynthName}
 
-/** Takes in a Transition System with synthesis variables +  a testbench and tries to find a valid synthesis assignment. */
+/** Unrolls the system completely. This is the simplest approach, but has scalability issues for larger benchmarks. */
 object BasicSynthesizer {
   import synth.Synthesizer.{countChanges, countChangesInAssignment, startSolver}
 
@@ -41,26 +41,105 @@ object BasicSynthesizer {
     instantiateTestbench(ctx, sys, tb, freeVars, assertDontAssumeOutputs = false, config = config)
 
     // try to synthesize constants
-    val results = synthesize(ctx, synthVars, config.verbose) match {
-      case Some(value) => value
+    val minimalSolution = synthesize(ctx, synthVars, config.verbose) match {
+      case Some(value) => Solution(value)
       case None        => return CannotRepair
     }
+
+    val solutions = config.sampleUpToSize match {
+      case Some(upTo) =>
+        val size = countChangesInAssignment(minimalSolution.assignments)
+        sampleMultipleSolutions(ctx, synthVars, size, size + upTo)
+      case None => Seq(minimalSolution)
+    }
+
     ctx.pop()
 
     // check to see if the synthesized constants work
+    solutions.foreach { case Solution(results) =>
+      ctx.push()
+      synthVars.assumeAssignment(ctx, results.toMap)
+      findFreeVarAssignment(ctx, sys, tb, freeVars, config) match {
+        case Some(value) =>
+          throw new RuntimeException(
+            s"TODO: the solution we found does not in fact work for all possible free variable assignments :("
+          )
+        case None => // all good, no more failure
+      }
+      ctx.pop()
+    }
+    ctx.close()
+    RepairSuccess(solutions)
+  }
+
+  private def sampleMultipleSolutions(ctx: SolverContext, synthVars: SynthVars, minSize: Int, maxSize: Int): Seq[Solution] = {
+    require(minSize > 0)
+    require(maxSize >= minSize)
+    var solutions = List[Solution]()
+    (minSize to maxSize).foreach { size =>
+      val candidates = findSolutionOfSize(ctx, synthVars, size, earlyExit = false)
+      val newSolutions = candidates.filter(_.correct).map(c => Solution(c.assignment))
+      solutions = solutions ++ newSolutions
+    }
+    solutions
+  }
+
+  type Assignment = List[(String, BigInt)]
+
+  case class CandidateSolution(assignment: Assignment, failAt: Int = -1) {
+    def failed: Boolean = failAt >= 0
+
+    def correct: Boolean = !failed
+  }
+
+  /** Finds solutions of size `size`. If `earlyExit` is true, it will abort as soon as one working solution is found. */
+  def findSolutionOfSize(
+    ctx: SolverContext,
+    synthVars: SynthVars,
+    size: Int,
+    earlyExit: Boolean,
+    checkSolution: Assignment => Int = (_ => -1) // by default we assume that all solutions work
+  ): List[CandidateSolution] = {
+    // restrict size of solution to known minimal size
     ctx.push()
-    synthVars.assumeAssignment(ctx, results.toMap)
-    findFreeVarAssignment(ctx, sys, tb, freeVars, config) match {
-      case Some(value) =>
-        throw new RuntimeException(
-          s"TODO: the solution we found does not in fact work for all possible free variable assignments :("
-        )
-      case None => // all good, no more failure
+    performNChanges(ctx, synthVars.change, size)
+
+    // keep track of solutions
+    var solutions = List[CandidateSolution]()
+
+    // search for new solutions until none left
+    var done = false
+    while (!done) {
+      ctx.check() match {
+        case IsSat =>
+          val assignment = synthVars.readAssignment(ctx)
+          blockSolution(ctx, assignment)
+          val failAt = checkSolution(assignment)
+          val candidate = CandidateSolution(assignment, failAt)
+          solutions = candidate +: solutions
+          if (candidate.correct && earlyExit) {
+            // early exit when a working solution is found
+            done = true
+          }
+        case IsUnSat => done = true
+        case IsUnknown => done = true
+      }
     }
     ctx.pop()
-    ctx.close()
-    RepairSuccess(Seq(Solution(results)))
+
+    // return evaluated candidate solutions
+    solutions
   }
+
+  def blockSolution(ctx: SolverContext, assignment: Assignment): Unit = {
+    val changes = assignment.filter(t => isChangeSynthName(t._1)).map {
+      case (name, value) if value == 0 => BVNot(BVSymbol(name, 1))
+      case (name, _) => BVSymbol(name, 1)
+    }
+    val constraint = BVNot(BVAnd(changes))
+    ctx.assert(constraint)
+  }
+
 
   /** Searches for an assignment of free variables that minimizes the changes in the synthesis variables */
   def synthesize(

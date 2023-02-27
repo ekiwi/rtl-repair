@@ -70,7 +70,7 @@ object Synthesizer {
   /** Remove any inputs named `_input_[...]` and replace their use with a literal zero.
     * This essentially gets rid of all undefined value modelling by yosys.
     */
-  def setAnonymousInputsToZero(sys: TransitionSystem): TransitionSystem = {
+  private def setAnonymousInputsToZero(sys: TransitionSystem): TransitionSystem = {
     def isAnonymousInput(input: BVSymbol): Boolean = input.name.startsWith("_input_")
     val inputs = sys.inputs.filterNot(isAnonymousInput)
     def onExpr(e: SMTExpr): SMTExpr = e match {
@@ -154,10 +154,10 @@ object Synthesizer {
     sum
   }
 
-  def countChangesInAssignment(assignment: List[(String, BigInt)]): Int =
+  def countChangesInAssignment(assignment: Seq[(String, BigInt)]): Int =
     assignment.filter(t => isChangeSynthName(t._1)).map(_._2).sum.toInt
 
-  def getChangesInAssignment(assignment: List[(String, BigInt)]): List[String] =
+  def getChangesInAssignment(assignment: Seq[(String, BigInt)]): Seq[String] =
     assignment.filter(_._2 == 1).map(_._1).filter(isChangeSynthName)
 
   def startSolver(config: Config): SolverContext = {

@@ -19,11 +19,14 @@ case class Config(
   incremental: Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
   angelic:     Boolean = false, // selects angelic synthesis, does not require any synthesis variables
   seed:        Long = 0, // currently used to seed random state init if the option is selected
+  sampleUpToSize: Option[Int] = None, // None => return first solution
+                                      // Some(0) => return all solutions that have the minimal number of changes
   // set debugSolver to true to see commands sent to SMT solver
   debugSolver: Boolean = false,
   unroll:      Boolean = false,
   verbose:     Boolean = false) {
   require(!(angelic && incremental), "Angelic and incremental solver are mutually exclusive!")
+  require(sampleUpToSize.isEmpty || sampleUpToSize.get >= 0, "Cannot sample up to a negative size!")
   def changeSolver(name: String): Config = {
     name match {
       case "z3"          => copy(solver = Z3SMTLib)
@@ -41,6 +44,7 @@ case class Config(
   def changeInit(tpe: InitType): Config = copy(init = tpe)
   def useIncremental(): Config = copy(incremental = true)
   def useAngelic():     Config = copy(angelic = true)
+  def doSampleSolutionsUpTo(ii: Int): Config = copy(sampleUpToSize = Some(ii))
 }
 
 sealed trait InitType
@@ -95,4 +99,8 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     args.copy(config = args.config.changeInit(tpe))
   }
     .text("any, zero or random")
+  opt[Int]("sample-solutions").action { (i, args) =>
+    args.copy(config = args.config.doSampleSolutionsUpTo(i))
+  }
+    .text("sample more than one solution")
 }
