@@ -24,9 +24,10 @@ case class Config(
   checkCorrectForAll: Boolean = false, // performs a formal check to see if there are any starting states or
   // free inputs that would make a solution fail
   // set debugSolver to true to see commands sent to SMT solver
-  debugSolver: Boolean = false,
-  unroll:      Boolean = false,
-  verbose:     Boolean = false) {
+  filterSolutions: Boolean = false, // filters out solutions that result in the exact same circuit
+  debugSolver:     Boolean = false,
+  unroll:          Boolean = false,
+  verbose:         Boolean = false) {
   require(!(angelic && incremental), "Angelic and incremental solver are mutually exclusive!")
   require(sampleUpToSize.isEmpty || sampleUpToSize.get >= 0, "Cannot sample up to a negative size!")
   def changeSolver(name: String): Config = {
@@ -48,6 +49,7 @@ case class Config(
   def useAngelic():     Config = copy(angelic = true)
   def doSampleSolutionsUpTo(ii: Int): Config = copy(sampleUpToSize = Some(ii))
   def doCheckCorrectForAll(): Config = copy(checkCorrectForAll = true)
+  def doFilterSolutions():    Config = copy(filterSolutions = true)
 }
 
 sealed trait InitType
@@ -111,4 +113,7 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     .text(
       "make the basic synthesizer check to see if there exists a starting state or undefined input that will make the repaired system fail"
     )
+  opt[Unit]("filter-solutions")
+    .action((_, args) => args.copy(config = args.config.doFilterSolutions()))
+    .text("check to see if solutions result in the same circuit and if so, discard any duplicates")
 }

@@ -54,6 +54,28 @@ object Synthesizer {
     // find synthesis variables and remove them from the system for now
     val (noSynthVarSys, synthVars) = collectSynthesisVars(initializedSys)
 
+    // run repair
+    val result = doRepair(noSynthVarSys, tb, synthVars, config, rnd)
+
+    result match {
+      case NoRepairNecessary => NoRepairNecessary
+      case CannotRepair      => CannotRepair
+      case RepairSuccess(solutions) =>
+        if (config.filterSolutions) {
+          RepairSuccess(SolutionFilter.run(solutions))
+        } else {
+          RepairSuccess(solutions)
+        }
+    }
+  }
+
+  private def doRepair(
+    noSynthVarSys: TransitionSystem,
+    tb:            Testbench,
+    synthVars:     SynthVars,
+    config:        Config,
+    rnd:           scala.util.Random
+  ): RepairResult = {
     if (config.incremental) {
       IncrementalSynthesizer.doRepair(noSynthVarSys, tb, synthVars, config, rnd)
     } else if (config.angelic) {

@@ -52,6 +52,7 @@ object BasicSynthesizer {
         sampleMultipleSolutions(ctx, synthVars, size, size + upTo)
       case None => Seq(minimalSolution)
     }
+    if (config.verbose) println(s"[Basic] found ${solutions.length} solutions")
 
     ctx.pop()
 
@@ -168,7 +169,6 @@ object BasicSynthesizer {
   ): Option[List[(String, BigInt)]] = {
     val success = synthesize(ctx, synthVars.change, verbose = verbose)
     if (success) {
-      if (verbose) println("Solution found:")
       val result = Some(synthVars.readAssignment(ctx))
       ctx.pop() // pop after reading
       result
@@ -270,8 +270,6 @@ object BasicSynthesizer {
     ctx.check() match {
       case IsSat => // OK
       case IsUnSat =>
-        if (config.verbose)
-          println(s"System is correct for all starting states and undefined inputs.")
         return None
       case IsUnknown => throw new RuntimeException(s"Unknown result from solver.")
     }
