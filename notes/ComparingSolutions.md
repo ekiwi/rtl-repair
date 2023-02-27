@@ -6,6 +6,8 @@ and thus some solutions might actually break untested functionality.
 We do avoid this problem somewhat because we always search for the smallest "edit" first. However,
 for some examples that is not enough.
 
+_Note_: for now, ranking solutions that result in the exact same circuit is out of scope.
+
 ## Example: `first_counter_overflow` with `kgoliya` bug
 The bug removes the reset value for the `counter_out` register.
 The test bench never disables the counter while it is running, it only has enable set to
