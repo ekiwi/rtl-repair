@@ -14,7 +14,7 @@ jobs:
     - name: Install Tabby OSS Cad Suite (from YosysHQ)
       uses: YosysHQ/setup-oss-cad-suite@v2
       with:
-        osscadsuite-version: '2023-01-01'
+        version: '2022-06-22'
 
     - name: Install OptiMathSAT
       run: |
@@ -46,7 +46,7 @@ jobs:
     - name: Install Tabby OSS Cad Suite (from YosysHQ)
       uses: YosysHQ/setup-oss-cad-suite@v2
       with:
-        osscadsuite-version: '2023-02-27'
+        version: '2022-06-22'
 
     - name: Install OptiMathSAT
       run: |
@@ -62,6 +62,7 @@ jobs:
         z3 -version
         optimathsat -version
         cvc4 --version
+        verilator -version
 
     - name: Compile Synthesizer to JAR
       working-directory: synthesizer
