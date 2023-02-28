@@ -7,6 +7,7 @@ package synth
 import maltese.mc._
 import maltese.passes._
 import maltese.smt._
+import synth.BasicSynthesizer.Assignment
 
 /** Takes in a Transition System with synthesis variables +  a testbench and tries to find a valid synthesis assignment. */
 object Synthesizer {
@@ -61,10 +62,14 @@ object Synthesizer {
       case NoRepairNecessary => NoRepairNecessary
       case CannotRepair      => CannotRepair
       case RepairSuccess(solutions) =>
+        val sortedSolutions = SolutionFilter.sort(solutions)
         if (config.filterSolutions) {
-          RepairSuccess(SolutionFilter.run(solutions))
+          val ctx = startSolver(config) // TODO: consider re-using the solver context from the synthesis
+          val filtered = SolutionFilter.run(ctx, noSynthVarSys, tb, config, sortedSolutions)
+          ctx.close()
+          RepairSuccess(filtered)
         } else {
-          RepairSuccess(solutions)
+          RepairSuccess(sortedSolutions)
         }
     }
   }
@@ -206,6 +211,27 @@ object Synthesizer {
     encoding.defineHeader(ctx)
     encoding.init(ctx)
     encoding
+  }
+
+  def applySynthAssignment(sys: TransitionSystem, assignment: Assignment): TransitionSystem = {
+    val nameToValue = assignment.toMap
+
+    // this assumes that all synthesis variables states have already been removed
+    def onExpr(e: SMTExpr): SMTExpr = e match {
+      case sym: BVSymbol if isSynthName(sym.name) =>
+        val value = nameToValue(sym.name)
+        BVLiteral(value, sym.width)
+      case BVIte(cond, tru, fals) => // do some small constant prop
+        onExpr(cond) match {
+          case True()  => onExpr(tru)
+          case False() => onExpr(fals)
+          case cc: BVExpr => BVIte(cc, onExpr(tru).asInstanceOf[BVExpr], onExpr(fals).asInstanceOf[BVExpr])
+        }
+      case other => SMTExprMap.mapExpr(other, onExpr)
+    }
+
+    val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
+    sys.copy(signals = signals)
   }
 }
 

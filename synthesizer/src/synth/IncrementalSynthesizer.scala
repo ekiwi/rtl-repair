@@ -163,25 +163,6 @@ object IncrementalSynthesizer {
     findSolutionOfSize(ctx, synthVars, size, earlyExit = true, checkSolution)
   }
 
-  private def applySynthAssignment(sys: TransitionSystem, assignment: Assignment): TransitionSystem = {
-    val nameToValue = assignment.toMap
-    // this assumes that all synthesis variables states have already been removed
-    def onExpr(e: SMTExpr): SMTExpr = e match {
-      case sym: BVSymbol if isSynthName(sym.name) =>
-        val value = nameToValue(sym.name)
-        BVLiteral(value, sym.width)
-      case BVIte(cond, tru, fals) => // do some small constant prop
-        onExpr(cond) match {
-          case True()  => onExpr(tru)
-          case False() => onExpr(fals)
-          case cc: BVExpr => BVIte(cc, onExpr(tru).asInstanceOf[BVExpr], onExpr(fals).asInstanceOf[BVExpr])
-        }
-      case other => SMTExprMap.mapExpr(other, onExpr)
-    }
-    val signals = sys.signals.map(s => s.copy(e = onExpr(s.e)))
-    sys.copy(signals = signals)
-  }
-
   private def noSynth(sys: TransitionSystem): TransitionSystem = {
     // this assumes that all synthesis variables states have already been removed and we just need to
     // set all uses to zero

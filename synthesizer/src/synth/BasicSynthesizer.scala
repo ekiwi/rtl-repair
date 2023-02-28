@@ -105,7 +105,7 @@ object BasicSynthesizer {
     solutions
   }
 
-  type Assignment = List[(String, BigInt)]
+  type Assignment = Seq[(String, BigInt)]
 
   case class CandidateSolution(assignment: Assignment, failAt: Int = -1) {
     def failed: Boolean = failAt >= 0

@@ -159,6 +159,7 @@ class SynthesizerTests extends SynthesizerSpec with ParallelTestExecution {
         .changeInit(RandomInit)
         .copy(seed = 1)
         .doSampleSolutionsUpTo(0)
+        .doFilterSolutions()
     )
     println(r)
   }
