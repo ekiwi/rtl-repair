@@ -1,22 +1,13 @@
+// Copyright 2023 The Regents of the University of California
+// released under BSD 3-Clause License
+// author: Kevin Laeufer <laeufer@cs.berkeley.edu>
+
 package synth
 
-import maltese.mc.{IsBad, IsConstraint, IsOutput, Signal, TransitionSystem}
-import maltese.smt.{
-  BVEqual,
-  BVExpr,
-  BVExtend,
-  BVNot,
-  BVSlice,
-  BVSymbol,
-  Namespace,
-  SMTExpr,
-  SMTExprMap,
-  SMTSymbol,
-  SolverContext
-}
-
+import maltese.mc._
+import maltese.smt._
 import scala.collection.mutable
-import scala.util.control.Breaks.{break, breakable}
+import scala.util.control.Breaks._
 
 object SolutionFilter {
   import synth.Synthesizer.applySynthAssignment
@@ -111,12 +102,14 @@ object SolutionFilter {
 
     false
   }
+}
 
+private object buildMiter {
   private val APref = "a_"
   private val BPref = "b_"
 
   /** This function requires that `a` and `b` have the exact same outputs. */
-  private def buildMiter(a: TransitionSystem, b: TransitionSystem): TransitionSystem = {
+  def apply(a: TransitionSystem, b: TransitionSystem): TransitionSystem = {
     require(a.states.isEmpty, "states should have been transformed into I/O")
     require(b.states.isEmpty, "states should have been transformed into I/O")
 
@@ -154,18 +147,25 @@ object SolutionFilter {
 
   /** Encodes the notion of input equivalence for our miter. */
   private def InEq(a: BVExpr, b: BVExpr): BVExpr = {
-    if (a.width == b.width) { BVEqual(a, b) }
-    else if (a.width > b.width) { BVEqual(BVSlice(a, hi = b.width - 1, lo = 0), b) }
-    else { BVEqual(a, BVSlice(b, hi = a.width - 1, lo = 0)) }
+    if (a.width == b.width) {
+      BVEqual(a, b)
+    } else if (a.width > b.width) {
+      BVEqual(BVSlice(a, hi = b.width - 1, lo = 0), b)
+    } else {
+      BVEqual(a, BVSlice(b, hi = a.width - 1, lo = 0))
+    }
   }
 
   /** Encodes the notion of output equivalence for our miter. */
   private def OutEq(a: BVExpr, b: BVExpr): BVExpr = {
-    if (a.width == b.width) { BVEqual(a, b) }
-    else if (a.width > b.width) { BVEqual(a, BVExtend(b, a.width - b.width, signed = false)) }
-    else { BVEqual(BVExtend(a, b.width - a.width, signed = false), b) }
+    if (a.width == b.width) {
+      BVEqual(a, b)
+    } else if (a.width > b.width) {
+      BVEqual(a, BVExtend(b, a.width - b.width, signed = false))
+    } else {
+      BVEqual(BVExtend(a, b.width - a.width, signed = false), b)
+    }
   }
-
 }
 
 /** Turns the current state into an input and the next state into an output. */
