@@ -59,24 +59,22 @@ _btor_conversion = [
 ]
 
 
-def _to_btor(filename: Path, additional_sources: list, top: str):
-    for src in additional_sources:
+def to_btor(btor_name: Path, sources: list, top: str):
+    for src in sources:
         assert src.exists(), f"{src} does not exist"
-    assert filename.exists(), f"{filename} does not exist"
-    cwd = filename.parent
+    cwd = btor_name.parent
     assert cwd.exists(), f"directory {cwd} does not exist"
     r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
     assert r.returncode == 0, f"failed to find yosys {r}"
-    btor_name = filename.stem + ".btor"
     conversion = _minimal_btor_conversion
-    read_cmd = [f"read_verilog {filename.name}"] + [f"read_verilog {src.resolve()}" for src in additional_sources]
+    read_cmd = [f"read_verilog {src.resolve()}" for src in sources]
     if top is not None:
         read_cmd += [f"prep -top {top}"]
-    yosys_cmd = read_cmd + conversion + [f"write_btor -x {btor_name}"]
+    yosys_cmd = read_cmd + conversion + [f"write_btor -x {btor_name.resolve()}"]
     cmd = ["yosys", "-p", " ; ".join(yosys_cmd)]
     subprocess.run(cmd, check=True, cwd=cwd, stdout=subprocess.PIPE)
-    assert (cwd / btor_name).exists()
-    return cwd / btor_name
+    assert btor_name.exists()
+    return btor_name
 
 
 class Synthesizer:
@@ -92,7 +90,7 @@ class Synthesizer:
             f.write(serialize(ast))
 
         # convert file and run synthesizer
-        btor_filename = _to_btor(synth_filename, additional_sources, top)
+        btor_filename = to_btor(working_dir / (synth_filename.stem + ".btor"), [synth_filename] + additional_sources, top)
         result = _run_synthesizer(btor_filename, testbench, solver, init, incremental)
         status = result["status"]
         with open(working_dir / "status", "w") as f:

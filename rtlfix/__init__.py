@@ -4,7 +4,7 @@
 
 # export for outside world
 from rtlfix.repair import do_repair
-from rtlfix.synthesizer import Synthesizer
+from rtlfix.synthesizer import Synthesizer, to_btor
 from rtlfix.utils import parse_verilog, serialize
 from rtlfix.preprocess import preprocess
 
