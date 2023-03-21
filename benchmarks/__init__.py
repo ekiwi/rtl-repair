@@ -99,11 +99,14 @@ class Bug:
     original: Path
     buggy: Path
 
+@dataclass
+class Testbench:
+    name: str
+
 
 @dataclass
-class VerilogOracleTestbench:
+class VerilogOracleTestbench(Testbench):
     """ The style of testbench used by CirFix """
-    name: str
     sources: list[Path]
     output: str
     oracle: Path
@@ -111,9 +114,9 @@ class VerilogOracleTestbench:
 
 
 @dataclass
-class TraceTestbench:
+class TraceTestbench(Testbench):
     """ For RTL-Repair we use I/O traces that were pre-recorded from the Verilog testbench """
-
+    pass
 
 @dataclass
 class Project:
