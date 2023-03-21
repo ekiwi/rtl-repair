@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from rtlfix.utils import _root_dir, serialize
 import pyverilog.vparser.ast as vast
+from benchmarks.yosys import to_btor
 
 # the synthesizer is written in Scala, the source code lives in src
 _jar_rel = Path("target") / "scala-2.13" / "bug-fix-synthesizer-assembly-0.1.jar"
@@ -36,47 +37,6 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incr
         raise e
 
 
-_minimal_btor_conversion = [
-    "proc -noopt",
-    "async2sync",  # required for designs with async reset
-    "flatten",
-    "dffunmap",
-]
-# inspired by the commands used by SymbiYosys
-_btor_conversion = [
-    "proc",
-    # common prep
-    "async2sync",
-    "opt_clean",
-    "setundef -anyseq",
-    "opt -keepdc -fast",
-    "check",
-    # "hierarchy -simcheck",
-    # btor
-    "flatten",
-    "setundef -undriven -anyseq",
-    "dffunmap",
-]
-
-
-def to_btor(btor_name: Path, sources: list, top: str):
-    for src in sources:
-        assert src.exists(), f"{src} does not exist"
-    cwd = btor_name.parent
-    assert cwd.exists(), f"directory {cwd} does not exist"
-    r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
-    assert r.returncode == 0, f"failed to find yosys {r}"
-    conversion = _minimal_btor_conversion
-    read_cmd = [f"read_verilog {src.resolve()}" for src in sources]
-    if top is not None:
-        read_cmd += [f"prep -top {top}"]
-    yosys_cmd = read_cmd + conversion + [f"write_btor -x {btor_name.resolve()}"]
-    cmd = ["yosys", "-p", " ; ".join(yosys_cmd)]
-    subprocess.run(cmd, check=True, cwd=cwd, stdout=subprocess.PIPE)
-    assert btor_name.exists()
-    return btor_name
-
-
 class Synthesizer:
     """ generates assignments to synthesis variables which fix the design according to a provided testbench """
 
@@ -90,7 +50,7 @@ class Synthesizer:
             f.write(serialize(ast))
 
         # convert file and run synthesizer
-        btor_filename = to_btor(working_dir / (synth_filename.stem + ".btor"), [synth_filename] + additional_sources, top)
+        btor_filename = to_btor(working_dir, working_dir / (synth_filename.stem + ".btor"), [synth_filename] + additional_sources, top)
         result = _run_synthesizer(btor_filename, testbench, solver, init, incremental)
         status = result["status"]
         with open(working_dir / "status", "w") as f:
