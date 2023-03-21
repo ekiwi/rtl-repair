@@ -1,6 +1,7 @@
 [project]
 directory = "."
 sources = ["mux_4_1.v"]
+toplevel = "mux_4to1_case"
 
 [[bugs]]
 name = "wadden_buggy1"

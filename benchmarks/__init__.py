@@ -121,6 +121,7 @@ class TraceTestbench(Testbench):
 @dataclass
 class Project:
     name: str
+    top: str
     directory: Path
     sources: list[Path]
     bugs: list[Bug]
@@ -153,7 +154,7 @@ def _load_bug(base_dir: Path, dd: dict) -> Bug:
 
 
 def _load_testbench(base_dir: Path, dd: dict) -> Testbench:
-    tt = Testbench(
+    tt = VerilogOracleTestbench(
         name=dd['name'],
         sources=[parse_path(pp, base_dir, True) for pp in dd['sources']],
         output=dd['output'],
@@ -183,6 +184,7 @@ def load_project(filename: Path) -> Project:
     project = dd['project']
     if 'name' in project:
         name = project['name']
+    top = project['toplevel'] if 'toplevel' in project else None
     base_dir = filename.parent
     project_dir = parse_path(project['directory'], base_dir, must_exist=True)
     bugs = _load_list(base_dir, dd, "bugs", _load_bug)
@@ -190,6 +192,7 @@ def load_project(filename: Path) -> Project:
     assert len(testbenches) > 0, "No testbench in project.toml!"
     return Project(
         name=name,
+        top=top,
         directory=project_dir,
         sources=[parse_path(pp, base_dir, True) for pp in project['sources']],
         bugs=bugs,
@@ -209,6 +212,16 @@ def get_benchmarks(project: Project, testbench: str = None) -> list:
     tb = pick_testbench(project, testbench)
     return [Benchmark(project, bb, tb) for bb in project.bugs]
 
+def get_benchmark(project: Project, bug_name: str, testbench: str = None) -> Benchmark:
+    tb = pick_testbench(project, testbench)
+    for bb in project.bugs:
+        if bb.name == bug_name:
+            return Benchmark(project, bb, tb)
+    raise KeyError(f"Failed to find bug `{bug_name}`: {[bb.name for bb in project.bugs]}")
+
+def get_other_sources(benchmark: Benchmark) -> list:
+    """ returns a list of sources which are not the buggy source """
+    return [s for s in benchmark.project.sources if s != benchmark.bug.original]
 
 def get_seed(benchmark: Benchmark) -> Optional[str]:
     try:
@@ -250,15 +263,24 @@ def validate_bug(project: Project, bug: Bug):
 
 
 def validate_testbench(project: Project, testbench: Testbench):
+    if isinstance(testbench, VerilogOracleTestbench):
+        validate_oracle_testbench(project, testbench)
+
+
+def validate_oracle_testbench(project: Project, testbench: VerilogOracleTestbench):
     name = f"{project.name}.{testbench.name}"
     for source in testbench.sources:
         _assert_file_exists(name, source)
         assert source not in project.sources, f"{name}: {source} is already a project source!"
     _assert_file_exists(name, testbench.oracle)
 
-
 def load_all_projects() -> dict:
     pps = {}
     for name, directory in projects.items():
         pps[name] = load_project(directory)
     return pps
+
+def load_benchmark_by_name(project_name: str, bug_name: str, tb_name: str = None) -> Benchmark:
+    project = load_project(projects[project_name])
+    bench = get_benchmark(project, bug_name, tb_name)
+    return bench

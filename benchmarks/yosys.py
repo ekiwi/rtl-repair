@@ -49,7 +49,7 @@ def _run_yosys(working_dir: Path, yosys_cmds: list):
     cmd = ["yosys", "-p", " ; ".join(yosys_cmds)]
     subprocess.run(cmd, check=True, cwd=working_dir, stdout=subprocess.PIPE)
 
-def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str):
+def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str = None):
     _check_exists(working_dir, sources)
     _require_yosys()
     conversion = _minimal_btor_conversion
@@ -58,7 +58,7 @@ def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str):
     assert btor_name.exists()
     return btor_name
 
-def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: str):
+def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: str = None):
     _check_exists(working_dir, sources)
     _require_yosys()
     yosys_cmd = _read_sources(sources, top) + ["synth", f"write_verilog {output.resolve()}"]
