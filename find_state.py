@@ -7,64 +7,98 @@
 # Note: currently this assumes that there will be no latches, only FFs in the design!
 
 import argparse
-import re
+import json
+import tempfile
 from pathlib import Path
 from dataclasses import dataclass
 
 from benchmarks import Design, load_project
-from benchmarks.yosys import run_cmds_and_capture_output
+from benchmarks.yosys import to_json
 
 
-_proc_dff_needle = "Executing PROC_DFF pass"
-_register_re = re.compile(r"Creating register for signal `([^']+)'")
-def parse_yosys_output(out: str) -> list:
-    searching_for_proc_dff = True
-    lines = out.splitlines()
-    states = set() # for memories, there might be several entries, we use a set to avoid duplicates
-    for line in lines:
-        # we want to find the start of the DFF pass output
-        if searching_for_proc_dff:
-            searching_for_proc_dff = _proc_dff_needle not in line
-            continue
-        m = _register_re.match(line)
-        if m is not None:
-            name = m.group(1)
-            states.add(parse_state_name(name))
 
-    # sorted to make this deterministic
-    state_list = sorted(list(states))
-    return state_list
+@dataclass
+class Module:
+    name: str
+    instances: list
+    state: list
+
+def parse_yosys_output(out_json: Path) -> list:
+    with open(out_json) as ff:
+        dd = json.load(ff)
+    rr = []
+    # print(dd)
+    module_names = set(dd["modules"].keys())
+    for name, module in dd["modules"].items():
+        rr.append(parse_module(module_names, name, module))
+    return rr
 
 
-def parse_state_name(orig_name: str) -> (str, str, str):
-    # remove any backslashes
-    name = orig_name.replace('\\', '')
-    parts = name.split('.')
-    module = parts[0]
-    name = parts[1]
-    # normal register name: module.reg
-    if len(parts) == 2 and not name.startswith('$'):
-        return module, name, 'reg'
-    # memory port regs get a special name
-    # note: this is a little hacky, but not sure how to identify memories otherwise since
-    #       the actual array to memory inference does not seem to get a print out in my yosys
-    #       version
-    name_parts = name.split('$')[1:]
-    if len(name_parts) > 1:
-        kind = name_parts[0]
-        name = name_parts[1]
-        assert 'mem' in kind, f"unexpected kind `{kind}` for {module}.{name}"
-        return module, name, 'mem'
-    raise NotImplementedError(f"unexpected state name: {orig_name}")
+def bits_to_key(bits: list) -> str:
+    return str(sorted(bits))
+
+def parse_module(module_names: set, name: str, module: dict) -> Module:
+    # create a dictionary to look up signal names
+    bits_to_name = {bits_to_key(dd['bits']): nn for nn, dd in module["netnames"].items()}
+    # look through all cells to identify submodules, registers and memories
+    state = []
+    instances = []
+    # keep track of memory read and write ports
+    read_mems = set()
+    write_mems = set()
+    def get_mem_name(_cell: dict) -> str:
+        _raw = _cell['parameters']['MEMID']
+        _out = _raw[1:] # skip `\`
+        return _out
+    for cell_name, cell in module["cells"].items():
+        tpe = cell["type"]
+        if tpe == "$dff":
+            bits = cell['connections']['Q']
+            width = len(bits)
+            signal_name = bits_to_name[bits_to_key(bits)]
+            state.append((signal_name, width))
+        elif tpe in {"$memrd_v2", "$memrd"}:
+            read_mems.add(get_mem_name(cell))
+        elif tpe in {"$memwr_v2", "$memwr"}:
+            write_mems.add(get_mem_name(cell))
+        elif tpe in module_names:
+            instances.append((cell_name, tpe))
 
 
-def find_state(design: Design):
-    cmd = ["proc -noopt"]
-    yosys_out = run_cmds_and_capture_output(design.directory, design.sources, cmd, design.top)
-    states = parse_yosys_output(yosys_out)
-    print(states)
+    # iterate over memories
+    if "memories" in module:
+        for mem_name, mem in module["memories"].items():
+            # we can tell what kind of memory it is by looking at the read/write ports
+            is_read = mem_name in read_mems
+            is_written = mem_name in write_mems
+            tpe = ("r" if is_read else "") + ("w" if is_written else "")
+            assert tpe in {'r', 'rw'} , "expected `r` or `rw`"
+            # extract size
+            width = mem['width']
+            depth = mem['size']
+            state.append((mem_name, (width, depth, tpe)))
+
+    return Module(name, instances, state)
+
+def find_state(working_dir: Path, design: Design):
+    yosys_json = to_json(working_dir, working_dir / f"{design.top}.json", design.sources, design.top)
+    modules = parse_yosys_output(yosys_json)
+    flattened = flatten_states(design.top, modules)
+    print(flattened)
 
 
+def flatten_states(top: str, modules: list) -> list:
+    by_name = {m.name: m for m in modules}
+    assert top in by_name, f"could not find top `{top}` in {list(by_name.keys())}"
+    return flatten_states_rec(prefix="", name=top, mods_by_name=by_name)
+
+
+def flatten_states_rec(prefix: str, name: str, mods_by_name: dict) -> list:
+    mod = mods_by_name[name]
+    state = [(f"{prefix}{name}", data) for name, data in mod.state]
+    for instance_name, instance_mod in mod.instances:
+        state += flatten_states_rec(f"{prefix}{instance_name}.", instance_mod, mods_by_name)
+    return state
 
 def parse_args() -> Design:
     parser = argparse.ArgumentParser(description='Find all registers and memory in a design.')
@@ -75,7 +109,10 @@ def parse_args() -> Design:
 
 def main():
     design = parse_args()
-    find_state(design)
+    # use temporary working dir
+    with tempfile.TemporaryDirectory() as wd_name:
+        working_dir = Path(wd_name)
+        find_state(working_dir, design)
 
 if __name__ == '__main__':
     main()

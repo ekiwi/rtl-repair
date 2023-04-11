@@ -66,10 +66,13 @@ def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: st
     yosys_cmd = _read_sources(sources, top) + ["synth", f"write_verilog {output.resolve()}"]
     _run_yosys(working_dir, yosys_cmd)
     assert output.exists()
+    return output
 
 
-def run_cmds_and_capture_output(working_dir: Path, sources: list, cmds: list, top: str = None) -> str:
+def to_json(working_dir: Path, output: Path, sources: list, top: str = None):
     _check_exists(working_dir, sources)
     _require_yosys()
-    yosys_cmd = _read_sources(sources, top) + cmds
-    return _run_yosys(working_dir, yosys_cmd)
+    yosys_cmd = _read_sources(sources, top) + ["proc -noopt", f"write_json {output.resolve()}"]
+    _run_yosys(working_dir, yosys_cmd)
+    assert output.exists()
+    return output
