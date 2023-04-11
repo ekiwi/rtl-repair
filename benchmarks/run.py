@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 from dataclasses import dataclass
 import os
+from benchmarks import VerilogOracleTestbench
 
 @dataclass
 class RunConf:
@@ -17,6 +18,9 @@ class RunConf:
     verbose: bool = False
     show_stdout: bool = False
 
+
+def run_oracle_tb(working_dir: Path, sim: str, tb: VerilogOracleTestbench, conf: RunConf) -> bool:
+    raise NotImplementedError("TODO")
 
 def run(working_dir: Path, sim: str, files: list, conf: RunConf) -> bool:
     if sim == 'vcs':

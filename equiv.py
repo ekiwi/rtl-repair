@@ -34,8 +34,8 @@ def main():
         conf.working_dir.mkdir()
 
     # convert both designs to a btor
-    a_btor = to_btor(conf.working_dir / (conf.sourceA.stem + ".btor"), [conf.sourceA], conf.top)
-    b_btor = to_btor(conf.working_dir / (conf.sourceB.stem + ".btor"), [conf.sourceB], conf.top)
+    a_btor = to_btor(conf.working_dir, conf.working_dir / (conf.sourceA.stem + ".btor"), [conf.sourceA], conf.top)
+    b_btor = to_btor(conf.working_dir, conf.working_dir / (conf.sourceB.stem + ".btor"), [conf.sourceB], conf.top)
 
 if __name__ == '__main__':
     main()
