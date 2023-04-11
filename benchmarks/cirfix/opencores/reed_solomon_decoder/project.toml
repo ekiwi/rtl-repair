@@ -5,6 +5,7 @@ sources = [
     "input_syndromes.v", "lamda_roots.v", "transport_in2out.v",
     "DP_RAM.v", "out_stage.v", "error_correction.v", "Omega_Phy.v", "GF_mult_add_syndromes.v"
 ]
+toplevel = "RS_dec"
 
 [[bugs]]
 name = "out_stage_ssscrazy_buggy1"

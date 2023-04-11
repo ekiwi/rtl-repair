@@ -33,7 +33,8 @@ _btor_conversion = [
 def _check_exists(working_dir: Path, sources: list):
     for src in sources:
         assert src.exists(), f"{src} does not exist"
-    assert working_dir.exists(), f"directory {working_dir} does not exist"
+    if working_dir is not None:
+        assert working_dir.exists(), f"directory {working_dir} does not exist"
 
 def _require_yosys():
     r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
@@ -42,12 +43,13 @@ def _require_yosys():
 def _read_sources(sources: list, top: str) -> list:
     read_cmd = [f"read_verilog {src.resolve()}" for src in sources]
     if top is not None:
-        read_cmd += [f"prep -top {top}"]
+        read_cmd += [f"hierarchy -top {top}"]
     return read_cmd
 
-def _run_yosys(working_dir: Path, yosys_cmds: list):
+def _run_yosys(working_dir: Path, yosys_cmds: list) -> str:
     cmd = ["yosys", "-p", " ; ".join(yosys_cmds)]
-    subprocess.run(cmd, check=True, cwd=working_dir, stdout=subprocess.PIPE)
+    r = subprocess.run(cmd, check=True, cwd=working_dir, stdout=subprocess.PIPE)
+    return r.stdout.decode('utf-8')
 
 def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str = None):
     _check_exists(working_dir, sources)
@@ -64,3 +66,10 @@ def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: st
     yosys_cmd = _read_sources(sources, top) + ["synth", f"write_verilog {output.resolve()}"]
     _run_yosys(working_dir, yosys_cmd)
     assert output.exists()
+
+
+def run_cmds_and_capture_output(working_dir: Path, sources: list, cmds: list, top: str = None) -> str:
+    _check_exists(working_dir, sources)
+    _require_yosys()
+    yosys_cmd = _read_sources(sources, top) + cmds
+    return _run_yosys(working_dir, yosys_cmd)

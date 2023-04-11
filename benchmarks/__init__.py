@@ -119,11 +119,15 @@ class TraceTestbench(Testbench):
     pass
 
 @dataclass
-class Project:
-    name: str
+class Design:
     top: str
     directory: Path
     sources: list[Path]
+
+@dataclass
+class Project:
+    name: str
+    design: Design
     bugs: list[Bug]
     testbenches: list[Testbench]
 
@@ -190,14 +194,12 @@ def load_project(filename: Path) -> Project:
     bugs = _load_list(base_dir, dd, "bugs", _load_bug)
     testbenches = _load_list(base_dir, dd, "testbenches", _load_testbench)
     assert len(testbenches) > 0, "No testbench in project.toml!"
-    return Project(
-        name=name,
+    design = Design(
         top=top,
         directory=project_dir,
         sources=[parse_path(pp, base_dir, True) for pp in project['sources']],
-        bugs=bugs,
-        testbenches=testbenches
     )
+    return Project(name, design, bugs, testbenches)
 
 
 def pick_testbench(project: Project, testbench: str = None) -> Testbench:
@@ -221,7 +223,7 @@ def get_benchmark(project: Project, bug_name: str, testbench: str = None) -> Ben
 
 def get_other_sources(benchmark: Benchmark) -> list:
     """ returns a list of sources which are not the buggy source """
-    return [s for s in benchmark.project.sources if s != benchmark.bug.original]
+    return [s for s in benchmark.project.design.sources if s != benchmark.bug.original]
 
 def get_seed(benchmark: Benchmark) -> Optional[str]:
     try:
@@ -246,8 +248,8 @@ def _assert_dir_exists(name: str, filename: Path):
 
 
 def validate_project(project: Project):
-    _assert_dir_exists(project.name, project.directory)
-    for source in project.sources:
+    _assert_dir_exists(project.name, project.design.directory)
+    for source in project.design.sources:
         _assert_file_exists(project.name, source)
     for bug in project.bugs:
         validate_bug(project, bug)
@@ -259,7 +261,7 @@ def validate_bug(project: Project, bug: Bug):
     name = f"{project.name}.{bug.name}"
     _assert_file_exists(name, bug.original)
     _assert_file_exists(name, bug.buggy)
-    assert bug.original in project.sources, f"{name}: {bug.original} is not a project source!"
+    assert bug.original in project.design.sources, f"{name}: {bug.original} is not a project source!"
 
 
 def validate_testbench(project: Project, testbench: Testbench):
@@ -271,7 +273,7 @@ def validate_oracle_testbench(project: Project, testbench: VerilogOracleTestbenc
     name = f"{project.name}.{testbench.name}"
     for source in testbench.sources:
         _assert_file_exists(name, source)
-        assert source not in project.sources, f"{name}: {source} is already a project source!"
+        assert source not in project.design.sources, f"{name}: {source} is already a project source!"
     _assert_file_exists(name, testbench.oracle)
 
 def load_all_projects() -> dict:
