@@ -17,6 +17,14 @@ module tb;
                  .load_en (load_en),
                  .op (op));
 
+
+`ifdef DUMP_TRACE // used for our OSDD calculations
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, u0);
+  end
+`endif // DUMP_TRACE
+
   integer f;
   initial begin
     f = $fopen("output_lshift_reg_tb_t1.txt");

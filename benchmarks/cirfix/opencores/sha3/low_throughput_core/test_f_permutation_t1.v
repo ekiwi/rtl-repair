@@ -47,6 +47,13 @@ module test_f_permutation;
         .out_ready(out_ready)
     );
 
+`ifdef DUMP_TRACE // used for our OSDD calculations
+initial begin
+  $dumpfile("dump.vcd");
+  $dumpvars(0, uut);
+end
+`endif // DUMP_TRACE
+
     integer f;
     integer tmpcount;
     initial begin

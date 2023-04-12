@@ -48,6 +48,13 @@ begin
 		#pclk clk=~clk;
 end 
 
+`ifdef DUMP_TRACE // used for our OSDD calculations
+initial begin
+   $dumpfile("dump.vcd");
+   $dumpvars(0, DUT);
+end
+`endif // DUMP_TRACE
+
 initial begin
 	f = $fopen("output_RS_dec_tb_t1.txt");
 	$fwrite(f, "time,Out_byte[7],Out_byte[6],Out_byte[5],Out_byte[4],Out_byte[3],Out_byte[2],Out_byte[1],Out_byte[0],CEO,Valid_out\n");

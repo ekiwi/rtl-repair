@@ -21,6 +21,13 @@ first_counter U0(
     .overflow_out (overflow_out)
 );
 
+`ifdef DUMP_TRACE // used for our OSDD calculations
+      initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, U0);
+      end
+`endif // DUMP_TRACE
+
 // step2: add clock generator logic. Before this we need to drive all
 // inputs of DUT to some known state.
 initial begin // initial block only executes once 

@@ -44,6 +44,14 @@ module sdram_controller_tb();
     
     always #4 instrumented_clk=~instrumented_clk;
     
+
+    `ifdef DUMP_TRACE // used for our OSDD calculations
+    initial begin
+      $dumpfile("dump.vcd");
+      $dumpvars(0, sdram_controlleri);
+    end
+    `endif // DUMP_TRACE
+
     integer f;
 
     initial begin

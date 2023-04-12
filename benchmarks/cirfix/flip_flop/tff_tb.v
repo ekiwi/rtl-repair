@@ -14,6 +14,13 @@ module tb;
 
   integer f;
 
+`ifdef DUMP_TRACE // used for our OSDD calculations
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, u0);
+  end
+`endif // DUMP_TRACE
+
   initial begin
     f = $fopen("output_tff_tb.txt");
     $fwrite(f, "time,rstn,t,q\n");

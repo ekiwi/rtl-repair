@@ -61,13 +61,16 @@ def parse_args() -> (Path, str, bool):
     assert output_dir.exists()
     return output_dir, sim, verbose
 
+
+_skip_projects = {'i2c_slave'}
 def main():
     output_dir, sim, verbose = parse_args()
     projects = benchmarks.load_all_projects()
 
     for proj in projects.values():
-        if not proj.name == "decoder_3_to_8":
-            continue # debugging
+        if proj.name in _skip_projects:
+            if verbose: print(f"Skipping {proj.name}")
+            continue
         if verbose:
             print(f"Generating VCD traces for {proj.name}")
         gen_project_traces(output_dir, sim, verbose, proj)

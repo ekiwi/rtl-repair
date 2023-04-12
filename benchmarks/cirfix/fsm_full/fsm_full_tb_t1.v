@@ -8,6 +8,14 @@ wire gnt_0 , gnt_1 , gnt_2 , gnt_3 ;
 
 integer f;
 
+
+`ifdef DUMP_TRACE // used for our OSDD calculations
+      initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, U_fsm_full);
+      end
+`endif // DUMP_TRACE
+
 initial begin
   f = $fopen("output_fsm_full_tb_t1.txt");
   $display("time\t    req_0 req_1 req_2 req_3 gnt_0 gnt_1 gnt_2 gnt_3");

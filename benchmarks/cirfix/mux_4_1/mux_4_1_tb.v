@@ -23,6 +23,16 @@ module tb_4to1_mux;
                            .out (out));
 
 
+
+
+`ifdef DUMP_TRACE // used for our OSDD calculations
+initial begin
+   $dumpfile("dump.vcd");
+   $dumpvars(0, mux0);
+end
+`endif // DUMP_TRACE
+
+
    integer f;
 
    initial begin

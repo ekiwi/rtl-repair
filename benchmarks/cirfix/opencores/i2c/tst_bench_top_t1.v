@@ -186,6 +186,14 @@ module tst_bench_top();
 	);
 
 
+// the first i2c master is the one CirFix checked the oracle against, thus it is also the one we want to look at to determine O
+`ifdef DUMP_TRACE // used for our OSDD calculations
+initial begin
+	$dumpfile("dump.vcd");
+	$dumpvars(0, i2c_top);
+end
+`endif // DUMP_TRACE
+
 	// hookup i2c slave model
 	i2c_slave_model #(SADR) i2c_slave (
 		.scl(scl),
