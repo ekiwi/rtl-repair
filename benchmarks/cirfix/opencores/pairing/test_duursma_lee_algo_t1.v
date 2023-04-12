@@ -29,6 +29,13 @@ module test_duursma_lee_algo;
         .out(out)
     );
     
+    `ifdef DUMP_TRACE // used for our OSDD calculations
+    initial begin
+      $dumpfile("dump.vcd");
+      $dumpvars(0, uut);
+    end
+    `endif // DUMP_TRACE
+
     assign {o5,o4,o3,o2,o1,o0} = out;
 
     initial begin
