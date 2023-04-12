@@ -17,7 +17,11 @@ from benchmarks.run import run, RunConf
 
 def gen_trace(sim: str, verbose: bool, output: Path, design: Design, testbench: VerilogOracleTestbench):
     start = time.time()
-    run_conf = RunConf(include_dir=design.directory, defines=[("DUMP_TRACE", "1")])
+    run_conf = RunConf(
+        include_dir=design.directory,
+        defines=[("DUMP_TRACE", "1")],
+        timeout=float(_max_time),
+    )
     # use a temporary directory to avoid conflicts from multiple testbenches all creating a file called `dump.vcd`
     with tempfile.TemporaryDirectory() as wd_name:
         working_dir = Path(wd_name)
@@ -64,7 +68,9 @@ def parse_args() -> (Path, str, bool):
     assert output_dir.exists()
     return output_dir, sim, verbose
 
-
+# some bugs might make the test run forever, we do not need such a large VCD
+_max_time = 60
+# i2c_slave is a event driven model, thus the OSDD metric does not apply
 _skip_projects = {'i2c_slave'}
 def main():
     output_dir, sim, verbose = parse_args()
