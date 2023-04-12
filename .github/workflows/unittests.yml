@@ -33,7 +33,7 @@ jobs:
         verilator -version
 
     - name: Run Scala Unittests
-      timeout-minutes: 3
+      timeout-minutes: 5
       working-directory: synthesizer
       run: sbt test
 
