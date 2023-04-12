@@ -41,3 +41,8 @@ __pycache__/
 # ply parser cache (somehow I cannot get it working when using a different directory)
 parser.out
 parsetab.py
+
+# some temporary directories I have been using
+/traces/
+/temp/
+/tmp/
