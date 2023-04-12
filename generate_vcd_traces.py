@@ -19,7 +19,9 @@ def gen_trace(sim: str, output: Path, design: Design, testbench: VerilogOracleTe
     # use a temporary directory to avoid conflicts from multiple testbenches all creating a file called `dump.vcd`
     with tempfile.TemporaryDirectory() as wd_name:
         working_dir = Path(wd_name)
-        run(working_dir=working_dir, sim=sim, files=design.sources + testbench.sources, conf=run_conf)
+        # testbench sources have to go first because they often have a timescale defined
+        sources = testbench.sources + design.sources
+        run(working_dir=working_dir, sim=sim, files=sources, conf=run_conf)
         dump_out = working_dir / "dump.vcd" # this is the hard-coded standard name
         assert dump_out.exists(), f"Expected `{dump_out.resolve()}` to exist, but it does not!"
         shutil.move(dump_out, output)
