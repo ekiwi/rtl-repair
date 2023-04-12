@@ -15,12 +15,12 @@ import benchmarks
 from benchmarks import Project, Design, VerilogOracleTestbench
 from benchmarks.run import run, RunConf
 
-def gen_trace(sim: str, verbose: bool, output: Path, design: Design, testbench: VerilogOracleTestbench):
+def gen_trace(sim: str, verbose: bool, timeout: float, output: Path, design: Design, testbench: VerilogOracleTestbench):
     start = time.time()
     run_conf = RunConf(
         include_dir=design.directory,
         defines=[("DUMP_TRACE", "1")],
-        timeout=float(_max_time),
+        timeout=timeout,
     )
     # use a temporary directory to avoid conflicts from multiple testbenches all creating a file called `dump.vcd`
     with tempfile.TemporaryDirectory() as wd_name:
@@ -37,10 +37,10 @@ def gen_trace(sim: str, verbose: bool, output: Path, design: Design, testbench: 
         print(f"Created: {output} in {delta_time:.03}s")
 
 
-def gen_project_traces(output_dir: Path, sim: str, verbose: bool, proj: Project):
+def gen_project_traces(output_dir: Path, sim: str, verbose: bool, timeout: float, proj: Project):
     testbench = [tb for tb in proj.testbenches if isinstance(tb, VerilogOracleTestbench)][0]
     # ground truth
-    gen_trace(sim, verbose, output_dir / f"{proj.name}.groundtruth.vcd", proj.design, testbench)
+    gen_trace(sim, verbose, timeout, output_dir / f"{proj.name}.groundtruth.vcd", proj.design, testbench)
 
     # buggy traces
     for bb in benchmarks.get_benchmarks(proj):
@@ -48,32 +48,33 @@ def gen_project_traces(output_dir: Path, sim: str, verbose: bool, proj: Project)
         if not benchmarks.is_cirfix_paper_benchmark(bb):
             continue
         design = benchmarks.get_benchmark_design(bb)
-        gen_trace(sim, verbose, output_dir / f"{proj.name}.{bb.bug.name}.vcd", design, testbench)
+        gen_trace(sim, verbose, timeout, output_dir / f"{proj.name}.{bb.bug.name}.vcd", design, testbench)
 
 
-def parse_args() -> (Path, str, bool):
+def parse_args() -> (Path, str, bool, float):
     parser = argparse.ArgumentParser(description='Generate ground truth and buggy VCD traces.')
     parser.add_argument('output_dir')
     parser.add_argument('--sim', help='Change simulator', default='vcs')
+    parser.add_argument('--timeout', help='Set a simulation timeout', default=60)
     parser.add_argument('--verbose', '-v', help='Verbose output', action='store_true')
     args = parser.parse_args()
     output_dir = Path(args.output_dir)
     verbose = args.verbose
     sim = args.sim
     assert sim in {'vcs', 'iverilog'}, f"unknown/unsupported simulator `{sim}`"
+    timeout = float(args.timeout)
+    assert 24*60*60 > timeout > 0, f"Timeout {timeout} out of expected range (up to 1day)"
     # try to create output_dir
     if not output_dir.exists():
         assert output_dir.parent.exists(), f"{output_dir.parent} ({output_dir.parent.resolve()}) does not exist!"
         output_dir.mkdir()
     assert output_dir.exists()
-    return output_dir, sim, verbose
+    return output_dir, sim, verbose, timeout
 
-# some bugs might make the test run forever, we do not need such a large VCD
-_max_time = 60
 # i2c_slave is a event driven model, thus the OSDD metric does not apply
 _skip_projects = {'i2c_slave'}
 def main():
-    output_dir, sim, verbose = parse_args()
+    output_dir, sim, verbose, timeout = parse_args()
     projects = benchmarks.load_all_projects()
 
     for proj in projects.values():
@@ -82,7 +83,7 @@ def main():
             continue
         if verbose:
             print(f"Generating VCD traces for {proj.name}")
-        gen_project_traces(output_dir, sim, verbose, proj)
+        gen_project_traces(output_dir, sim, verbose, timeout, proj)
 
 
 if __name__ == '__main__':
