@@ -6,7 +6,7 @@
 
 import subprocess
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from benchmarks import VerilogOracleTestbench
 
@@ -17,6 +17,7 @@ class RunConf:
     compile_timeout: float = None
     verbose: bool = False
     show_stdout: bool = False
+    defines: list = field(default_factory=list)
 
 
 def run_oracle_tb(working_dir: Path, sim: str, tb: VerilogOracleTestbench, conf: RunConf) -> bool:
@@ -35,6 +36,8 @@ def run_with_iverilog(working_dir: Path, files: list, conf: RunConf) -> bool:
     cmd = ['iverilog', '-g2012']
     if conf.include_dir is not None:
         cmd += ["-I", str(conf.include_dir.resolve())]
+    for name, value in conf.defines:
+        cmd += [f"-D{name}={value}"]
     cmd += files
     if conf.verbose:
         print(" ".join(str(c) for c in cmd))
@@ -67,6 +70,8 @@ def run_with_vcs(working_dir: Path, files: list, conf: RunConf) -> bool:
     cmd = ["vcs"] + _vcs_flags
     if conf.include_dir is not None:
         cmd += [f"+incdir+{str(conf.include_dir.resolve())}"]
+    for name, value in conf.defines:
+        cmd += [f"+define+{name}={value}"]
     cmd += files
     if conf.verbose:
         print(" ".join(str(c) for c in cmd))

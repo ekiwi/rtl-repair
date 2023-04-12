@@ -116,7 +116,7 @@ class VerilogOracleTestbench(Testbench):
 @dataclass
 class TraceTestbench(Testbench):
     """ For RTL-Repair we use I/O traces that were pre-recorded from the Verilog testbench """
-    pass
+    table: Path
 
 @dataclass
 class Design:
@@ -158,14 +158,17 @@ def _load_bug(base_dir: Path, dd: dict) -> Bug:
 
 
 def _load_testbench(base_dir: Path, dd: dict) -> Testbench:
-    tt = VerilogOracleTestbench(
-        name=dd['name'],
-        sources=[parse_path(pp, base_dir, True) for pp in dd['sources']],
-        output=dd['output'],
-        oracle=parse_path(dd['oracle'], base_dir, True),
-    )
-    if "timeout" in dd:
-        tt.timeout = float(dd["timeout"])
+    if 'oracle' in dd:
+        tt = VerilogOracleTestbench(
+            name=dd['name'],
+            sources=[parse_path(pp, base_dir, True) for pp in dd['sources']],
+            output=dd['output'],
+            oracle=parse_path(dd['oracle'], base_dir, True),
+        )
+        if "timeout" in dd:
+            tt.timeout = float(dd["timeout"])
+    else:
+        tt = TraceTestbench(name=dd['name'], table=parse_path(dd['table'], base_dir, True))
     return tt
 
 
@@ -224,6 +227,12 @@ def get_benchmark(project: Project, bug_name: str, testbench: str = None) -> Ben
 def get_other_sources(benchmark: Benchmark) -> list:
     """ returns a list of sources which are not the buggy source """
     return [s for s in benchmark.project.design.sources if s != benchmark.bug.original]
+
+def get_benchmark_design(benchmark: Benchmark) -> Design:
+    """ replaces the original file with the buggy one """
+    orig = benchmark.project.design
+    sources = get_other_sources(benchmark) + [benchmark.bug.buggy]
+    return Design(top=orig.top, directory=orig.directory, sources=sources)
 
 def get_seed(benchmark: Benchmark) -> Optional[str]:
     try:

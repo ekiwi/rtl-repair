@@ -16,6 +16,14 @@
      // Instantiate the Decoder (named DUT {device under test})
      decoder_3to8  DUT(Y7,Y6,Y5,Y4,Y3,Y2,Y1,Y0, A, B, C, en);
   
+
+`ifdef DUMP_TRACE // used for our OSDD calculations
+      initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, DUT);
+      end
+`endif // DUMP_TRACE
+
      integer f;
      initial  begin
         clk = 0;
