@@ -8,6 +8,7 @@
 import argparse
 import tempfile
 import shutil
+import time
 from pathlib import Path
 
 import benchmarks
@@ -15,6 +16,7 @@ from benchmarks import Project, Design, VerilogOracleTestbench
 from benchmarks.run import run, RunConf
 
 def gen_trace(sim: str, verbose: bool, output: Path, design: Design, testbench: VerilogOracleTestbench):
+    start = time.time()
     run_conf = RunConf(include_dir=design.directory, defines=[("DUMP_TRACE", "1")])
     # use a temporary directory to avoid conflicts from multiple testbenches all creating a file called `dump.vcd`
     with tempfile.TemporaryDirectory() as wd_name:
@@ -26,8 +28,9 @@ def gen_trace(sim: str, verbose: bool, output: Path, design: Design, testbench: 
         assert dump_out.exists(), f"Expected `{dump_out.resolve()}` to exist, but it does not!"
         shutil.move(dump_out, output)
     assert output.exists()
+    delta_time = time.time() - start
     if verbose:
-        print(f"Created: {output}")
+        print(f"Created: {output} in {delta_time:.03}s")
 
 
 def gen_project_traces(output_dir: Path, sim: str, verbose: bool, proj: Project):
