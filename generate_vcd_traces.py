@@ -14,7 +14,7 @@ import benchmarks
 from benchmarks import Project, Design, VerilogOracleTestbench
 from benchmarks.run import run, RunConf
 
-def gen_trace(sim: str, output: Path, design: Design, testbench: VerilogOracleTestbench):
+def gen_trace(sim: str, verbose: bool, output: Path, design: Design, testbench: VerilogOracleTestbench):
     run_conf = RunConf(include_dir=design.directory, defines=[("DUMP_TRACE", "1")])
     # use a temporary directory to avoid conflicts from multiple testbenches all creating a file called `dump.vcd`
     with tempfile.TemporaryDirectory() as wd_name:
@@ -26,12 +26,14 @@ def gen_trace(sim: str, output: Path, design: Design, testbench: VerilogOracleTe
         assert dump_out.exists(), f"Expected `{dump_out.resolve()}` to exist, but it does not!"
         shutil.move(dump_out, output)
     assert output.exists()
+    if verbose:
+        print(f"Created: {output}")
 
 
-def gen_project_traces(output_dir: Path, sim: str, proj: Project):
+def gen_project_traces(output_dir: Path, sim: str, verbose: bool, proj: Project):
     testbench = [tb for tb in proj.testbenches if isinstance(tb, VerilogOracleTestbench)][0]
     # ground truth
-    gen_trace(sim, output_dir / f"{proj.name}.groundtruth.vcd", proj.design, testbench)
+    gen_trace(sim, verbose, output_dir / f"{proj.name}.groundtruth.vcd", proj.design, testbench)
 
     # buggy traces
     for bb in benchmarks.get_benchmarks(proj):
@@ -39,15 +41,17 @@ def gen_project_traces(output_dir: Path, sim: str, proj: Project):
         if not benchmarks.is_cirfix_paper_benchmark(bb):
             continue
         design = benchmarks.get_benchmark_design(bb)
-        gen_trace(sim, output_dir / f"{proj.name}.{bb.bug.name}.vcd", design, testbench)
+        gen_trace(sim, verbose, output_dir / f"{proj.name}.{bb.bug.name}.vcd", design, testbench)
 
 
-def parse_args() -> (Path, str):
+def parse_args() -> (Path, str, bool):
     parser = argparse.ArgumentParser(description='Generate ground truth and buggy VCD traces.')
     parser.add_argument('output_dir')
     parser.add_argument('--sim', help='Change simulator', default='vcs')
+    parser.add_argument('--verbose', '-v', help='Verbose output', action='store_true')
     args = parser.parse_args()
     output_dir = Path(args.output_dir)
+    verbose = args.verbose
     sim = args.sim
     assert sim in {'vcs', 'iverilog'}, f"unknown/unsupported simulator `{sim}`"
     # try to create output_dir
@@ -55,16 +59,18 @@ def parse_args() -> (Path, str):
         assert output_dir.parent.exists(), f"{output_dir.parent} ({output_dir.parent.resolve()}) does not exist!"
         output_dir.mkdir()
     assert output_dir.exists()
-    return output_dir, sim
+    return output_dir, sim, verbose
 
 def main():
-    output_dir, sim = parse_args()
+    output_dir, sim, verbose = parse_args()
     projects = benchmarks.load_all_projects()
 
     for proj in projects.values():
         if not proj.name == "decoder_3_to_8":
             continue # debugging
-        gen_project_traces(output_dir, sim, proj)
+        if verbose:
+            print(f"Generating VCD traces for {proj.name}")
+        gen_project_traces(output_dir, sim, verbose, proj)
 
 
 if __name__ == '__main__':
