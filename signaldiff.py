@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 The Regents of the University of California
+# Copyright 2022-2023 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
@@ -11,25 +11,33 @@ import vcdvcd
 import tempfile
 import typing
 
+from benchmarks import Benchmark, load_project, get_benchmark, get_benchmark_design
+from find_state import find_state_and_outputs
+
 @dataclass
 class Config:
-    original: Path
-    buggy: Path
-    testbench: Path
+    working_dir: Path
+    benchmark: Benchmark
     logfile: Path
-    tmp_dir: Path
+
+def assert_exists(filename: Path):
+    assert filename.exists(), f"{filename} ({filename.resolve()}) does not exist!"
 
 def parse_args() -> Config:
-    parser = argparse.ArgumentParser(description='Compare VCDs')
-    parser.add_argument('--o', dest='original', help='original vcd', required=True)
-    parser.add_argument('--b', dest='buggy', help='buggy vcd', required=True)
-    parser.add_argument('--testbench', dest='testbench', help='Testbench in CSV format', required=True)
+    parser = argparse.ArgumentParser(description='Calculate output / state divergence delta')
+    parser.add_argument('--working-dir', dest='working_dir', help='Working directory. Should contain the output from `generate_vcd_traces.py`', required=True)
+    parser.add_argument('--project', help='Project TOML', required=True)
+    parser.add_argument('--bug', help='Bug name.', required=True)
     parser.add_argument('--log', dest='logfile', help='File to log to.')
-    parser.add_argument('--tmp', dest='tmp_dir', help='Working directory to store temporary files in.')
+
     args = parser.parse_args()
     logfile = None if args.logfile is None else Path(args.logfile)
-    tmp_dir = None if args.tmp_dir is None else Path(args.tmp_dir)
-    return Config(Path(args.original), Path(args.buggy), Path(args.testbench), logfile, tmp_dir)
+    project = load_project(Path(args.project))
+    benchmark = get_benchmark(project, args.bug)
+    conf =  Config(Path(args.working_dir), benchmark, logfile)
+
+    assert_exists(conf.working_dir)
+    return conf
 
 @dataclass
 class Disagreement:
@@ -68,9 +76,10 @@ def find_clock(names: list) -> str:
 
 
 class VCDConverter(vcdvcd.StreamParserCallbacks):
-    def __init__(self, out: typing.TextIO):
+    def __init__(self, out: typing.TextIO, interesting_signals: set):
         super().__init__()
         self.out = out
+        self.interesting_signals: set = interesting_signals
         self.signals = dict()
         self.id_to_index = dict()
         self.values = []
@@ -118,13 +127,11 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         self.values[self.id_to_index[identifier_code]] = value
 
 
-def vcd_to_csv(vcd_path: Path, tmp_dir: typing.Optional[Path]) -> typing.TextIO:
-    if tmp_dir is None:
-        csv_file = tempfile.SpooledTemporaryFile(mode='wt')
-    else:
-        assert tmp_dir.exists() and tmp_dir.is_dir(), f"{tmp_dir} does not exists or is not a directory!"
-        csv_file = tempfile.TemporaryFile(mode='wt', dir=tmp_dir)
-    vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=VCDConverter(csv_file), store_tvs=False)
+def vcd_to_csv(working_dir: Path, interesting_signals: set, vcd_path: Path):
+    assert_exists(working_dir)
+    assert working_dir.is_dir(), f"{working_dir} is not a directory!"
+    csv_file = tempfile.TemporaryFile(mode='wt', dir=working_dir)
+    vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=VCDConverter(csv_file, interesting_signals), store_tvs=False)
     csv_file.seek(0)
     return csv_file
 
@@ -238,20 +245,56 @@ def compare(original: typing.TextIO, buggy: typing.TextIO, external: list):
     return first_internal_disagreement, first_external_disagreement
 
 
+def write_output(conf: Config, osdd: int):
+    print(f"TODO: OSDD = {osdd}")
+
 def main():
     conf = parse_args()
-    assert conf.original.exists(), f"Cannot find {conf.original}"
-    assert conf.buggy.exists(), f"Cannot find {conf.buggy}"
-    assert conf.testbench.exists(), f"Cannot find {conf.testbench}"
+
+
+    # extract state and outputs from ground truth design
+    gt_design = conf.benchmark.project.design
+    gt_states, gt_outputs = find_state_and_outputs(conf.working_dir, gt_design)
+
+    # extract state and outputs from buggy design
+    buggy_design = get_benchmark_design(conf.benchmark)
+    buggy_states, buggy_outputs = find_state_and_outputs(conf.working_dir, buggy_design)
+
+
+    # if there is no state in the design, OSDD is always 0
+    gt_no_state, buggy_no_state = len(gt_states) == 0, len(buggy_states) == 0
+    if gt_no_state and buggy_no_state:
+        return write_output(conf, osdd=0)
+    elif gt_no_state or buggy_no_state:
+        raise NotImplementedError("TODO: what happens if only one of the designs has state?")
+
+    # compare states, see if they are the same
+    if not gt_states == buggy_states:
+        raise NotImplementedError(f"TODO: states are not the same!\nground-truth: {gt_states}\nbuggy: {buggy_states}")
+
+    # display warning if outputs are not the same
+    if not gt_outputs == buggy_outputs:
+        print(f"WARN: outputs are not the same")
+        print(f"Missing in buggy: {list(set(gt_outputs) - set(buggy_outputs))}")
+        print(f"Additional in buggy: {list(set(buggy_outputs) - set(gt_outputs))}")
+
+    # we are only interested in signals that are contained in both circuits, but the widths are allowed to differ
+    gt_signals = [n for n, _ in gt_states] + [n for n, _ in gt_outputs]
+    buggy_signals = [n for n, _ in buggy_states] + [n for n, _ in buggy_outputs]
+    interesting_signals = sorted(list(set(gt_signals) & set(buggy_signals)))
+
+    # VCD names used in the `generate_vcd_traces.py` script
+    gt_vcd = conf.working_dir / f"{conf.benchmark.project.name}.groundtruth.vcd"
+    buggy_vcd = conf.working_dir / f"{conf.benchmark.project.name}.{conf.benchmark.bug.name}.vcd"
+    assert_exists(gt_vcd)
+    assert_exists(buggy_vcd)
+
+    # look at the VCDs now
     start_logger(conf.logfile)
-    # extract signal names from testbench
-    external_signals = get_signal_names(conf.testbench)
-    # filter out the "time" signal, which does not correspond to a circuit pin
-    external_signals = [e for e in external_signals if e != "time"]
 
     # convert VCD files into CSV tables for easier (line-by-line) comparison
-    original_vcd = vcd_to_csv(conf.original, conf.tmp_dir)
-    buggy_vcd = vcd_to_csv(conf.buggy, conf.tmp_dir)
+    gt_csv = vcd_to_csv(conf.working_dir, interesting_signals, gt_vcd)
+    buggy_csv = vcd_to_csv(conf.working_dir, interesting_signals, buggy_vcd)
 
     # debug code to print out CSV
     #print(original_vcd.read())
@@ -272,8 +315,8 @@ def main():
 
     # release resources
     end_logger()
-    original_vcd.close()
-    buggy_vcd.close()
+    gt_csv.close()
+    buggy_csv.close()
 
 
 
