@@ -1,6 +1,7 @@
 [project]
 directory = "."
 sources = ["fsm_full.v"]
+toplevel = "fsm_full"
 
 [[bugs]]
 name = "wadden_buggy1"

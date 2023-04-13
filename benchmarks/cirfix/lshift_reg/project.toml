@@ -1,6 +1,7 @@
 [project]
 directory = "."
 sources = ["lshift_reg.v"]
+toplevel = "lshift_reg"
 
 [[bugs]]
 name = "wadden_buggy1"

@@ -1,6 +1,7 @@
 [project]
 directory = "."
 sources = ["decoder_3_to_8.v"]
+toplevel = "decoder_3to8"
 
 [[bugs]]
 name = "kgoliya_buggy1"

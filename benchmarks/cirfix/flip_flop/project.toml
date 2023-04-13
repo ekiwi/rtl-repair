@@ -1,6 +1,7 @@
 [project]
 directory = "."
 sources = ["tff.v"]
+toplevel = "tff"
 
 [[bugs]]
 name = "wadden_buggy1"

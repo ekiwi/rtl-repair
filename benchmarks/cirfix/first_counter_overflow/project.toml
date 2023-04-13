@@ -1,6 +1,7 @@
 [project]
 directory = "."
 sources = ["first_counter_overflow.v"]
+toplevel = "first_counter"
 
 [[bugs]]
 name = "kgoliya_buggy1"

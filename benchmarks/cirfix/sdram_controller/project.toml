@@ -1,6 +1,7 @@
 [project]
 directory = "."
 sources = ["sdram_controller.v"]
+toplevel = "sdram_controller"
 
 [[bugs]]
 name = "wadden_buggy1"
