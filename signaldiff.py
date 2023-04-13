@@ -75,11 +75,15 @@ def find_clock(names: list) -> str:
     raise RuntimeError(f"Failed to find clock among signals: {names}")
 
 
+def remove_size_from_name(name: str) -> str:
+    """ changes e.g. "state[2:0]" to "state" """
+    return name.split('[')[0]
+
 class VCDConverter(vcdvcd.StreamParserCallbacks):
-    def __init__(self, out: typing.TextIO, interesting_signals: set):
+    def __init__(self, out: typing.TextIO, interesting_signals: list):
         super().__init__()
         self.out = out
-        self.interesting_signals: set = interesting_signals
+        self.interesting_signals: list = interesting_signals
         self.signals = dict()
         self.id_to_index = dict()
         self.values = []
@@ -91,16 +95,31 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         # convert references to list and sort by name
         refs = [ (k,v) for k,v in vcd.references_to_ids.items() ]
         refs = sorted(refs, key=lambda e: e[0])
-        self.id_to_index = { e[1]: i for i,e  in enumerate(refs) }
-        self.values = ["x"] * len(refs)
-        names = [e[0] for e in refs]
+        names = [remove_size_from_name(e[0]) for e in refs]
         info(f"Found {len(refs)} signals")
+
+        # identify clock signal
         self.clock = find_clock(names)
         self.clock_id = vcd.references_to_ids[self.clock]
+
+        # ensure that all interesting signals are in the VCD
+        prefix = '.'.join(self.clock.split('.')[:-1]) + '.'
+        interesting_with_prefix = [ prefix + ii for ii in self.interesting_signals]
+        # are any interesting signals missing from the VCD?
+        missing = set(interesting_with_prefix) - set(names)
+        assert len(missing) == 0, f"Interesting signals are missing from the VCD: {list(missing)}.\nAvailable:{names}"
+
+        # we only track the interesting signals
+        refs_by_name = { remove_size_from_name(e[0]): e for e in refs }
+        refs = [refs_by_name[ii] for ii in interesting_with_prefix]
+        refs = [refs_by_name[self.clock]] + refs
+        self.id_to_index = { e[1]: i for i,e  in enumerate(refs) }
+        self.values = ["x"] * len(refs)
         clock_index = self.id_to_index[self.clock_id]
         info(f"{clock_index=} {len(self.values)=}")
         self.values[clock_index] = "0"
-        header = ', '.join(names)
+
+        header = ', '.join(self.interesting_signals)
         self.out.write(header + '\n')
 
     def write_to_file(self, time):
@@ -112,6 +131,9 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
             self.out.write(line + "\n")
 
     def value(self, vcd, time, value, identifier_code, cur_sig_vals):
+        # ignore signals that we are not interested in
+        if identifier_code not in self.id_to_index: return
+
         # dump values if appropriate
         self.write_to_file(time)
 
@@ -127,10 +149,10 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         self.values[self.id_to_index[identifier_code]] = value
 
 
-def vcd_to_csv(working_dir: Path, interesting_signals: set, vcd_path: Path):
+def vcd_to_csv(working_dir: Path, interesting_signals: list, vcd_path: Path):
     assert_exists(working_dir)
     assert working_dir.is_dir(), f"{working_dir} is not a directory!"
-    csv_file = tempfile.TemporaryFile(mode='wt', dir=working_dir)
+    csv_file = open(vcd_path.parent / f"{vcd_path.stem}.csv", 'wt')
     vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=VCDConverter(csv_file, interesting_signals), store_tvs=False)
     csv_file.seek(0)
     return csv_file
