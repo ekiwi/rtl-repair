@@ -42,6 +42,11 @@ def bits_to_key(bits: list) -> str:
 def all_int(bits: list) -> bool:
     return all(isinstance(ii, int) for ii in bits)
 
+
+# yosys cell types that are safe to ignore when searching for registers and memories
+_ignore_types = {'$mux', '$eq', '$add', '$pmux', '$not', '$or', '$xor', '$sub', '$and', '$logic_and',
+'$logic_or', '$logic_not', '$shr', '$reduce_and', '$reduce_or', '$reduce_xor'}
+
 def parse_module(module_names: set, name: str, module: dict) -> Module:
     # we are skipping any netnames that have constant bits, e.g. hard-coded to zero
     non_const_netnames = [(nn, dd) for nn, dd in module['netnames'].items() if all_int(dd['bits'])]
@@ -60,7 +65,7 @@ def parse_module(module_names: set, name: str, module: dict) -> Module:
         return _out
     for cell_name, cell in module["cells"].items():
         tpe = cell["type"]
-        if tpe == "$dff":
+        if tpe in {'$dff', '$adff'}:
             bits = cell['connections']['Q']
             width = len(bits)
             signal_name = bits_to_name[bits_to_key(bits)]
@@ -71,6 +76,8 @@ def parse_module(module_names: set, name: str, module: dict) -> Module:
             write_mems.add(get_mem_name(cell))
         elif tpe in module_names:
             instances.append((cell_name, tpe))
+        elif tpe not in _ignore_types:
+            print(f"unknown tpe: {tpe}")
 
 
     # iterate over memories
