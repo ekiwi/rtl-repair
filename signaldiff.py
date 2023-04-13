@@ -11,6 +11,7 @@ import vcdvcd
 import tempfile
 import typing
 
+import benchmarks
 from benchmarks import Benchmark, load_project, get_benchmark, get_benchmark_design
 from find_state import find_state_and_outputs
 
@@ -18,34 +19,27 @@ from find_state import find_state_and_outputs
 class Config:
     working_dir: Path
     benchmark: Benchmark
-    logfile: Path
 
 def assert_exists(filename: Path):
     assert filename.exists(), f"{filename} ({filename.resolve()}) does not exist!"
-
-def parse_args() -> Config:
-    parser = argparse.ArgumentParser(description='Calculate output / state divergence delta')
-    parser.add_argument('--working-dir', dest='working_dir', help='Working directory. Should contain the output from `generate_vcd_traces.py`', required=True)
-    parser.add_argument('--project', help='Project TOML', required=True)
-    parser.add_argument('--bug', help='Bug name.', required=True)
-    parser.add_argument('--log', dest='logfile', help='File to log to.')
-
-    args = parser.parse_args()
-    logfile = None if args.logfile is None else Path(args.logfile)
-    project = load_project(Path(args.project))
-    benchmark = get_benchmark(project, args.bug)
-    conf =  Config(Path(args.working_dir), benchmark, logfile)
-
-    assert_exists(conf.working_dir)
-    return conf
 
 @dataclass
 class Disagreement:
     step: int
     signal: str
-    external: bool
+    is_state: bool
+    is_output: bool
     expected: str
     actual: str
+
+
+@dataclass
+class Result:
+    project: str
+    bug: str
+    delta: int
+    first_output_disagreement: int
+    notes: str
 
 _logfile: typing.Optional[typing.TextIO] = None
 def info(msg: str):
@@ -79,6 +73,27 @@ def remove_size_from_name(name: str) -> str:
     """ changes e.g. "state[2:0]" to "state" """
     return name.split('[')[0]
 
+
+def find_str_prefix(aa: str, bb: str) -> str:
+    prefix = ''
+    for a, b in zip(aa, bb):
+        if a == b:
+            prefix += a
+        else:
+            return prefix
+    return prefix
+
+
+def find_common_prefix(names: list) -> str:
+    prefixes = { '.'.join(nn.split('.')[:-1]) for nn in names }
+    sorted_prefixes = sorted(list(prefixes), key = lambda n: len(n))
+    prefix = sorted_prefixes[0]
+    for entry in sorted_prefixes[1:]:
+        if not entry.startswith(prefix):
+            prefix = find_str_prefix(prefix, entry)
+            if len(prefix) == 0: return "" # early exit (performance optimization)
+    return prefix + "."
+
 class VCDConverter(vcdvcd.StreamParserCallbacks):
     def __init__(self, out: typing.TextIO, interesting_signals: list):
         super().__init__()
@@ -103,7 +118,7 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         self.clock_id = vcd.references_to_ids[self.clock]
 
         # ensure that all interesting signals are in the VCD
-        prefix = '.'.join(self.clock.split('.')[:-1]) + '.'
+        prefix = find_common_prefix(names)
         interesting_with_prefix = [ prefix + ii for ii in self.interesting_signals]
         # are any interesting signals missing from the VCD?
         missing = set(interesting_with_prefix) - set(names)
@@ -127,7 +142,9 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         # at the next timestep after a rising edge, we need to write all samples to disk
         if time > self.sample_at:
             self.sample_at = None
-            line = ', '.join(f"{v}" for v in self.values)
+            # skip clock
+            values = self.values[1:]
+            line = ', '.join(f"{v}" for v in values)
             self.out.write(line + "\n")
 
     def value(self, vcd, time, value, identifier_code, cur_sig_vals):
@@ -152,7 +169,7 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
 def vcd_to_csv(working_dir: Path, interesting_signals: list, vcd_path: Path):
     assert_exists(working_dir)
     assert working_dir.is_dir(), f"{working_dir} is not a directory!"
-    csv_file = open(vcd_path.parent / f"{vcd_path.stem}.csv", 'wt')
+    csv_file = open(vcd_path.parent / f"{vcd_path.stem}.csv", 'w+t')
     vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=VCDConverter(csv_file, interesting_signals), store_tvs=False)
     csv_file.seek(0)
     return csv_file
@@ -165,114 +182,63 @@ def get_signal_names(testbench: Path) -> list:
 def parse_csv_line(line: str) -> list:
     return [n.strip() for n in line.split(',')]
 
-def find_str_prefix(aa: str, bb: str) -> str:
-    prefix = ''
-    for a, b in zip(aa, bb):
-        if a == b:
-            prefix += a
-        else:
-            return prefix
-    return prefix
-
-def find_prefix(ll: list) -> str:
-    if len(ll) < 1: return ""
-    prefix = ll[0]
-    for entry in ll[1:]:
-        if not entry.startswith(prefix):
-            prefix = find_str_prefix(prefix, entry)
-            if len(prefix) == 0:
-                return prefix
-    return prefix
-
-def normalize_signals(signals: list) -> list:
-    # remove any common prefix
-    prefix = find_prefix(signals)
-    if not prefix.endswith('.'):
-        prefix = '.'.join(prefix.split('.')[:-1]) + '.'
-    prefix_len = len(prefix)
-    signals = [s[prefix_len:] for s in signals]
-
-    # remove any bit width specifiers
-    signals = [s.split('[')[0] for s in signals]
-
-    return signals
-
-
-def do_skip(values: list, skip: list) -> list:
-    assert len(values) == len(skip)
-    return [v for v,s in zip(values, skip) if not s]
-
-def compare_line(ii: int, original: list, buggy: list, signals: list, externals: set) -> list:
+def compare_line(ii: int, original: list, buggy: list, signals: list, is_state: set, is_output: set) -> list:
     disagree = []
     for ((o, b), name) in zip(zip(original, buggy), signals):
         if o.lower() == 'x': # no constraint!
             continue
         if o.lower() != b.lower():
-            disagree.append(Disagreement(ii, name, name in externals, o.lower(), b.lower()))
+            disagree.append(Disagreement(ii, name, name in is_state, name in is_output, o.lower(), b.lower()))
     return disagree
 
-def create_skip_lists(signals: list, buggy_signals: list):
-    in_a = set(signals)
-    in_b = set(buggy_signals)
-    skip_a = [s not in in_b for s in signals]
-    skip_b = [s not in in_a for s in buggy_signals]
-    common = [s for s in signals if s in in_b]
-    return common, skip_a, skip_b
 
-
-
-def compare(original: typing.TextIO, buggy: typing.TextIO, external: list):
+def compare(original: typing.TextIO, buggy: typing.TextIO, is_state: set, is_output: set):
     original_signals = parse_csv_line(original.readline())
     buggy_signals = parse_csv_line(buggy.readline())
-    signals, skip_o, skip_b = create_skip_lists(original_signals, buggy_signals)
-    signals = normalize_signals(signals)
-    is_external = set(external)
-
-    # is there any value we need to skip?
-    need_to_skip = max(skip_o) or max(skip_b)
-
-    # check to see if there are any internal signals
-    internal_signals = [s for s in signals if not s in is_external]
-    info(f"all signals: {signals}")
-    info(f"external signals: {external}")
-    info(f"internal signals: {internal_signals}")
+    assert original_signals == buggy_signals, f"{original_signals} != {buggy_signals}"
+    signals = original_signals
 
     # iterate over lines together
     ii = 0
 
-    first_internal_disagreement = -1
-    first_external_disagreement = -1
+    first_state_disagreement = -1
+    first_output_disagreement = -1
 
 
     for o_line, b_line in zip(original, buggy):
         o = parse_csv_line(o_line)
         b = parse_csv_line(b_line)
-        if need_to_skip:
-            o = do_skip(o, skip_o)
-            b = do_skip(b, skip_b)
-        disagree = compare_line(ii, o, b, signals, is_external)
-        if first_internal_disagreement == -1 and len(disagree) > 0:
-            first_internal_disagreement = ii
+        disagree = compare_line(ii, o, b, signals, is_state, is_output)
+        state_disagree = [d for d in disagree if d.is_state]
+        output_disagree = [d for d in disagree if d.is_output]
+        if first_state_disagreement == -1 and len(state_disagree) > 0:
+            first_state_disagreement = ii
+        if first_output_disagreement == -1 and len(output_disagree) > 0:
+            first_output_disagreement  = ii
+        # print info
         for d in disagree:
-            if d.external:
-                first_external_disagreement = ii
-            ext = " (E)" if d.external else ""
+            if d.is_state and d.is_output: ext = " (O+S)"
+            elif d.is_state: ext = " (S)"
+            elif d.is_output: ext = " (O)"
+            else: ext = ""
             info(f"{d.signal}@{d.step}: {d.actual} != {d.expected}{ext}")
 
         # early exit for when we find the first external divergence
-        if first_external_disagreement > -1:
+        if first_output_disagreement > -1:
             break
         ii += 1
 
-    return first_internal_disagreement, first_external_disagreement
+    return first_state_disagreement, first_output_disagreement
 
+def common_list(a: list, b: list) -> list:
+    return sorted(list(set(a) & set(b)))
 
-def write_output(conf: Config, osdd: int):
-    print(f"TODO: OSDD = {osdd}")
+def union_list(a: list, b: list) -> list:
+    return sorted(list(set(a) | set(b)))
 
-def main():
-    conf = parse_args()
-
+def compare_traces(conf: Config) -> Result:
+    res = Result(project=conf.benchmark.project.name, bug=conf.benchmark.bug.name,
+                 delta=-1, first_output_disagreement=-1, notes="")
 
     # extract state and outputs from ground truth design
     gt_design = conf.benchmark.project.design
@@ -286,9 +252,14 @@ def main():
     # if there is no state in the design, OSDD is always 0
     gt_no_state, buggy_no_state = len(gt_states) == 0, len(buggy_states) == 0
     if gt_no_state and buggy_no_state:
-        return write_output(conf, osdd=0)
-    elif gt_no_state or buggy_no_state:
-        raise NotImplementedError("TODO: what happens if only one of the designs has state?")
+        res.delta = 0
+        res.notes = "no state => delta=0"
+        return res
+    elif gt_no_state:
+        raise NotImplementedError(f"TODO: what happens if only the buggy design has state?\n{gt_states} vs. {buggy_states}")
+    elif buggy_no_state:
+        res.notes = "the buggy design has no state elements => may be not synthesizable"
+        return res
 
     # compare states, see if they are the same
     if not gt_states == buggy_states:
@@ -301,9 +272,9 @@ def main():
         print(f"Additional in buggy: {list(set(buggy_outputs) - set(gt_outputs))}")
 
     # we are only interested in signals that are contained in both circuits, but the widths are allowed to differ
-    gt_signals = [n for n, _ in gt_states] + [n for n, _ in gt_outputs]
-    buggy_signals = [n for n, _ in buggy_states] + [n for n, _ in buggy_outputs]
-    interesting_signals = sorted(list(set(gt_signals) & set(buggy_signals)))
+    interesting_states  = common_list([n for n, _ in gt_states], [n for n, _ in buggy_states])
+    interesting_outputs = common_list([n for n, _ in gt_outputs], [n for n, _ in buggy_outputs])
+    interesting_signals = union_list(interesting_states, interesting_outputs)
 
     # VCD names used in the `generate_vcd_traces.py` script
     gt_vcd = conf.working_dir / f"{conf.benchmark.project.name}.groundtruth.vcd"
@@ -311,8 +282,11 @@ def main():
     assert_exists(gt_vcd)
     assert_exists(buggy_vcd)
 
+    # derive logfile name from benchmark
+    logfile: Path = conf.working_dir / f"{conf.benchmark.project.name}.{conf.benchmark.bug.name}.log"
+
     # look at the VCDs now
-    start_logger(conf.logfile)
+    start_logger(logfile)
 
     # convert VCD files into CSV tables for easier (line-by-line) comparison
     gt_csv = vcd_to_csv(conf.working_dir, interesting_signals, gt_vcd)
@@ -323,23 +297,86 @@ def main():
     #original_vcd.seek(0)
 
     # do the comparison
-    (first_internal, first_external)  = compare(original_vcd, buggy_vcd, external_signals)
+    (first_state, first_output)  = compare(original=gt_csv, buggy=buggy_csv,
+      is_state=set(interesting_states), is_output=set(interesting_outputs))
 
-    if first_internal == -1:
-        print("no disagreements found")
-
+    if first_output == -1:
+        res.notes = "no disagreement found"
     else:
-        assert first_internal <= first_external
-
-        print(f"first internal divergence: {first_internal}")
-        print(f"first external divergence: {first_external}")
-        print(f"delta: {first_external - first_internal}")
+        assert first_state <= first_output
+        res.first_output_disagreement = first_output
+        if first_state == -1:
+            delta = 0
+        else:
+            delta = first_output - first_state + 1
+        res.delta = delta
 
     # release resources
     end_logger()
     gt_csv.close()
     buggy_csv.close()
+    return res
 
+def print_result(res: Result):
+    note = "" if len(res.notes) == 0 else f" ({res.notes})"
+    print(f"{res.project}.{res.bug}: failed at {res.first_output_disagreement} w/ osdd={res.delta}{note}")
+
+def parse_args() -> Config:
+    parser = argparse.ArgumentParser(description='Calculate output / state divergence delta')
+    parser.add_argument('--working-dir', dest='working_dir', help='Working directory. Should contain the output from `generate_vcd_traces.py`', required=True)
+    parser.add_argument('--project', help='Project TOML')
+    parser.add_argument('--bug', help='Bug name.')
+
+    args = parser.parse_args()
+    if args.project is None:
+        benchmark = None
+        assert args.bug is None, f"Cannot specify a bug `{args.bug}` without a project!"
+    else:
+        assert args.bug is not None, f"Need to specify a bug together with the project!"
+        project = load_project(Path(args.project))
+        benchmark = get_benchmark(project, args.bug)
+
+    conf =  Config(Path(args.working_dir), benchmark)
+
+    assert_exists(conf.working_dir)
+    return conf
+
+def diff_all(working_dir: Path):
+    print("No project+bug specified, thus we are diffing all CirFix benchmarks.")
+    projects = benchmarks.load_all_projects()
+    results = []
+
+    for proj in projects.values():
+        gt_vcd = working_dir / f"{proj.name}.groundtruth.vcd"
+        if not gt_vcd.exists():
+            print(f"{gt_vcd} does not exist. Skipping project `{proj.name}`")
+            continue
+        for bb in benchmarks.get_benchmarks(proj):
+            # skip bugs that are not part of the cirfix paper
+            if not benchmarks.is_cirfix_paper_benchmark(bb):
+                continue
+            # check to see if the VCD is available:
+            buggy_vcd = working_dir / f"{proj.name}.{bb.bug.name}.vcd"
+            if not buggy_vcd.exists():
+                print(f"{buggy_vcd} does not exist. Skipping bug `{bb.bug.name}` in project `{proj.name}`")
+                continue
+            conf = Config(working_dir, bb)
+            print(f"Comparing traces for {proj.name} {bb.bug.name}")
+            res = compare_traces(conf)
+            print_result(res)
+            results.append(res)
+
+    return results
+
+
+def main():
+    conf = parse_args()
+
+    if conf.benchmark is None:
+        diff_all(conf.working_dir)
+    else:
+        res = compare_traces(conf)
+        print_result(res)
 
 
 if __name__ == '__main__':

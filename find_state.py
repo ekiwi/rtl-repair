@@ -39,9 +39,15 @@ def parse_yosys_output(out_json: Path) -> list:
 def bits_to_key(bits: list) -> str:
     return str(sorted(bits))
 
+def all_int(bits: list) -> bool:
+    return all(isinstance(ii, int) for ii in bits)
+
 def parse_module(module_names: set, name: str, module: dict) -> Module:
+    # we are skipping any netnames that have constant bits, e.g. hard-coded to zero
+    non_const_netnames = [(nn, dd) for nn, dd in module['netnames'].items() if all_int(dd['bits'])]
+
     # create a dictionary to look up signal names
-    bits_to_name = {bits_to_key(dd['bits']): nn for nn, dd in module["netnames"].items()}
+    bits_to_name = {bits_to_key(dd['bits']): nn for nn, dd in non_const_netnames}
     # look through all cells to identify submodules, registers and memories
     state = []
     instances = []
@@ -73,8 +79,10 @@ def parse_module(module_names: set, name: str, module: dict) -> Module:
             # we can tell what kind of memory it is by looking at the read/write ports
             is_read = mem_name in read_mems
             is_written = mem_name in write_mems
+            # skip memories that are never read or written
+            if not is_read and not is_written: continue
             tpe = ("r" if is_read else "") + ("w" if is_written else "")
-            assert tpe in {'r', 'rw'} , "expected `r` or `rw`"
+            assert tpe in {'r', 'rw'} , f"expected `r` or `rw` not `{tpe}` for memory: {mem_name}\n{mem}"
             # extract size
             width = mem['width']
             depth = mem['size']
