@@ -22,6 +22,8 @@ class Module:
     name: str
     instances: list
     state: list
+    inputs: list
+    outputs: list
 
 def parse_yosys_output(out_json: Path) -> list:
     with open(out_json) as ff:
@@ -78,13 +80,19 @@ def parse_module(module_names: set, name: str, module: dict) -> Module:
             depth = mem['size']
             state.append((mem_name, (width, depth, tpe)))
 
-    return Module(name, instances, state)
+    # ports
+    ports = module['ports']
+    inputs = [(nn, len(aa['bits'])) for nn, aa in ports.items() if aa['direction'] in {'input'}]
+    outputs = [(nn, len(aa['bits'])) for nn, aa in ports.items() if aa['direction'] in {'output'}]
 
-def find_state(working_dir: Path, design: Design):
+    return Module(name, instances, state, inputs, outputs)
+
+def find_state_and_outputs(working_dir: Path, design: Design) -> (list, list):
     yosys_json = to_json(working_dir, working_dir / f"{design.top}.json", design.sources, design.top)
     modules = parse_yosys_output(yosys_json)
-    flattened = flatten_states(design.top, modules)
-    print(flattened)
+    flattened_states = flatten_states(design.top, modules)
+    outputs = next(m for m in modules if m.name == design.top).outputs
+    return flattened_states, outputs
 
 
 def flatten_states(top: str, modules: list) -> list:
@@ -112,7 +120,9 @@ def main():
     # use temporary working dir
     with tempfile.TemporaryDirectory() as wd_name:
         working_dir = Path(wd_name)
-        find_state(working_dir, design)
+        states, outputs = find_state_and_outputs(working_dir, design)
+    print(states)
+    print(outputs)
 
 if __name__ == '__main__':
     main()
