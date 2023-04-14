@@ -27,6 +27,6 @@ buggy = "mux_4_1_buggy_var.v"
 name = "oracle-full"
 sources = ["mux_4_1_tb.v"]
 output = "output_mux_4_1_tb.txt"
-oracle = "oracle.txt"
+oracle = "oracle_new.txt"
 timeout = 5.0
 
