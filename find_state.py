@@ -45,7 +45,7 @@ def all_int(bits: list) -> bool:
 
 # yosys cell types that are safe to ignore when searching for registers and memories
 _ignore_types = {'$mux', '$eq', '$add', '$pmux', '$not', '$or', '$xor', '$sub', '$and', '$logic_and',
-'$logic_or', '$logic_not', '$shr', '$reduce_and', '$reduce_or', '$reduce_xor'}
+'$logic_or', '$logic_not', '$shr', '$reduce_and', '$reduce_or', '$reduce_xor', '$ge', '$gt', '$meminit'}
 
 def parse_module(module_names: set, name: str, module: dict) -> Module:
     # we are skipping any netnames that have constant bits, e.g. hard-coded to zero
@@ -55,6 +55,7 @@ def parse_module(module_names: set, name: str, module: dict) -> Module:
     bits_to_name = {bits_to_key(dd['bits']): nn for nn, dd in non_const_netnames}
     # look through all cells to identify submodules, registers and memories
     state = []
+    latches = []
     instances = []
     # keep track of memory read and write ports
     read_mems = set()
@@ -65,11 +66,13 @@ def parse_module(module_names: set, name: str, module: dict) -> Module:
         return _out
     for cell_name, cell in module["cells"].items():
         tpe = cell["type"]
-        if tpe in {'$dff', '$adff'}:
+        if tpe in {'$dff', '$adff', '$dlatch'}:
             bits = cell['connections']['Q']
             width = len(bits)
             signal_name = bits_to_name[bits_to_key(bits)]
             state.append((signal_name, width))
+            if tpe == '$dlatch':
+                latches.append(signal_name)
         elif tpe in {"$memrd_v2", "$memrd"}:
             read_mems.add(get_mem_name(cell))
         elif tpe in {"$memwr_v2", "$memwr"}:
@@ -99,6 +102,9 @@ def parse_module(module_names: set, name: str, module: dict) -> Module:
     ports = module['ports']
     inputs = [(nn, len(aa['bits'])) for nn, aa in ports.items() if aa['direction'] in {'input'}]
     outputs = [(nn, len(aa['bits'])) for nn, aa in ports.items() if aa['direction'] in {'output'}]
+
+    if len(latches) > 0:
+        print(f"Found latches in {name}: {latches}")
 
     return Module(name, instances, state, inputs, outputs)
 

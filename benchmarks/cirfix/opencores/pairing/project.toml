@@ -3,6 +3,7 @@ directory = "."
 sources = [
     "f32m.v",  "f33m.v", "f36m.v", "f3m.v", "f3.v", "fun.v", "inc.v", "tate_pairing.v"
 ]
+toplevel = "duursma_lee_algo"
 
 [[bugs]]
 name = "kgoliya_buggy1"

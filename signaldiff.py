@@ -3,17 +3,26 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
-
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
 import vcdvcd
-import tempfile
 import typing
 
 import benchmarks
 from benchmarks import Benchmark, load_project, get_benchmark, get_benchmark_design
 from find_state import find_state_and_outputs
+
+
+# list of benchmarks that are out of scope for this metric since they are non synthesizable
+out_of_scope = {
+    ('first_counter_overflow', 'wadden_buggy1'): "missing posedge",
+    ('lshift_reg', 'kgoliya_buggy1'): "posedge changed to negedge",
+    ('i2c_slave', 'wadden_buggy1'): "non-synthesizable testbench model",
+    ('i2c_slave', 'wadden_buggy2'): "non-synthesizable testbench model",
+    ('mux_4_1', 'wadden_buggy1'): "buggy design has a latch, but no clock that we can use to sample",
+    ('mux_4_1', 'wadden_buggy2'): "buggy design has a latch, but no clock that we can use to sample",
+}
 
 @dataclass
 class Config:
@@ -240,6 +249,11 @@ def compare_traces(conf: Config) -> Result:
     res = Result(project=conf.benchmark.project.name, bug=conf.benchmark.bug.name,
                  delta=-1, first_output_disagreement=-1, notes="")
 
+    # check to see if this is a project where our OSDD metric does not make sense
+    if (res.project, res.bug) in out_of_scope:
+        res.notes = "OSDD does not apply because " + out_of_scope[(res.project, res.bug)]
+        return res
+
     # extract state and outputs from ground truth design
     gt_design = conf.benchmark.project.design
     gt_states, gt_outputs = find_state_and_outputs(conf.working_dir, gt_design)
@@ -255,15 +269,18 @@ def compare_traces(conf: Config) -> Result:
         res.delta = 0
         res.notes = "no state => delta=0"
         return res
-    elif gt_no_state:
-        raise NotImplementedError(f"TODO: what happens if only the buggy design has state?\n{gt_states} vs. {buggy_states}")
-    elif buggy_no_state:
-        res.notes = "the buggy design has no state elements => may be not synthesizable"
-        return res
 
     # compare states, see if they are the same
     if not gt_states == buggy_states:
-        raise NotImplementedError(f"TODO: states are not the same!\nground-truth: {gt_states}\nbuggy: {buggy_states}")
+        # if the buggy design adds state, we can try to see if (i.e. hope that) the same signal
+        # exists in the ground truth design as a signal wire
+        # TODO: how is the repair for something like this represented in the synthesized design
+        #       with change templates applied?
+        only_additional_buggy_states = set(gt_states).issubset(set(buggy_states))
+        if only_additional_buggy_states:
+            gt_states = buggy_states
+        else:
+            raise NotImplementedError(f"TODO: states are not the same!\nground-truth: {gt_states}\nbuggy: {buggy_states}")
 
     # display warning if outputs are not the same
     if not gt_outputs == buggy_outputs:
