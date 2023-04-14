@@ -9,6 +9,7 @@ sources = [
     "rconst.v",
     "round.v"
 ]
+toplevel = "padder"
 
 [[bugs]]
 name = "ssscrazy_buggy1"

@@ -4,6 +4,7 @@ directory = "."
 sources = [
     "padder.v", "keccak.v", "f_permutation.v", "padder1.v", "rconst.v", "round.v"
 ]
+toplevel = "keccak"
 
 [[bugs]]
 name = "round_ssscrazy_buggy1"

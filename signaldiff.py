@@ -303,7 +303,8 @@ def compare_traces(conf: Config) -> Result:
             gt_states = buggy_states
         else:
             states_missing_from_buggy = set(gt_states) - set(buggy_states)
-            raise NotImplementedError(f"TODO: states are not the same!\nMissing states in buggy design: {states_missing_from_buggy}")
+            print(f"WARN: states are not the same!\nMissing states in buggy design: {states_missing_from_buggy}")
+            buggy_states = gt_states
 
     # display warning if outputs are not the same
     if not gt_outputs == buggy_outputs:
