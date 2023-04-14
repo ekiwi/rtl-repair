@@ -45,7 +45,8 @@ def all_int(bits: list) -> bool:
 
 # yosys cell types that are safe to ignore when searching for registers and memories
 _ignore_types = {'$mux', '$eq', '$add', '$pmux', '$not', '$or', '$xor', '$sub', '$and', '$logic_and',
-'$logic_or', '$logic_not', '$shr', '$reduce_and', '$reduce_or', '$reduce_xor', '$ge', '$gt', '$meminit'}
+'$logic_or', '$logic_not', '$shr', '$shl', '$reduce_and', '$reduce_or', '$reduce_xor', '$ge', '$gt',
+'$meminit', '$meminit_v2', '$pos', '$lt'}
 
 def parse_module(module_names: set, name: str, module: dict) -> Module:
     # we are skipping any netnames that have constant bits, e.g. hard-coded to zero

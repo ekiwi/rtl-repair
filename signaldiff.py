@@ -103,9 +103,13 @@ def find_common_prefix(names: list) -> str:
             if len(prefix) == 0: return "" # early exit (performance optimization)
     return prefix + "."
 
+class EarlyVcdParserExit(Exception):
+    pass
+
 class VCDConverter(vcdvcd.StreamParserCallbacks):
-    def __init__(self, out: typing.TextIO, interesting_signals: list):
+    def __init__(self, out: typing.TextIO, interesting_signals: list, max_depth: int = -1):
         super().__init__()
+        self.max_depth = max_depth
         self.out = out
         self.interesting_signals: list = interesting_signals
         self.signals = dict()
@@ -114,6 +118,7 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         self.clock = None
         self.clock_id = None
         self.sample_at = None
+        self.sample_count = 0
 
     def enddefinitions(self, vcd, signals, cur_sig_vals):
         # convert references to list and sort by name
@@ -131,7 +136,10 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         interesting_with_prefix = [ prefix + ii for ii in self.interesting_signals]
         # are any interesting signals missing from the VCD?
         missing = set(interesting_with_prefix) - set(names)
-        assert len(missing) == 0, f"Interesting signals are missing from the VCD: {list(missing)}.\nAvailable:{names}"
+        if len(missing) > 0:
+            # this is normally about Verilog arrays which aren't included in the VCD by default
+            print(f"WARN: Interesting signals are missing from the VCD: {list(missing)}.\nAvailable:{names}")
+            interesting_with_prefix = [ii for ii in interesting_with_prefix if ii not in missing]
 
         # we only track the interesting signals
         refs_by_name = { remove_size_from_name(e[0]): e for e in refs }
@@ -145,6 +153,7 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
 
         header = ', '.join(self.interesting_signals)
         self.out.write(header + '\n')
+        self.sample_count = 0
 
     def write_to_file(self, time):
         if self.sample_at is None: return
@@ -155,6 +164,9 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
             values = self.values[1:]
             line = ', '.join(f"{v}" for v in values)
             self.out.write(line + "\n")
+            self.sample_count += 1
+            if self.max_depth >= 0 and self.sample_count > self.max_depth:
+                raise EarlyVcdParserExit()
 
     def value(self, vcd, time, value, identifier_code, cur_sig_vals):
         # ignore signals that we are not interested in
@@ -175,13 +187,17 @@ class VCDConverter(vcdvcd.StreamParserCallbacks):
         self.values[self.id_to_index[identifier_code]] = value
 
 
-def vcd_to_csv(working_dir: Path, interesting_signals: list, vcd_path: Path):
+def vcd_to_csv(working_dir: Path, interesting_signals: list, vcd_path: Path, max_depth: int = -1):
     assert_exists(working_dir)
     assert working_dir.is_dir(), f"{working_dir} is not a directory!"
     csv_file = open(vcd_path.parent / f"{vcd_path.stem}.csv", 'w+t')
-    vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=VCDConverter(csv_file, interesting_signals), store_tvs=False)
+    converter = VCDConverter(csv_file, interesting_signals, max_depth=max_depth)
+    try:
+        vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=converter, store_tvs=False)
+    except EarlyVcdParserExit:
+        pass # early exits are implemented via an exception, but also part of the normal operation
     csv_file.seek(0)
-    return csv_file
+    return csv_file, converter.sample_count
 
 def get_signal_names(testbench: Path) -> list:
     with open(testbench, 'r') as f:
@@ -245,6 +261,10 @@ def common_list(a: list, b: list) -> list:
 def union_list(a: list, b: list) -> list:
     return sorted(list(set(a) | set(b)))
 
+def filer_mem_regs(states: list) -> list:
+    """ yosys will generate some registers that serve to hold memory read or write signals, we chose to ignore these here """
+    return [st for st in states if '/' not in st[0]]
+
 def compare_traces(conf: Config) -> Result:
     res = Result(project=conf.benchmark.project.name, bug=conf.benchmark.bug.name,
                  delta=-1, first_output_disagreement=-1, notes="")
@@ -257,10 +277,12 @@ def compare_traces(conf: Config) -> Result:
     # extract state and outputs from ground truth design
     gt_design = conf.benchmark.project.design
     gt_states, gt_outputs = find_state_and_outputs(conf.working_dir, gt_design)
+    gt_states = filer_mem_regs(gt_states)
 
     # extract state and outputs from buggy design
     buggy_design = get_benchmark_design(conf.benchmark)
     buggy_states, buggy_outputs = find_state_and_outputs(conf.working_dir, buggy_design)
+    buggy_states = filer_mem_regs(buggy_states)
 
 
     # if there is no state in the design, OSDD is always 0
@@ -280,7 +302,8 @@ def compare_traces(conf: Config) -> Result:
         if only_additional_buggy_states:
             gt_states = buggy_states
         else:
-            raise NotImplementedError(f"TODO: states are not the same!\nground-truth: {gt_states}\nbuggy: {buggy_states}")
+            states_missing_from_buggy = set(gt_states) - set(buggy_states)
+            raise NotImplementedError(f"TODO: states are not the same!\nMissing states in buggy design: {states_missing_from_buggy}")
 
     # display warning if outputs are not the same
     if not gt_outputs == buggy_outputs:
@@ -306,8 +329,9 @@ def compare_traces(conf: Config) -> Result:
     start_logger(logfile)
 
     # convert VCD files into CSV tables for easier (line-by-line) comparison
-    gt_csv = vcd_to_csv(conf.working_dir, interesting_signals, gt_vcd)
-    buggy_csv = vcd_to_csv(conf.working_dir, interesting_signals, buggy_vcd)
+    gt_csv, gt_samples = vcd_to_csv(conf.working_dir, interesting_signals, gt_vcd)
+    # sometimes the buggy code runs longer than the ground truth, however there is no reason to sample that far!
+    buggy_csv, _ = vcd_to_csv(conf.working_dir, interesting_signals, buggy_vcd, max_depth=gt_samples)
 
     # debug code to print out CSV
     #print(original_vcd.read())
