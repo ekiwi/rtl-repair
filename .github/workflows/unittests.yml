@@ -85,6 +85,27 @@ jobs:
         source venv/bin/activate
         ./test.py
 
+  test-benchmarks:
+    name: Common Benchmark Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Icarus Verilog
+      run: sudo apt-get install -y iverilog
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Create Virtual Environment and Install Requirements
+      run: |
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+    - name: Check Benchmark Configuration Data
+      run: |
+        source venv/bin/activate
+        python3 load_all_benchmarks.py
+
   test-cirfix:
     name: Test CirFix Quick Repairs
     runs-on: ubuntu-latest
@@ -103,12 +124,6 @@ jobs:
       run: |
         cd cirfix
         ./make_venv.sh
-
-    - name: Check Benchmark Configuration Data
-      run: |
-        cd cirfix
-        source venv/bin/activate
-        python3 load_all_benchmarks.py
 
     - name: Repair first_counter_overflow_wadden_buggy1
       timeout-minutes: 3
