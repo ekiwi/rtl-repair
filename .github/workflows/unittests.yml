@@ -84,3 +84,51 @@ jobs:
       run: |
         source venv/bin/activate
         ./test.py
+
+  test-cirfix:
+    name: Test CirFix Quick Repairs
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Icarus Verilog
+      run: sudo apt-get install -y iverilog
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+
+    - name: Create Virtual Environment and Install Requirements
+      run: |
+        cd cirfix
+        ./make_venv.sh
+
+    - name: Check Benchmark Configuration Data
+      run: |
+        cd cirfix
+        source venv/bin/activate
+        python3 load_all_benchmarks.py
+
+    - name: Repair first_counter_overflow_wadden_buggy1
+      timeout-minutes: 3
+      run: |
+        cd cirfix
+        source venv/bin/activate
+        cd prototype
+        python3 repair.py --project=../benchmarks/cirfix/first_counter_overflow --bug=wadden_buggy1 --log --working-dir=first_counter_overflow_wadden_buggy1 --seed="repair_2020-09-23-11:24:14" --simulator=iverilog
+
+    - name: Repair padder_ssscrazy_buggy1
+      timeout-minutes: 3
+      run: |
+        cd cirfix
+        source venv/bin/activate
+        cd prototype
+        python3 repair.py --project=../benchmarks/cirfix/opencores/sha3/low_throughput_core/padder.toml   --bug=ssscrazy_buggy1 --log --working-dir=padder_ssscrazy_buggy1 --seed="repair_2020-09-24-15:16:49" --simulator=iverilog
+
+    - name: Repair first_counter_overflow_wadden_buggy1 using the run.py script
+      timeout-minutes: 3
+      run: |
+        cd cirfix
+        source venv/bin/activate
+        ./run.py --working-dir=counter-wadden1 --experiment=first-counter-wadden-1 --threads=2 --simulator=iverilog
