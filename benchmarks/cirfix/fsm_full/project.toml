@@ -45,3 +45,7 @@ output = "output_fsm_full_tb_t1.txt"
 oracle = "oracle.txt"
 timeout = 10.0
 
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"
+

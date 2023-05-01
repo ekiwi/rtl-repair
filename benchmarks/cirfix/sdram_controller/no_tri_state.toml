@@ -1,0 +1,51 @@
+[project]
+name = "sdram_controller_no_tri_state"
+directory = "."
+sources = ["sdram_controller.no_tri_state.v"]
+toplevel = "sdram_controller"
+
+[[bugs]]
+name = "wadden_buggy1"
+original = "sdram_controller.no_tri_state.v"
+buggy = "sdram_controller_wadden_buggy1.no_tri_state.v"
+
+[[bugs]]
+name = "wadden_buggy2"
+original = "sdram_controller.no_tri_state.v"
+buggy = "sdram_controller_wadden_buggy2.no_tri_state.v"
+
+[[bugs]]
+name = "kgoliya_buggy2"
+original = "sdram_controller.no_tri_state.v"
+buggy = "sdram_controller_kgoliya_buggy2.no_tri_state.v"
+
+[[bugs]]
+name = "buggy_num"
+original = "sdram_controller.no_tri_state.v"
+buggy = "sdram_controller_buggy_num.no_tri_state.v"
+
+[[bugs]]
+name = "buggy_v2"
+original = "sdram_controller.no_tri_state.v"
+buggy = "sdram_controller_buggy_v2.no_tri_state.v"
+
+[[bugs]]
+name = "buggy_var"
+original = "sdram_controller.no_tri_state.v"
+buggy = "sdram_controller_buggy_var.no_tri_state.v"
+
+[[bugs]]
+name = "buggy_githubbug"
+original = "sdram_controller.no_tri_state.v"
+buggy = "sdram_controller_githubbug.no_tri_state.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = ["sdram_controller_tb_t1.no_tri_state.v"]
+output = "output_sdram_controller_tb_t1.txt"
+oracle = "oracle.txt"
+timeout = 5.0
+
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"

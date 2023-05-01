@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, load_project, get_benchmark, \
-    _assert_file_exists, _assert_dir_exists
+    assert_file_exists, assert_dir_exists
 from benchmarks.yosys import to_gatelevel_netlist
 from benchmarks.run import run, RunConf
 
@@ -96,8 +96,8 @@ def check_sim(working_dir: Path, benchmark: Benchmark, design_sources: list):
 
 
 def check_repair(working_dir: Path, project_file: Path, bug_name: str, repaired: Path):
-    _assert_file_exists("repaired Verilog", repaired)
-    _assert_dir_exists("working directory", working_dir)
+    assert_file_exists("repaired Verilog", repaired)
+    assert_dir_exists("working directory", working_dir)
     project = load_project(project_file)
     benchmark = get_benchmark(project, bug_name)
 

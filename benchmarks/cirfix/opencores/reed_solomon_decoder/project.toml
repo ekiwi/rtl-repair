@@ -37,6 +37,13 @@ name = "RS_dec_buggy_v2"
 original = "RS_dec.v"
 buggy = "RS_dec_buggy_v2.v"
 
+# not a real bug, just a test to make sure we can deal with a correct curcuit
+[[bugs]]
+name = "original"
+original = "BM_lamda.v"
+buggy = "BM_lamda.v"
+
+
 [[testbenches]]
 name = "oracle-full"
 sources = ["RS_dec_tb_t1.v"]
@@ -44,3 +51,6 @@ output = "output_RS_dec_tb_t1.txt"
 oracle = "oracle.txt"
 timeout = 8.0
 
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"

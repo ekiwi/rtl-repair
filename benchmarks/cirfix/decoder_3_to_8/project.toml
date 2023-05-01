@@ -39,16 +39,21 @@ name = "oracle-full"
 sources = ["decoder_3_to_8_tb_t1.v"]
 output = "output_decoder_3_to_8_tb_t1.txt"
 oracle = "oracle.txt"
-table = "orig_tb.csv"
 timeout = 7.0
+
+# This is the original testbench from CirFix
+# turned into a CSV by recording the input and output signals
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"
 
 # Minimized version of the original testbench.
 # We removed all redundant cycles.
 [[testbenches]]
-name = "orig-min"
+name = "orig_min_tb"
 table = "orig_min_tb.csv"
 
 # A testbench that actually tests all code paths in the circuit
 [[testbenches]]
-name = "complete-min"
+name = "complete_min_tb"
 table = "complete_min_tb.csv"

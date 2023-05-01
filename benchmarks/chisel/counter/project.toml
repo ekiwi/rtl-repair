@@ -1,0 +1,20 @@
+[project]
+directory = "."
+sources = []
+toplevel = "Counter"
+
+[[bugs]]
+name = "bug"
+buggy = "counter_bug.v"
+
+[[testbenches]]
+name = "formal"
+table = "tb_formal.csv"
+
+[[testbenches]]
+name = "full"
+table = "tb_full.csv"
+
+[[testbenches]]
+name = "rand"
+table = "tb_rand.csv"

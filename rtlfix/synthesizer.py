@@ -4,7 +4,10 @@
 
 import subprocess
 import json
+from dataclasses import dataclass
 from pathlib import Path
+
+from benchmarks import Benchmark, TraceTestbench, get_other_sources
 from rtlfix.utils import _root_dir, serialize
 import pyverilog.vparser.ast as vast
 from benchmarks.yosys import to_btor
@@ -15,16 +18,22 @@ _synthesizer_dir = _root_dir / "synthesizer"
 _jar = _synthesizer_dir / _jar_rel
 
 
+@dataclass
+class SynthOptions:
+    solver: str
+    init: str
+    incremental: bool
+
 def _check_jar():
     assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
 
 
-def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incremental: bool):
+def _run_synthesizer(design: Path, testbench: Path, opts: SynthOptions):
     assert design.exists(), f"{design=} does not exist"
     assert testbench.exists(), f"{testbench=} does not exist"
     _check_jar()
-    args = ["--design", str(design), "--testbench", str(testbench), "--solver", solver, "--init", init]
-    if incremental:
+    args = ["--design", str(design), "--testbench", str(testbench), "--solver", opts.solver, "--init", opts.init]
+    if opts.incremental:
         args += ["--incremental"]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
     cmd_str = ' '.join(str(p) for p in cmd)  # for debugging
@@ -37,23 +46,25 @@ def _run_synthesizer(design: Path, testbench: Path, solver: str, init: str, incr
         raise e
 
 
+
 class Synthesizer:
     """ generates assignments to synthesis variables which fix the design according to a provided testbench """
 
     def __init__(self):
         pass
 
-    def run(self, name: str, working_dir: Path, ast: vast.Source, testbench: Path, solver: str, init: str,
-            incremental: bool, additional_sources: list, top: str, include: Path) -> dict:
-        synth_filename = working_dir / name
+    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> dict:
+        assert isinstance(benchmark.testbench, TraceTestbench), f"{benchmark.testbench} : {type(benchmark.testbench)} is not a TraceTestbench"
+
+        # save instrumented AST to disk so that we can call yosys
+        synth_filename = working_dir / f"{benchmark.bug.buggy.stem}.instrumented.v"
         with open(synth_filename, "w") as f:
-            f.write(serialize(ast))
+            f.write(serialize(instrumented_ast))
 
         # convert file and run synthesizer
-        btor_filename = to_btor(working_dir, working_dir / (synth_filename.stem + ".btor"), [synth_filename] + additional_sources, top)
-        result = _run_synthesizer(btor_filename, testbench, solver, init, incremental)
-        status = result["status"]
-        with open(working_dir / "status", "w") as f:
-            f.write(status + "\n")
+        additional_sources = get_other_sources(benchmark)
+        btor_filename = to_btor(working_dir, working_dir / (synth_filename.stem + ".btor"),
+                                [synth_filename] + additional_sources, benchmark.design.top)
+        result = _run_synthesizer(btor_filename, benchmark.testbench.table, opts)
 
         return result

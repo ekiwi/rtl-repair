@@ -1,0 +1,13 @@
+[project]
+directory = "."
+sources = ["first_counter.v"]
+toplevel = "first_counter"
+
+[[bugs]]
+name = "buggy"
+original = "first_counter.v"
+buggy = "first_counter.buggy.v"
+
+[[testbenches]]
+name = "tb"
+table = "tb.csv"

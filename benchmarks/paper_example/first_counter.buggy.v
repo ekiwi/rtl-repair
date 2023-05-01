@@ -8,7 +8,6 @@ module first_counter(
 always@(posedge clock) begin
   if(reset == 1'b1) begin
     overflow <= 1'b0;
-    count <= 4'b0;
   end else if(enable == 1'b1) begin
     count <= count + 1;
   end

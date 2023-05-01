@@ -30,3 +30,6 @@ output = "output_mux_4_1_tb.txt"
 oracle = "oracle_new.txt"
 timeout = 5.0
 
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"

@@ -10,12 +10,17 @@ import os
 import shutil
 import subprocess
 import time
-from collections import OrderedDict
 from multiprocessing import Pool
 from dataclasses import dataclass
 from pathlib import Path
+
+from benchmarks import Benchmark, load_project, get_benchmark
+from benchmarks.result import create_buggy_and_original_diff, write_results
 from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, preprocess
+from rtlfix.synthesizer import SynthOptions
 from rtlfix.templates import *
+
+_ToolName = "rtl-repair"
 
 _supported_solvers = {'z3', 'cvc4', 'yices2', 'boolector', 'bitwuzla', 'optimathsat', 'btormc'}
 Success = "success"
@@ -24,48 +29,52 @@ NoRepair = "no-repair"
 
 
 @dataclass
-class Config:
-    source: Path
-    top: str
-    testbench: Path
-    working_dir: Path
-    solver: str
-    init: str
+class Options:
     show_ast: bool
     parallel: bool
-    incremental: bool
-    additional_sources: list
-    include: Path
+    synth: SynthOptions
 
+@dataclass
+class Config:
+    working_dir: Path
+    benchmark: Benchmark
+    opts: Options
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='Repair Verilog file')
-    parser.add_argument('--source', dest='source', help='Verilog source file', required=True, action='append')
-    parser.add_argument('--testbench', dest='testbench', help='Testbench in CSV format', required=True)
     parser.add_argument('--working-dir', dest='working_dir', help='Working directory, files might be overwritten!',
                         required=True)
+    # benchmark selection
+    parser.add_argument('--project', help='Project TOML file.', required=True)
+    parser.add_argument('--bug', help='Name of the bug from the project TOML.', default=None)
+    parser.add_argument('--testbench', help='Name of the testbench from the project TOML.', default=None)
+
+    # options
     parser.add_argument('--solver', dest='solver', help='z3 or optimathsat', default="z3")
     parser.add_argument('--init', dest='init', help='how should states be initialized? [any], zero or random',
                         default="any")
-    parser.add_argument('--incremental', dest='incremental', help='use incremental solver',
-                        action='store_true')
     parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
                         action='store_true')
     parser.add_argument('--parallel', dest='parallel', help='try to apply repair templates in parallel',
                         action='store_true')
-    parser.add_argument('--top', dest='top', help='name of the toplevel module (may be needed for yosys)')
-    parser.add_argument('--include', help='include directory')
+    parser.add_argument('--incremental', dest='incremental', help='use incremental solver',
+                        action='store_true')
+
+
     args = parser.parse_args()
+
+
+    # benchmark selection
+    project = load_project(Path(args.project))
+    benchmark = get_benchmark(project, args.bug, testbench=args.testbench, use_trace_testbench=True)
+
+    # options
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
-    # we can get multiple sources, but only one file will be repaired
-    all_sources = list(OrderedDict.fromkeys(Path(aa) for aa in args.source))
-    assert len(all_sources) >= 1
-    source = all_sources[0]
-    additional_sources = all_sources[1:]
-    include = None if args.include is None else Path(args.include)
-    return Config(source, args.top, Path(args.testbench), Path(args.working_dir), args.solver, args.init,
-                  args.show_ast, args.parallel, args.incremental, additional_sources, include)
+    synth_opts = SynthOptions(solver = args.solver, init=args.init, incremental=args.incremental)
+    opts = Options(show_ast=args.show_ast, parallel=args.parallel, synth=synth_opts)
+
+    return Config(Path(args.working_dir), benchmark, opts)
 
 
 def create_working_dir(working_dir: Path):
@@ -100,15 +109,16 @@ def try_template(config: Config, ast, prefix: str, template):
 
     # apply template any try to synthesize a solution
     template(ast)
+
+    # try to find a change that fixes the design
     synth_start_time = time.monotonic()
     synth = Synthesizer()
-    result = synth.run(config.source.name, template_dir, ast,
-                       config.testbench, config.solver, config.init, config.incremental,
-                       config.additional_sources, config.top, config.include)
+    result = synth.run(template_dir, config.opts.synth, ast, config.benchmark)
     synth_time = time.monotonic() - synth_start_time
+
     # add some metadata to result
     result["template"] = template_name
-    result["solver"] = find_solver_version(config.solver)
+    result["solver"] = find_solver_version(config.opts.synth.solver)
     result["directory"] = template_dir.name
     status = result["status"]
 
@@ -121,13 +131,13 @@ def try_template(config: Config, ast, prefix: str, template):
         solution = result["solutions"][0]
         # execute synthesized repair
         changes = do_repair(ast, solution["assignment"])
-        result["num_changes"] = len(changes)
+        result["changes"] = len(changes)
         with open(template_dir / "changes.txt", "w") as f:
             f.write(f"{template_name}\n")
             f.write(f"{len(changes)}\n")
             f.write('\n'.join(f"{line}: {a} -> {b}" for line, a, b in changes))
             f.write('\n')
-        repaired_filename = template_dir / (config.source.stem + ".repaired.v")
+        repaired_filename = config.working_dir / (config.benchmark.bug.buggy.stem + ".repaired.v")
         with open(repaired_filename, "w") as f:
             f.write(serialize(ast))
 
@@ -147,8 +157,10 @@ def try_templates_in_parallel(config: Config, ast):
             done, procs = partition(procs, lambda pp: pp.ready())
             for res in (pp.get() for pp in done):
                 if res["status"] in {Success, NoRepair}:
-                    return res["status"], res
-    return CannotRepair, None
+                    return res
+    # cannot repair:
+    res = {'status': CannotRepair, 'template': '', 'changes': -1}
+    return res
 
 
 def partition(elements: list, filter_foo):
@@ -170,47 +182,64 @@ def try_templates_in_sequence(config: Config, ast):
         ast_copy = copy.deepcopy(ast)
         res = try_template(config, ast, prefix, template)
         if res["status"] in {Success, NoRepair}:
-            return res["status"], res
+            return res
         ast = ast_copy
-    return CannotRepair, None
+    # cannot repair:
+    res = {'status': CannotRepair, 'template': '', 'changes': -1 }
+    return res
 
+
+def repair(config: Config):
+    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
+    filename, preprocess_changed = preprocess(config.working_dir, config.benchmark)
+
+    ast = parse_verilog(filename, config.benchmark.design.directory)
+    if config.opts.show_ast:
+        ast.show()
+
+    if config.opts.parallel:
+        result = try_templates_in_parallel(config, ast)
+    else:
+        result = try_templates_in_sequence(config, ast)
+
+    # create repaired file in the case where the synthesizer had to make no changes
+    if result['status'] == NoRepair:
+        # make sure we copy over the repaired file
+        repaired_dst = config.working_dir / f"{config.benchmark.bug.buggy.stem}.repaired.v"
+        shutil.copy(src=filename, dst=repaired_dst)
+        # if the preprocessor made a change and that resulted in not needing any change to fix the benchmark
+        # then we successfully repaired the design with the preprocessor
+        if preprocess_changed:
+            result['template'] = "preprocess"
+            result['changes'] = -1 # unknown for now
+            result['status'] = Success
+        # otherwise the circuit was already correct
+        else:
+            result['template'] = ""
+            result['changes'] = 0
+
+    return result
 
 def main():
-    start_time = time.monotonic()
     config = parse_args()
     create_working_dir(config.working_dir)
 
-    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
-    filename, preprocess_changed = preprocess(config.source, config.additional_sources, config.working_dir, config.include)
+    # create benchmark description to make results self-contained
+    create_buggy_and_original_diff(config.working_dir, config.benchmark)
 
-    ast = parse_verilog(filename, config.include)
-    if config.show_ast:
-        ast.show()
-
-    if config.parallel:
-        status, result = try_templates_in_parallel(config, ast)
-    else:
-        status, result = try_templates_in_sequence(config, ast)
-
-    success = (status == Success) or (status == NoRepair and preprocess_changed)
-    if success:
-        # copy repaired file and result json to working dir
-        if preprocess_changed:
-            status = Success  # fixing things purely through the preprocessor is a kind of success!
-            src_dir = config.working_dir / "0_preprocess"
-            shutil.copy(filename, config.working_dir / (config.source.stem + ".repaired.v"))
-        else:
-            src_dir = config.working_dir / result["directory"]
-            shutil.copy(src_dir / (config.source.stem + ".repaired.v"), config.working_dir)
-        shutil.copy(src_dir / "changes.txt", config.working_dir)
-
-    print(status)
-    with open(config.working_dir / "status", "w") as f:
-        f.write(status + "\n")
+    # run repair
+    start_time = time.monotonic()
+    result = repair(config)
     delta_time = time.monotonic() - start_time
-    with open(config.working_dir / "time", "w") as f:
-        f.write(f"{delta_time:.3f}s\n")
 
+    # save results to disk
+    success = result['status'] == Success or result['status'] == NoRepair
+    repaired = None
+    if success:
+        repaired = config.working_dir / f"{config.benchmark.bug.buggy.stem}.repaired.v"
+        assert repaired.exists()
+    write_results(config.working_dir, config.benchmark, success, repaired=repaired, seconds=delta_time,
+                  tool_name=_ToolName, custom=result)
 
 if __name__ == '__main__':
     main()

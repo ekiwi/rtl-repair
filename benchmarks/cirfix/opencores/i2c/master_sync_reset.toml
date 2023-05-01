@@ -1,0 +1,57 @@
+# We manually changed the reset type from async to sync reset since
+# this is required for RTL-Repair to work.
+# This could be automated in the future.
+[project]
+name = "i2c_master_sync_reset"
+directory = "."
+sources = [
+    "i2c_master_top.sync_reset.v",
+    "i2c_master_byte_ctrl.sync_reset.v",
+    "i2c_master_bit_ctrl.sync_reset.v"
+]
+toplevel = "i2c_master_top"
+
+[[bugs]]
+name = "kgoliya_buggy1"
+original = "i2c_master_bit_ctrl.sync_reset.v"
+buggy = "i2c_master_bit_ctrl_kgoliya_buggy1.sync_reset.v"
+
+[[bugs]]
+name = "buggy"
+original = "i2c_master_top.sync_reset.v"
+buggy = "i2c_master_top_buggy.sync_reset.v"
+
+[[bugs]]
+name = "buggy_v2"
+original = "i2c_master_top.sync_reset.v"
+buggy = "i2c_master_top_buggy_v2.sync_reset.v"
+
+[[bugs]]
+name = "more_buggy"
+original = "i2c_master_top.sync_reset.v"
+buggy = "i2c_master_top_more_buggy.sync_reset.v"
+
+[[testbenches]]
+name = "oracle-full"
+sources = [
+    # for the i2c master we treat the Verilog models as part of the testbench
+    # since they are not synthesizable
+    "wb_master_model.sync_reset.v",
+    "i2c_slave_model.v",
+    "tst_bench_top_t1.sync_reset.v"
+]
+output = "output_tst_bench_top_t1.txt"
+oracle = "oracle.txt"
+timeout = 20.0
+
+# trace recorded by executing the original Verilog testbench converted to use
+# synchronous reset
+[[testbenches]]
+name = "orig_tb_sync_reset"
+table = "orig_tb_sync_reset.csv"
+
+# unfortunatelly there is some synthesis/simulation mismatch due to X-propagation
+# we thus had to alter the testbench trace to fix these X-propagation issues
+[[testbenches]]
+name = "fixed_x_prop_tb"
+table = "fixed_x_prop_tb.csv"

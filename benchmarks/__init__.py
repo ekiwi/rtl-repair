@@ -134,9 +134,13 @@ class Project:
 
 @dataclass
 class Benchmark:
-    project: Project
+    project_name: str
+    design: Design
     bug: Bug
     testbench: Testbench
+    @property
+    def name(self):
+        return f"{self.project_name}_{self.bug.name}_{self.testbench.name}"
 
 
 def parse_path(path: str, base: Path = Path("."), must_exist: bool = False) -> Path:
@@ -150,9 +154,12 @@ def parse_path(path: str, base: Path = Path("."), must_exist: bool = False) -> P
 
 
 def _load_bug(base_dir: Path, dd: dict) -> Bug:
+    original = None
+    if 'original' in dd and len(dd['original']) > 0:
+        original = parse_path(dd['original'], base_dir, True)
     return Bug(
         name=dd['name'],
-        original=parse_path(dd['original'], base_dir, True),
+        original=original,
         buggy=parse_path(dd['buggy'], base_dir, True),
     )
 
@@ -215,54 +222,77 @@ def pick_testbench(project: Project, testbench: str = None) -> Testbench:
     else:
         return next(t for t in project.testbenches if t.name == testbench)
 
+def pick_oracle_testbench(project: Project, testbench: str = None) -> VerilogOracleTestbench:
+    tbs = [tb for tb in project.testbenches if isinstance(tb, VerilogOracleTestbench)]
+    assert len(tbs) > 0, f"No VerilogOracleTestbench available for project {project.name}."
+    if testbench is None:
+        return tbs[0]
+    else:
+        return next(t for t in tbs if t.name == testbench)
+def pick_trace_testbench(project: Project, testbench: str = None) -> TraceTestbench:
+    tbs = [tb for tb in project.testbenches if isinstance(tb, TraceTestbench)]
+    assert len(tbs) > 0, f"No TraceTestbench available for project {project.name}."
+    if testbench is None:
+        return tbs[0]
+    else:
+        return next(t for t in tbs if t.name == testbench)
 
 def get_benchmarks(project: Project, testbench: str = None) -> list:
     tb = pick_testbench(project, testbench)
-    return [Benchmark(project, bb, tb) for bb in project.bugs]
+    return [Benchmark(project.name, project.design, bb, tb) for bb in project.bugs]
 
-def get_benchmark(project: Project, bug_name: str, testbench: str = None) -> Benchmark:
-    tb = pick_testbench(project, testbench)
+def get_benchmark(project: Project, bug_name: str, testbench: str = None, use_trace_testbench: bool = False) -> Benchmark:
+    if use_trace_testbench:
+        tb = pick_trace_testbench(project, testbench)
+    else:
+        tb = pick_testbench(project, testbench)
+
+    if bug_name is None:    # no bug --> create a benchmark from the original circuit
+        original = project.design.sources[0]
+        bb = Bug(name="original", original=original, buggy=original)
+        return Benchmark(project.name, project.design, bb, tb)
+
     for bb in project.bugs:
         if bb.name == bug_name:
-            return Benchmark(project, bb, tb)
+            return Benchmark(project.name, project.design, bb, tb)
     raise KeyError(f"Failed to find bug `{bug_name}`: {[bb.name for bb in project.bugs]}")
 
 def get_other_sources(benchmark: Benchmark) -> list:
     """ returns a list of sources which are not the buggy source """
-    return [s for s in benchmark.project.design.sources if s != benchmark.bug.original]
+    return [s for s in benchmark.design.sources if s != benchmark.bug.original]
 
 def get_benchmark_design(benchmark: Benchmark) -> Design:
     """ replaces the original file with the buggy one """
-    orig = benchmark.project.design
+    orig = benchmark.design
     sources = get_other_sources(benchmark) + [benchmark.bug.buggy]
     return Design(top=orig.top, directory=orig.directory, sources=sources)
 
 def get_seed(benchmark: Benchmark) -> Optional[str]:
     try:
-        return cirfix_seeds[benchmark.project.name][benchmark.bug.name]
+        return cirfix_seeds[benchmark.project_name][benchmark.bug.name]
     except KeyError:
         return None
 
 
 def is_cirfix_paper_benchmark(benchmark: Benchmark) -> bool:
-    return (benchmark.project.name in cirfix_seeds and
-            benchmark.bug.name in cirfix_seeds[benchmark.project.name])
+    return (benchmark.project_name in cirfix_seeds and
+            benchmark.bug.name in cirfix_seeds[benchmark.project_name])
 
 
-def _assert_file_exists(name: str, filename: Path):
+def assert_file_exists(name: str, filename: Path):
     assert filename.exists(), f"{name}: {filename} not found!"
     assert filename.is_file(), f"{name}: {filename} is not a file!"
 
 
-def _assert_dir_exists(name: str, filename: Path):
+def assert_dir_exists(name: str, filename: Path):
     assert filename.exists(), f"{name}: {filename} not found!"
     assert filename.is_dir(), f"{name}: {filename} is not a directory!"
 
 
 def validate_project(project: Project):
-    _assert_dir_exists(project.name, project.design.directory)
+    assert_dir_exists(project.name, project.design.directory)
     for source in project.design.sources:
-        _assert_file_exists(project.name, source)
+        assert_file_exists(project.name, source)
     for bug in project.bugs:
         validate_bug(project, bug)
     for tb in project.testbenches:
@@ -271,8 +301,8 @@ def validate_project(project: Project):
 
 def validate_bug(project: Project, bug: Bug):
     name = f"{project.name}.{bug.name}"
-    _assert_file_exists(name, bug.original)
-    _assert_file_exists(name, bug.buggy)
+    assert_file_exists(name, bug.original)
+    assert_file_exists(name, bug.buggy)
     assert bug.original in project.design.sources, f"{name}: {bug.original} is not a project source!"
 
 
@@ -284,9 +314,9 @@ def validate_testbench(project: Project, testbench: Testbench):
 def validate_oracle_testbench(project: Project, testbench: VerilogOracleTestbench):
     name = f"{project.name}.{testbench.name}"
     for source in testbench.sources:
-        _assert_file_exists(name, source)
+        assert_file_exists(name, source)
         assert source not in project.design.sources, f"{name}: {source} is already a project source!"
-    _assert_file_exists(name, testbench.oracle)
+    assert_file_exists(name, testbench.oracle)
 
 def load_all_projects() -> dict:
     pps = {}

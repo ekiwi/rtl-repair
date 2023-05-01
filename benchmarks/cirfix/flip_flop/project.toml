@@ -20,3 +20,6 @@ output = "output_tff_tb.txt"
 oracle = "oracle.txt"
 timeout = 10.0
 
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"

@@ -18,6 +18,21 @@ name = "wadden_buggy2"
 original = "first_counter_overflow.v"
 buggy = "first_counter_overflow_wadden_buggy2.v"
 
+[[bugs]]
+name = "buggy_all"
+original = "first_counter_overflow.v"
+buggy = "first_counter_buggy_all.v"
+
+[[bugs]]
+name = "buggy_counter"
+original = "first_counter_overflow.v"
+buggy = "first_counter_buggy_counter.v"
+
+[[bugs]]
+name = "buggy_overflow"
+original = "first_counter_overflow.v"
+buggy = "first_counter_buggy_overflow.v"
+
 [[testbenches]]
 name = "oracle-full"
 sources = ["first_counter_tb_t3.v"]
@@ -25,3 +40,14 @@ output = "output_first_counter_tb_t3.txt"
 oracle = "oracle.txt"
 timeout = 20.0
 
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"
+
+# the original testbench never fully tests the `en` signak
+# this testbench includes one additional cycle that stops
+# the counter be de-asserting the `en` signal mid-way through
+# the test
+[[testbenches]]
+name = "en_test_tb"
+table = "en_test_tb.csv"

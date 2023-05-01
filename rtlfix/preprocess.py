@@ -8,16 +8,18 @@ from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 
+from benchmarks import Benchmark, get_other_sources
 from rtlfix import parse_verilog, serialize
 from rtlfix.utils import ensure_block
 from rtlfix.visitor import AstVisitor
 import pyverilog.vparser.ast as vast
 
 
-def preprocess(filename: Path, other_files: list[Path], working_dir: Path, include: Path):
+def preprocess(working_dir: Path, benchmark: Benchmark):
     """ runs a linter on the verilog file and tries to address some issues """
     # create directory
     assert working_dir.exists()
+    include = benchmark.design.directory
     assert include is None or include.exists()
     preprocess_dir = working_dir / "0_preprocess"
     if preprocess_dir.exists():
@@ -27,6 +29,8 @@ def preprocess(filename: Path, other_files: list[Path], working_dir: Path, inclu
     # run linter up to four times
     changed = False
     previous_warnings = []
+    other_files = get_other_sources(benchmark)
+    filename = benchmark.bug.buggy
     for ii in range(4):
         warnings = run_linter(ii, filename, other_files, preprocess_dir, include)
 
@@ -51,12 +55,6 @@ def preprocess(filename: Path, other_files: list[Path], working_dir: Path, inclu
             f.write(serialize(ast))
         filename = fixed_filename
         previous_warnings = warnings
-
-    if changed:
-        with open(preprocess_dir / "changes.txt", "w") as f:
-            f.write("preprocess\n")
-            f.write("-1\n")
-            f.write("TODO: actually export changes!\n")
 
     # return path to preprocessed file
     return filename, changed
