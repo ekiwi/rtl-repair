@@ -54,7 +54,7 @@ TEMPLATE_MUTATIONS = {"increment_by_one": ("Identifier", "Plus"), "decrement_by_
 
 _script_dir = pathlib.Path(__file__).parent.resolve()
 # add root dir in order to be able to load "benchmarks" module
-sys.path.append(str(_script_dir.parent))
+sys.path.append(str(_script_dir.parent.parent))
 import benchmarks
 
 # global cache
