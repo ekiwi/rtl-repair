@@ -168,7 +168,7 @@ def do_run(conf: Config, run: Run) -> bool:
 
 def make_run(conf: Config, bb: benchmarks.Benchmark, seed: str, project_toml: Path, timeout_s: float) -> Run:
     """ helper function to construct a run from common parameters """
-    name = f"{bb.project.name}_{bb.bug.name}_{seed}"
+    name = f"{bb.name}_{seed}"
     return Run(
         name=name,
         working_dir=conf.working_dir / name,
