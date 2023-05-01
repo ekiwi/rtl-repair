@@ -5,13 +5,13 @@
 
 import argparse
 import os
+import sys
 import random
 import shutil
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-import benchmarks
 import concurrent.futures
 
 # check to make sure we have the correct venv activated
@@ -21,6 +21,10 @@ _root_dir = Path(__file__).parent.resolve()
 _prototype_dir = _root_dir / "prototype"
 _repair_py = _prototype_dir / "repair.py"
 
+
+# add _repository_ root to python path to find `benchmarks` module
+sys.path.append(str(_root_dir.parent))
+import benchmarks
 
 @dataclass
 class Config:

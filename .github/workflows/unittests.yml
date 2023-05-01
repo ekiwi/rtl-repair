@@ -131,7 +131,7 @@ jobs:
         cd cirfix
         source venv/bin/activate
         cd prototype
-        python3 repair.py --project=../benchmarks/cirfix/first_counter_overflow --bug=wadden_buggy1 --log --working-dir=first_counter_overflow_wadden_buggy1 --seed="repair_2020-09-23-11:24:14" --simulator=iverilog
+        python3 repair.py --project=../../benchmarks/cirfix/first_counter_overflow --bug=wadden_buggy1 --log --working-dir=first_counter_overflow_wadden_buggy1 --seed="repair_2020-09-23-11:24:14" --simulator=iverilog
 
     - name: Repair padder_ssscrazy_buggy1
       timeout-minutes: 3
@@ -139,7 +139,7 @@ jobs:
         cd cirfix
         source venv/bin/activate
         cd prototype
-        python3 repair.py --project=../benchmarks/cirfix/opencores/sha3/low_throughput_core/padder.toml   --bug=ssscrazy_buggy1 --log --working-dir=padder_ssscrazy_buggy1 --seed="repair_2020-09-24-15:16:49" --simulator=iverilog
+        python3 repair.py --project=../../benchmarks/cirfix/opencores/sha3/low_throughput_core/padder.toml   --bug=ssscrazy_buggy1 --log --working-dir=padder_ssscrazy_buggy1 --seed="repair_2020-09-24-15:16:49" --simulator=iverilog
 
     - name: Repair first_counter_overflow_wadden_buggy1 using the run.py script
       timeout-minutes: 3
