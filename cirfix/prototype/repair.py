@@ -81,26 +81,23 @@ def parse_path(base: Path, path: str) -> Path:
 
 def load_benchmark(project_path: Path, bug_name: str, testbench_name: str):
     project = benchmarks.load_project(project_path)
-    bugs = {b.name: b for b in project.bugs}
-    bug = bugs[bug_name]
-    if testbench_name is None:
-        testbench = project.testbenches[0]
-    else:
-        testbenches = {t.name: t for t in project.testbenches}
-        testbench = testbenches[testbench_name]
+    benchmark = benchmarks.get_benchmark(project, bug_name, testbench_name, use_trace_testbench=False)
 
     # it is important for the testbench sources to come first as they might have a timescale
-    verilog_files = testbench.sources + [ff for ff in project.sources if ff != bug.original] + [bug.buggy]
+    other_sources = benchmarks.get_other_sources(benchmark)
+    assert isinstance(benchmark.testbench, benchmarks.VerilogOracleTestbench)
+    verilog_files = benchmark.testbench.sources + other_sources + [benchmark.bug.buggy]
 
+    # translate from our common benchmarks.Benchmark format to the local cirfix benchmark format
     bb = Benchmark(
-        src_file=bug.buggy,
-        output=testbench.output,
-        project_dir=project.directory,
-        oracle=testbench.oracle,
-        timeout=testbench.timeout,
+        src_file=benchmark.bug.buggy,
+        output=benchmark.testbench.output,
+        project_dir=benchmark.design.directory,
+        oracle=benchmark.testbench.oracle,
+        timeout=benchmark.testbench.timeout,
         verilog_files=verilog_files
     )
-    return bb, bug.original
+    return bb, benchmark.bug.original
 
 
 def validate_benchmark(benchmark: Benchmark):
