@@ -56,20 +56,12 @@ _script_dir = pathlib.Path(__file__).parent.resolve()
 # add root dir in order to be able to load "benchmarks" module
 sys.path.append(str(_script_dir.parent.parent))
 import benchmarks
+import benchmarks.run
+from benchmarks import Benchmark
 
 # global cache
 GENOME_FITNESS_CACHE = {}
 FITNESS_EVAL_TIMES = []
-
-
-@dataclass
-class Benchmark:
-    src_file: Path
-    output: str
-    project_dir: Path
-    oracle: Path
-    timeout: float
-    verilog_files: list = field(default_factory=list)
 
 
 def parse_path(base: Path, path: str) -> Path:
@@ -79,34 +71,10 @@ def parse_path(base: Path, path: str) -> Path:
         return base / path
 
 
-def load_benchmark(project_path: Path, bug_name: str, testbench_name: str):
+def load_benchmark(project_path: Path, bug_name: str, testbench_name: str) -> Benchmark:
     project = benchmarks.load_project(project_path)
     benchmark = benchmarks.get_benchmark(project, bug_name, testbench_name, use_trace_testbench=False)
-
-    # it is important for the testbench sources to come first as they might have a timescale
-    other_sources = benchmarks.get_other_sources(benchmark)
-    assert isinstance(benchmark.testbench, benchmarks.VerilogOracleTestbench)
-    verilog_files = benchmark.testbench.sources + other_sources + [benchmark.bug.buggy]
-
-    # translate from our common benchmarks.Benchmark format to the local cirfix benchmark format
-    bb = Benchmark(
-        src_file=benchmark.bug.buggy,
-        output=benchmark.testbench.output,
-        project_dir=benchmark.design.directory,
-        oracle=benchmark.testbench.oracle,
-        timeout=benchmark.testbench.timeout,
-        verilog_files=verilog_files
-    )
-    return bb, benchmark.bug.original
-
-
-def validate_benchmark(benchmark: Benchmark):
-    assert benchmark.src_file.exists(), f"{benchmark.src_file} does not exist"
-    assert benchmark.project_dir.exists(), f"{benchmark.project_dir} does not exist"
-    assert benchmark.oracle.exists(), f"{benchmark.oracle} does not exist"
-    for ff in benchmark.verilog_files:
-        assert ff.exists(), f"{ff} does not exist"
-
+    return benchmark
 
 @dataclass
 class Config:
@@ -180,7 +148,6 @@ def validate_config(conf: Config):
         f"ERROR: The mutation operator rates should add up to 1. (is {mutation_op_rate})"
     assert abs(conf.crossover_rate + conf.mutation_rate - 1) < 0.05, \
         "ERROR: The mutation operator and crossover rates should add up to 1."
-    validate_benchmark(conf.benchmark)
 
 
 TIME_NOW = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
@@ -843,88 +810,31 @@ def tournament_selection(mutation_op, codegen, orig_ast, popn):
     return copy.deepcopy(winner_patchlist), winner_ast
 
 
-def run_with_iverilog(verbose: bool, working_dir: Path, timeout: float, files: list, stdout, include_dir: Path,
-                      compile_timeout: float) -> bool:
-    cmd = ['iverilog', '-g2012']
-    if include_dir is not None:
-        cmd += ["-I", str(include_dir.resolve())]
-    cmd += files
-    if verbose:
-        print(" ".join(str(c) for c in cmd))
-    # while iverilog generally does not timeout, we add the timeout here for feature parity with the VCS version
-    try:
-        r = subprocess.run(cmd, cwd=working_dir, check=False, stdout=stdout, timeout=compile_timeout)
-        compiled_successfully = r.returncode == 0
-    except subprocess.TimeoutExpired:
-        compiled_successfully = False
-    # if the simulation does not compile, we won't run anything
-    if compiled_successfully:
-        try:
-            if verbose:
-                print('./a.out')
-            r = subprocess.run(['./a.out'], cwd=working_dir, shell=True, timeout=timeout, stdout=stdout)
-            success = r.returncode == 0
-        except subprocess.TimeoutExpired:
-            success = False  # failed
-        os.remove(os.path.join(working_dir, 'a.out'))
-        return  success
-    else:
-        return False # failed to compile
-
-
-_vcs_flags = ["-sverilog", "-full64"]
-
-
-def run_with_vcs(verbose: bool, working_dir: Path, timeout: float, files: list, stdout, include_dir: Path,
-                 compile_timeout: float) -> bool:
-    cmd = ["vcs"] + _vcs_flags
-    if include_dir is not None:
-        cmd += [f"+incdir+{str(include_dir.resolve())}"]
-    cmd += files
-    if verbose:
-        print(" ".join(str(c) for c in cmd))
-    # VCS can take hours to compile for some changes ...
-    try:
-        r = subprocess.run(cmd, cwd=working_dir, check=False, stdout=stdout, timeout=compile_timeout)
-        compiled_successfully = r.returncode == 0
-    except subprocess.TimeoutExpired:
-        compiled_successfully = False
-    # if the simulation does not compile, we won't run anything
-    if compiled_successfully:
-        try:
-            if verbose:
-                print('./simv')
-            r = subprocess.run(['./simv'], cwd=working_dir, shell=False, timeout=timeout, stdout=stdout)
-            success = r.returncode == 0
-        except subprocess.TimeoutExpired:
-            success = False # failed
-        return success
-    else:
-        return False # failed to compile
-
-
 def run(conf: Config, repair_file: Path = None, verbose: bool = False) -> Path:
-    # by default, we just run the benchmark
+    # by default, we just run the buggy file
     if repair_file is None:
-        repair_file = conf.benchmark.src_file
+        repair_file = conf.benchmark.bug.buggy
 
     benchmark = conf.benchmark
+    assert isinstance(benchmark.testbench, benchmarks.VerilogOracleTestbench)
     # make sure there is no output, delete it if necessary
-    output = conf.working_dir / benchmark.output
+    output = conf.working_dir / benchmark.testbench.output
     if output.exists():
         os.remove(output)
 
-    new_files = [ff for ff in benchmark.verilog_files if ff != benchmark.src_file] + [repair_file]
-    files = [str(ff.resolve()) for ff in new_files]
-    stdout = None if (conf.verbose or verbose) else subprocess.PIPE
-    include_dir = benchmark.project_dir
+    files = benchmarks.get_other_sources(benchmark) + [repair_file] + benchmark.testbench.sources
+    # make sure file paths are absolute since relative paths won't work from the working directory
+    files = [f.resolve() for f in files]
+    run_conf = benchmarks.run.RunConf(
+        include_dir=benchmark.design.directory,
+        timeout=benchmark.testbench.timeout,
+        compile_timeout=conf.simulator_compile_timeout,
+        verbose=conf.verbose,
+        show_stdout=conf.verbose or verbose,
+        defines=[]
+    )
 
-    if conf.simulator == "vcs":
-        success = run_with_vcs(conf.verbose, conf.working_dir, benchmark.timeout, files, stdout, include_dir,
-                                conf.simulator_compile_timeout)
-    else:
-        success = run_with_iverilog(conf.verbose, conf.working_dir, benchmark.timeout, files, stdout, include_dir,
-                                    conf.simulator_compile_timeout)
+    success = benchmarks.run.run(working_dir=conf.working_dir, sim=conf.simulator, files=files, conf=run_conf)
 
     # if the simulation crashed or timed out, we want to remove any half-finished output that may exist
     if not success:
@@ -938,6 +848,7 @@ def run(conf: Config, repair_file: Path = None, verbose: bool = False) -> Path:
 
 def calc_candidate_fitness(conf: Config, fileName: Path):
     benchmark = conf.benchmark
+    assert isinstance(benchmark.testbench, benchmarks.VerilogOracleTestbench)
 
     if conf.verbose:
         print("Running simulation")
@@ -951,7 +862,7 @@ def calc_candidate_fitness(conf: Config, fileName: Path):
         return 0, t_finish - t_start  # if the code does not compile, return 0
         # return math.inf
 
-    with open(benchmark.oracle, "r") as f:
+    with open(benchmark.testbench.oracle, "r") as f:
         oracle_lines = f.readlines()
 
     with open(output, "r") as f:
@@ -993,7 +904,8 @@ def strip_bits(bits):
 
 
 def get_output_mismatch(benchmark: Benchmark, output: Path):
-    with open(benchmark.oracle, "r") as f:
+    assert isinstance(benchmark.testbench, benchmarks.VerilogOracleTestbench)
+    with open(benchmark.testbench.oracle, "r") as f:
         oracle = f.readlines()
 
     with open(output, "r") as f:
@@ -1104,7 +1016,7 @@ def repair_found(conf: Config, log_file, code: str, patch_list, start_time, muta
         print(code)
         print(patch_list)
 
-    with open(conf.working_dir / (conf.benchmark.src_file.stem + ".repaired.v"), "w") as f:
+    with open(conf.working_dir / (conf.benchmark.bug.buggy.stem + ".repaired.v"), "w") as f:
         f.write(code)
     with open(conf.working_dir / "patch.txt", "w") as f:
         f.write(str(patch_list) + "\n")
@@ -1123,14 +1035,14 @@ def repair_found(conf: Config, log_file, code: str, patch_list, start_time, muta
     print("Minimized patch: %s" % str(minimized))
     with open(conf.working_dir / "minimized.txt", "w") as f:
         f.write(str(minimized) + "\n")
-    min_repaired_file = conf.working_dir / (conf.benchmark.src_file.stem + ".repaired.min.v")
+    min_repaired_file = conf.working_dir / (conf.benchmark.bug.buggy.stem + ".repaired.min.v")
     with open(min_repaired_file, "w") as f:
         new_ast = mutation_op.ast_from_patchlist(ast, minimized)
         min_code = codegen.visit(new_ast)
         f.write(min_code)
 
     # generate diff if possible
-    original_file = conf.working_dir / (conf.benchmark.src_file.stem + ".v")
+    original_file = conf.working_dir / (conf.benchmark.bug.original.stem + ".v")
     do_diff(original_file, min_repaired_file, conf.working_dir / "patch_diff.txt")
 
     if log_file:
@@ -1176,7 +1088,7 @@ def main():
     if args.seed is not None:
         SEED = args.seed
 
-    benchmark, original_file = load_benchmark(Path(args.project), args.bug, args.testbench)
+    benchmark = load_benchmark(Path(args.project), args.bug, args.testbench)
     conf = load_config(Path(args.config), Path(args.working_dir), benchmark, args.simulator,
                        args.simulator_compile_timeout)
     conf.verbose = args.verbose
@@ -1195,8 +1107,8 @@ def main():
     codegen = ASTCodeGenerator()
     # parse the files (in filelist) to ASTs (PyVerilog ast)
 
-    include_dir = str(benchmark.project_dir.resolve())
-    ast, directives = parse([benchmark.src_file],
+    include_dir = str(benchmark.design.directory.resolve())
+    ast, directives = parse([benchmark.bug.buggy],
                             preprocess_include=[include_dir],
                             preprocess_define=args.define)
 
@@ -1206,18 +1118,18 @@ def main():
         ast.show()
         print(src_code)
         print("\n\n")
-    source_copy = conf.working_dir / (conf.benchmark.src_file.stem + ".v")
+    source_copy = conf.working_dir / (conf.benchmark.bug.buggy.stem + ".v")
     with open(source_copy, "w") as f:
         f.write(src_code)
 
     # show the bug if the original file exists
-    if original_file.exists():
+    if conf.benchmark.bug.original.exists():
         # load with pyverilog and serialize for better diffing
-        original_ast, _ = parse([original_file],
+        original_ast, _ = parse([conf.benchmark.bug.original],
                                 preprocess_include=[include_dir],
                                 preprocess_define=args.define)
         original_src_code = codegen.visit(original_ast)
-        original_copy = conf.working_dir / original_file.name
+        original_copy = conf.working_dir / conf.benchmark.bug.original.name
         with open(original_copy, 'w') as f:
             f.write(original_src_code)
         do_diff(original_copy, source_copy, conf.working_dir / "bug_diff.txt")
@@ -1252,7 +1164,7 @@ def main():
         exit(0)
 
     # calculate fitness of the original buggy program
-    orig_fitness, sim_time = calc_candidate_fitness(conf, benchmark.src_file)
+    orig_fitness, sim_time = calc_candidate_fitness(conf, benchmark.bug.buggy)
     global FITNESS_EVAL_TIMES
     FITNESS_EVAL_TIMES.append(sim_time)
     GENOME_FITNESS_CACHE[str([])] = orig_fitness
@@ -1268,10 +1180,10 @@ def main():
     if args.log:
         log_file = open(conf.working_dir / "log.txt", 'w')
         log_file.write("SEED:\n\t %s\n" % SEED)
-        log_file.write("SOURCE FILE:\n\t %s\n" % benchmark.src_file)
-        log_file.write("benchmark.project_dir:\n\t %s\n" % benchmark.project_dir)
+        log_file.write("SOURCE FILE:\n\t %s\n" % benchmark.bug.buggy)
+        log_file.write("benchmark.project_dir:\n\t %s\n" % benchmark.design.directory)
         log_file.write("conf.fitness_mode:\n\t %s\n" % conf.fitness_mode)
-        log_file.write("ORACLE:\n\t %s\n" % benchmark.oracle)
+        log_file.write("ORACLE:\n\t %s\n" % benchmark.testbench.oracle)
         log_file.write("PARAMETERS:\n")
         log_file.write("\tgens=%d\n" % conf.gens)
         log_file.write("\tpopsize=%d\n" % conf.popsize)

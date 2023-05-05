@@ -27,7 +27,7 @@ def run(working_dir: Path, sim: str, files: list, conf: RunConf) -> bool:
     if sim == 'vcs':
         return run_with_vcs(working_dir, files, conf)
     elif sim == 'iverilog':
-        run_with_iverilog(working_dir, files, conf)
+        return run_with_iverilog(working_dir, files, conf)
     else:
         raise NotImplementedError(f"Simulator `{sim}` is not supported! Try `vcs` or `iverilog`!")
 
