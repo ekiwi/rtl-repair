@@ -57,6 +57,7 @@ _script_dir = pathlib.Path(__file__).parent.resolve()
 sys.path.append(str(_script_dir.parent.parent))
 import benchmarks
 import benchmarks.run
+import benchmarks.result
 from benchmarks import Benchmark
 
 # global cache
@@ -1016,15 +1017,14 @@ def repair_found(conf: Config, log_file, code: str, patch_list, start_time, muta
         print(code)
         print(patch_list)
 
-    with open(conf.working_dir / (conf.benchmark.bug.buggy.stem + ".repaired.v"), "w") as f:
+    repaired_filename = conf.working_dir / (conf.benchmark.bug.buggy.stem + ".repaired.v")
+    with open(repaired_filename, "w") as f:
         f.write(code)
     with open(conf.working_dir / "patch.txt", "w") as f:
         f.write(str(patch_list) + "\n")
 
     total_time = time.time() - start_time
     print("TOTAL TIME TAKEN TO FIND REPAIR = %f" % total_time)
-    with open(conf.working_dir / "time.txt", "w") as f:
-        f.write(str(total_time) + "\n")
 
     if log_file:
         log_file.write("\n\n######## REPAIR FOUND ########\n\t\t%s\n" % str(patch_list))
@@ -1041,22 +1041,19 @@ def repair_found(conf: Config, log_file, code: str, patch_list, start_time, muta
         min_code = codegen.visit(new_ast)
         f.write(min_code)
 
-    # generate diff if possible
-    original_file = conf.working_dir / (conf.benchmark.bug.original.stem + ".v")
-    do_diff(original_file, min_repaired_file, conf.working_dir / "patch_diff.txt")
 
     if log_file:
         log_file.write("Minimized patch: %s\n" % str(minimized))
         log_file.close()
 
-
-def do_diff(file_a: Path, file_b: Path, output_file: Path):
-    cmd = "diff"
-    r = subprocess.run(["which", cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if r.returncode == 0:
-        with open(output_file, 'wb') as f:
-            subprocess.run(["diff", str(file_a.resolve()), str(file_b.resolve())], stdout=f)
-
+    # generate standardized toml
+    solutions = [
+        (repaired_filename, {'minimized': False}),
+        (min_repaired_file, {'minimized': True}),
+    ]
+    success = True # if we get here, we did not time out!
+    benchmarks.result.write_results(conf.working_dir, conf.benchmark, success,
+                                    repaired=solutions, seconds=total_time, tool_name='cirfix')
 
 def main():
     global SEED
@@ -1104,6 +1101,10 @@ def main():
     # make sure the configuration is valid
     validate_config(conf)
 
+    # create benchmark description to make results self-contained
+    benchmarks.result.create_buggy_and_original_diff(conf.working_dir, conf.benchmark)
+
+
     codegen = ASTCodeGenerator()
     # parse the files (in filelist) to ASTs (PyVerilog ast)
 
@@ -1118,21 +1119,6 @@ def main():
         ast.show()
         print(src_code)
         print("\n\n")
-    source_copy = conf.working_dir / (conf.benchmark.bug.buggy.stem + ".v")
-    with open(source_copy, "w") as f:
-        f.write(src_code)
-
-    # show the bug if the original file exists
-    if conf.benchmark.bug.original.exists():
-        # load with pyverilog and serialize for better diffing
-        original_ast, _ = parse([conf.benchmark.bug.original],
-                                preprocess_include=[include_dir],
-                                preprocess_define=args.define)
-        original_src_code = codegen.visit(original_ast)
-        original_copy = conf.working_dir / conf.benchmark.bug.original.name
-        with open(original_copy, 'w') as f:
-            f.write(original_src_code)
-        do_diff(original_copy, source_copy, conf.working_dir / "bug_diff.txt")
 
     # we exclude initialization from the total time since we are printing out
     # some debug information that isn't essential
