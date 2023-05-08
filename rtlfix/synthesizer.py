@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from benchmarks import Benchmark, TraceTestbench, get_other_sources
-from rtlfix.utils import _root_dir, serialize
+from rtlfix.utils import _root_dir, serialize, Status, status_name_to_enum
 import pyverilog.vparser.ast as vast
 from benchmarks.yosys import to_btor
 
@@ -28,13 +28,15 @@ def _check_jar():
     assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
 
 
-def _run_synthesizer(design: Path, testbench: Path, opts: SynthOptions):
+def _run_synthesizer(design: Path, testbench: Path, opts: SynthOptions) -> dict:
     assert design.exists(), f"{design=} does not exist"
     assert testbench.exists(), f"{testbench=} does not exist"
     _check_jar()
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", opts.solver, "--init", opts.init]
     if opts.incremental:
         args += ["--incremental"]
+    # test: multiple solutions
+    # args += ["--sample-solutions", "2"]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
     cmd_str = ' '.join(str(p) for p in cmd)  # for debugging
     r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
@@ -53,7 +55,7 @@ class Synthesizer:
     def __init__(self):
         pass
 
-    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> dict:
+    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> (Status, list):
         assert isinstance(benchmark.testbench, TraceTestbench), f"{benchmark.testbench} : {type(benchmark.testbench)} is not a TraceTestbench"
 
         # save instrumented AST to disk so that we can call yosys
@@ -67,4 +69,9 @@ class Synthesizer:
                                 [synth_filename] + additional_sources, benchmark.design.top)
         result = _run_synthesizer(btor_filename, benchmark.testbench.table, opts)
 
-        return result
+        status = status_name_to_enum[result['status']]
+        solutions = []
+        if status == Status.Success:
+            solutions = result['solutions']
+
+        return status, solutions

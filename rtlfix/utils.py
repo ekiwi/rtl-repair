@@ -4,6 +4,7 @@
 
 
 from pathlib import Path
+from enum import Enum, unique
 import pyverilog.vparser.ast as vast
 from pyverilog.utils.identifiervisitor import getIdentifiers
 from pyverilog.vparser.parser import parse
@@ -12,6 +13,14 @@ from pyverilog.ast_code_generator.codegen import ASTCodeGenerator
 _script_dir = Path(__file__).parent.resolve()
 _root_dir = _script_dir.parent.resolve()
 _parser_tmp_dir = _root_dir / ".pyverilog"
+
+@unique
+class Status(Enum):
+    NoRepair = 'no-repair'
+    CannotRepair = 'cannot-repair'
+    Success = 'success'
+
+status_name_to_enum = {e.value: e for e in Status}
 
 
 def parse_verilog(filename: Path, include: Path = None) -> vast.Source:

@@ -73,8 +73,9 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
         dd = tomli.load(ff)
     status = dd['custom']['status']
     if dd['result']['success']:
-        template = dd['custom']['template']
-        changes = dd['custom']['changes']
+        repairs = dd['repairs']
+        template = repairs[0]['template']
+        changes = repairs[0]['changes']
     else:
         changes = 0
         template = None

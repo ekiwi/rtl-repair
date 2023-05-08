@@ -20,11 +20,8 @@ class Result:
     seconds: float
 
 
-def write_results(working_dir: Path, benchmark: Benchmark, success: bool, repaired: Path, seconds: float, tool_name: str, custom: dict):
+def write_results(working_dir: Path, benchmark: Benchmark, success: bool, repaired: list, seconds: float, tool_name: str, custom: dict = None):
     """ Writes the results to the working directory. """
-    if success:
-        assert_file_exists("repaired Verilog file", repaired)
-
     with open(working_dir / "result.toml", 'w') as ff:
         print("[result]", file=ff)
         print(f'tool="{tool_name}"', file=ff)
@@ -46,18 +43,31 @@ def write_results(working_dir: Path, benchmark: Benchmark, success: bool, repair
         if original and original.exists():
             print_filename("original", original)
 
+
         # do we have a repaired file?
-        if success:
-            print_filename("repaired", repaired)
+        if success: assert len(repaired) > 0, f"Successful, but a repair is missing!"
+        for rep_info in repaired:
+            print("\n[[repairs]]", file=ff)
+            if isinstance(rep_info, Path):
+                rep_file, meta_data = rep_info, None
+            else:
+                rep_file, meta_data = rep_info
+            print_filename("name", rep_file)
             if original and original.exists():
-                repair_diff = working_dir / "repair_diff.txt"
-                do_diff(original, repaired, repair_diff)
-                print_filename("repair", repair_diff)
+                repair_diff = working_dir / f"{rep_file.stem}.diff.txt"
+                do_diff(original, rep_file, repair_diff)
+                print_filename("diff", repair_diff)
+            if meta_data:
+                print("# tool specific meta-data", file=ff)
+                _print_custom_key_values(meta_data, ff)
 
         if custom is not None and len(custom) > 0:
             print("\n[custom]", file=ff)
-            for key, value in custom.items():
-                print(f'{key}={_to_toml_str(value)}', file=ff)
+            _print_custom_key_values(custom, ff)
+
+def _print_custom_key_values(cc: dict, ff):
+    for kk, vv in cc.items():
+        print(f'{kk}={_to_toml_str(vv)}', file=ff)
 
 def _to_toml_str(value) -> str:
     if isinstance(value, str):
