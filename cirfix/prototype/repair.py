@@ -9,7 +9,7 @@ import copy
 import random
 import time
 from datetime import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 import tomli
@@ -81,6 +81,7 @@ def load_benchmark(project_path: Path, bug_name: str, testbench_name: str) -> Be
 class Config:
     working_dir: Path
     benchmark: Benchmark
+    seed: str
     gens: int = 5
     popsize: int = 200
     restarts: int = 1
@@ -99,12 +100,18 @@ class Config:
     simulator_compile_timeout: float = 60 * 2 # 2 minute timeout by default
 
 
-def load_config(filename: Path, working_dir: Path, benchmark: Benchmark, sim: str, simulator_compile_timeout: float) -> Config:
+def config_options_to_dict(conf: Config) -> dict:
+    _skip = {'working_dir', 'benchmark'}
+    return { field.name:  getattr(conf, field.name) for field in fields(conf) if field.name not in _skip }
+
+
+def load_config(filename: Path, working_dir: Path, benchmark: Benchmark, sim: str, simulator_compile_timeout: float, seed: str) -> Config:
     with open(filename, 'rb') as ff:
         dd = tomli.load(ff)
     conf = Config(
         working_dir=working_dir,
-        benchmark=benchmark
+        benchmark=benchmark,
+        seed=seed,
     )
     if "fitness_mode" in dd:
         conf.fitness_mode = dd["fitness_mode"]
@@ -1054,7 +1061,8 @@ def repair_found(conf: Config, log_file, code: str, patch_list, start_time, muta
     ]
     success = True # if we get here, we did not time out!
     benchmarks.result.write_results(conf.working_dir, conf.benchmark, success,
-                                    repaired=solutions, seconds=total_time, tool_name='cirfix')
+                                    repaired=solutions, seconds=total_time, tool_name='cirfix',
+                                    custom=config_options_to_dict(conf))
 
 def main():
     global SEED
@@ -1088,7 +1096,7 @@ def main():
 
     benchmark = load_benchmark(Path(args.project), args.bug, args.testbench)
     conf = load_config(Path(args.config), Path(args.working_dir), benchmark, args.simulator,
-                       args.simulator_compile_timeout)
+                       args.simulator_compile_timeout, seed=SEED)
     conf.verbose = args.verbose
     # remove working dir content if it exists
     if conf.working_dir.exists():
