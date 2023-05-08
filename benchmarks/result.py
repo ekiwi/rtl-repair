@@ -78,6 +78,8 @@ def _to_toml_str(value) -> str:
         return str(value).lower()
     if isinstance(value, int):
         return str(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_to_toml_str(ii) for ii in value) + "]"
     # turn into string by default
     return f'"{value}"'
     #raise NotImplementedError(f"Unsupported type: {type(value)} ({value})")

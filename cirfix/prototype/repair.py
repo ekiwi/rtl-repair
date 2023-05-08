@@ -1047,9 +1047,10 @@ def repair_found(conf: Config, log_file, code: str, patch_list, start_time, muta
         log_file.close()
 
     # generate standardized toml
+    repaired_is_minimized = minimized == patch_list
     solutions = [
-        (repaired_filename, {'minimized': False}),
-        (min_repaired_file, {'minimized': True}),
+        (repaired_filename, {'minimized': repaired_is_minimized, 'patch': [str(p) for p in patch_list]}),
+        (min_repaired_file, {'minimized': True, 'patch': [str(p) for p in minimized]}),
     ]
     success = True # if we get here, we did not time out!
     benchmarks.result.write_results(conf.working_dir, conf.benchmark, success,
