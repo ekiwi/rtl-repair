@@ -2,7 +2,7 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
-# database of repairs from different tools
+# check repairs
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,22 +11,6 @@ from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, loa
     assert_file_exists, assert_dir_exists
 from benchmarks.yosys import to_gatelevel_netlist
 from benchmarks.run import run, RunConf
-
-
-@dataclass
-class Repair:
-    benchmark: str
-    bug: str
-
-
-cirfix_repairs = {
-
-}
-
-
-repairs = {
-    "cirfix": cirfix_repairs
-}
 
 def parse_csv_line(line: str) -> list:
     return [n.strip() for n in line.split(',')]
