@@ -1062,9 +1062,9 @@ def repair_found(conf: Config, log_file, code: str, patch_list, start_time, muta
         (min_repaired_file, {'minimized': True, 'patch': [str(p) for p in minimized]}),
     ]
     success = True # if we get here, we did not time out!
-    benchmarks.result.write_results(conf.working_dir, conf.benchmark, success,
-                                    repaired=solutions, seconds=total_time, tool_name='cirfix',
-                                    custom=config_options_to_dict(conf))
+    benchmarks.result.write_result(conf.working_dir, conf.benchmark, success,
+                                   repaired=solutions, seconds=total_time, tool_name='cirfix',
+                                   custom=config_options_to_dict(conf))
 
 def main():
     global SEED

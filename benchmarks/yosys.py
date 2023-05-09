@@ -46,10 +46,14 @@ def _read_sources(sources: list, top: str) -> list:
         read_cmd += [f"hierarchy -top {top}"]
     return read_cmd
 
-def _run_yosys(working_dir: Path, yosys_cmds: list) -> str:
+def _run_yosys(working_dir: Path, yosys_cmds: list, logfile = None) -> str:
     cmd = ["yosys", "-p", " ; ".join(yosys_cmds)]
-    r = subprocess.run(cmd, check=True, cwd=working_dir, stdout=subprocess.PIPE)
-    return r.stdout.decode('utf-8')
+    stderr = None if logfile is None else logfile
+    r = subprocess.run(cmd, check=True, cwd=working_dir, stdout=subprocess.PIPE, stderr=stderr)
+    stdout = r.stdout.decode('utf-8')
+    if logfile is not None:
+        print(stdout, file=logfile)
+    return stdout
 
 def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str = None):
     _check_exists(working_dir, sources)
@@ -60,11 +64,11 @@ def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str = None):
     assert btor_name.exists()
     return btor_name
 
-def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: str = None):
+def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: str = None, logfile = None):
     _check_exists(working_dir, sources)
     _require_yosys()
     yosys_cmd = _read_sources(sources, top) + ["synth", f"write_verilog {output.resolve()}"]
-    _run_yosys(working_dir, yosys_cmd)
+    _run_yosys(working_dir, yosys_cmd, logfile)
     assert output.exists()
     return output
 

@@ -5,22 +5,65 @@
 # contains code to save and load benchmark results in a unified format
 
 import subprocess
-from dataclasses import dataclass
+import tomli
+from dataclasses import dataclass, field
 from pathlib import Path
 from pyverilog.ast_code_generator.codegen import ASTCodeGenerator
 from pyverilog.vparser.parser import parse
-from benchmarks import Benchmark, assert_file_exists, assert_dir_exists
+from benchmarks import Benchmark, assert_file_exists, assert_dir_exists, parse_path
 
 
 @dataclass
+class Repair:
+    filename: Path
+    diff: Path = None
+    meta: dict = field(default_factory=dict)
+
+@dataclass
 class Result:
+    tool: str
     project_name: str
     bug_name: str
     success: bool
     seconds: float
+    buggy: Path = None
+    original: Path = None
+    repairs: list[Repair] = field(default_factory=list)
+    custom: dict = field(default_factory=dict)
+    @property
+    def result_name(self) -> str:
+        return f"{self.tool}.{self.project_name}.{self.bug_name}"
 
 
-def write_results(working_dir: Path, benchmark: Benchmark, success: bool, repaired: list, seconds: float, tool_name: str, custom: dict = None):
+def load_result(filename: Path) -> Result:
+    assert_file_exists("result file", filename)
+    with open(filename, 'rb') as ff:
+        dd = tomli.load(ff)
+    base_dir = filename.parent
+    assert_dir_exists("base dir", base_dir)
+
+    if 'repairs' not in dd: dd['repairs'] = []
+    repairs = [Repair(
+        filename = parse_path(rr['name'], base_dir, must_exist=True),
+        diff = parse_path(rr['diff'], base_dir, must_exist=True) if 'diff' in rr else None,
+        meta = rr['meta'] if 'meta' in rr else {},
+    ) for rr in dd['repairs']]
+
+    res = dd['result']
+    result = Result(
+        tool = res['tool'],
+        project_name = res['project'],
+        bug_name = res['bug'],
+        success = res['success'],
+        seconds = res['seconds'],
+        buggy = parse_path(res['buggy'], base_dir, must_exist=True) if 'buggy' in res else None,
+        original = parse_path(res['original'], base_dir, must_exist=True) if 'original' in res else None,
+        repairs = repairs,
+        custom = dd['custom'] if 'custom' in dd else {},
+    )
+    return result
+
+def write_result(working_dir: Path, benchmark: Benchmark, success: bool, repaired: list, seconds: float, tool_name: str, custom: dict = None):
     """ Writes the results to the working directory. """
     with open(working_dir / "result.toml", 'w') as ff:
         print("[result]", file=ff)

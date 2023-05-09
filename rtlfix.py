@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from benchmarks import Benchmark, load_project, get_benchmark
-from benchmarks.result import create_buggy_and_original_diff, write_results
+from benchmarks.result import create_buggy_and_original_diff, write_result
 from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, preprocess, SynthOptions, Status
 from rtlfix.templates import *
 
@@ -216,7 +216,7 @@ def main():
 
     # save results to disk
     success = status != Status.CannotRepair
-    write_results(config.working_dir, config.benchmark, success,
+    write_result(config.working_dir, config.benchmark, success,
                   repaired=solutions, seconds=delta_time, tool_name=_ToolName,
                   custom={'status': status.value})
 
