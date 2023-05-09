@@ -1,0 +1,41 @@
+[result]
+tool="cirfix"
+project="mux_4_1"
+bug="wadden_buggy2"
+success=true
+seconds=18843.225210428238
+buggy="mux_4_1_wadden_buggy2.v"
+original="mux_4_1.v"
+
+[[repairs]]
+name="mux_4_1_wadden_buggy2.repaired.v"
+diff="mux_4_1_wadden_buggy2.repaired.diff.txt"
+# tool specific meta-data
+minimized=false
+patch=["template(nonblocking_to_blocking,70)", "replace(71,71)", "insert(70,52)", "insert(70,52)", "replace(76,37)"]
+
+[[repairs]]
+name="mux_4_1_wadden_buggy2.repaired.min.v"
+diff="mux_4_1_wadden_buggy2.repaired.min.diff.txt"
+# tool specific meta-data
+minimized=true
+patch=["template(nonblocking_to_blocking,70)", "insert(70,52)", "replace(76,37)"]
+
+[custom]
+seed="repair_2021-07-21-07:22:28"
+gens=8
+popsize=5000
+restarts=1
+fault_loc=true
+control_flow=true
+limit_transitive_dependency_set=true
+dependency_set_max=4
+replacement_rate=0.4
+deletion_rate=0.3
+insertions_rate=0.3333333333333333
+mutation_rate=0.7
+crossover_rate=0.3
+fitness_mode="outputwires"
+simulator="vcs"
+verbose=false
+simulator_compile_timeout=120.0
