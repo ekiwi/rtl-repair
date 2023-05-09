@@ -117,6 +117,10 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
+    - name: Install Tabby OSS Cad Suite (from YosysHQ)
+      uses: YosysHQ/setup-oss-cad-suite@v2
+      with:
+        version: '2022-06-22'
     - name: Create Virtual Environment and Install Requirements
       run: |
         python3 -m venv venv
