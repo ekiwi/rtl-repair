@@ -167,9 +167,6 @@ def main():
     for res in results:
         print(res.result_name)
         bb = find_benchmark(projects, res)
-        # skip for debugging
-        if res.project_name != "mux_4_1":
-            continue
         # open a log file
         logfile_name = conf.working_dir / f"{res.result_name}.log"
         with open(logfile_name, 'w') as logfile:
