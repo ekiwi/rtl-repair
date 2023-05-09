@@ -3,12 +3,16 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
+import sys
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
 import vcdvcd
 import typing
 
+# add root dir in order to be able to load "benchmarks" module
+_script_dir = Path(__file__).parent.resolve()
+sys.path.append(str(_script_dir.parent))
 import benchmarks
 from benchmarks import Benchmark, load_project, get_benchmark, get_benchmark_design
 from find_state import find_state_and_outputs

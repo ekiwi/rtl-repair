@@ -5,12 +5,16 @@
 #
 # runs VCS in order to generate buggy and ground truth VCD traces for cirfix benchmarks
 
+import sys
 import argparse
 import tempfile
 import shutil
 import time
 from pathlib import Path
 
+# add root dir in order to be able to load "benchmarks" module
+_script_dir = Path(__file__).parent.resolve()
+sys.path.append(str(_script_dir.parent))
 import benchmarks
 from benchmarks import Project, Design, VerilogOracleTestbench
 from benchmarks.run import run, RunConf

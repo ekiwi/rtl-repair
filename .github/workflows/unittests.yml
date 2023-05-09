@@ -104,7 +104,7 @@ jobs:
     - name: Check Benchmark Configuration Data
       run: |
         source venv/bin/activate
-        python3 load_all_benchmarks.py
+        ./scripts/load_all_benchmarks.py
 
   test-cirfix:
     name: Test CirFix Quick Repairs

@@ -4,6 +4,12 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 # this script loads all benchmarks and performs some sanity checks + calculates statistics
 
+import sys
+from pathlib import Path
+
+# add root dir in order to be able to load "benchmarks" module
+_script_dir = Path(__file__).parent.resolve()
+sys.path.append(str(_script_dir.parent))
 import benchmarks
 
 

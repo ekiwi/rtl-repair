@@ -73,7 +73,7 @@ def check_gatelevel_sim(working_dir: Path, benchmark: Benchmark, repaired: Path)
     other_sources = get_other_sources(benchmark)
     # synthesize
     gate_level = working_dir / f"{repaired.stem}.gatelevel.v"
-    to_gatelevel_netlist(working_dir, gate_level, [repaired] + other_sources, top=benchmark.project.design.top)
+    to_gatelevel_netlist(working_dir, gate_level, [repaired] + other_sources, top=benchmark.design.top)
     # check
     return check_sim(working_dir, benchmark, [gate_level] + other_sources)
 
@@ -81,7 +81,7 @@ def check_sim(working_dir: Path, benchmark: Benchmark, design_sources: list):
     # run testbench
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     tb_sources = design_sources + benchmark.testbench.sources
-    conf = RunConf(include_dir=benchmark.project.design.directory, verbose=False, show_stdout=False)
+    conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False)
     run(working_dir, 'iverilog', tb_sources, conf)
 
     # check the output

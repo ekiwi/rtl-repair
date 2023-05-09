@@ -6,12 +6,16 @@
 # Tries to identify all state, i.e. registers and memories in the design.
 # Note: currently this assumes that there will be no latches, only FFs in the design!
 
+import sys
 import argparse
 import json
 import tempfile
 from pathlib import Path
 from dataclasses import dataclass
 
+# add root dir in order to be able to load "benchmarks" module
+_script_dir = Path(__file__).parent.resolve()
+sys.path.append(str(_script_dir.parent))
 from benchmarks import Design, load_project
 from benchmarks.yosys import to_json
 
