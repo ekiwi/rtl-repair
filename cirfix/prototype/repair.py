@@ -830,7 +830,9 @@ def run(conf: Config, repair_file: Path = None, verbose: bool = False) -> Path:
     if output.exists():
         os.remove(output)
 
-    files = benchmarks.get_other_sources(benchmark) + [repair_file] + benchmark.testbench.sources
+    # important: testbench sources need to go first since they often contain a timescale and introducing a module
+    #            with a timescale after other modules without a timescale is not allowed
+    files = benchmark.testbench.sources + benchmarks.get_other_sources(benchmark) + [repair_file]
     # make sure file paths are absolute since relative paths won't work from the working directory
     files = [f.resolve() for f in files]
     run_conf = benchmarks.run.RunConf(
