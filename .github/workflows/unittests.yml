@@ -126,7 +126,7 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate
         pip install -r requirements.txt
-    - name: Check Benchmark Configuration Data
+    - name: Check Repairs found by CirFix for the mux_4_1 benchmark
       run: |
         source venv/bin/activate
         ./scripts/check_repairs.py --working-dir=tmp --results=results/test-results --sim=iverilog
