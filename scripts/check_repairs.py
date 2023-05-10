@@ -190,6 +190,13 @@ def main():
         logfile_name = conf.working_dir / f"{res.result_name}.log"
         with open(logfile_name, 'w') as logfile:
             print(f"Checking: {res}", file=logfile)
+            # if we have an original, we want to make sure that our tests work on that
+            if bb.bug.original is not None:
+                fake_repair = Repair(filename=bb.bug.original)
+                print(f"Original: {fake_repair}", file=logfile)
+                sys.stdout.write(f"  - {fake_repair.filename.name}:")
+                check_repair(conf, logfile, bb, fake_repair)
+                print()
             for repair in res.repairs:
                 print(f"Repair: {repair}", file=logfile)
                 sys.stdout.write(f"  - {repair.filename.name}:")
