@@ -6,6 +6,7 @@ parameter pclk = 5;     /// period of clk/2
 
 parameter number = 100;  ///  number of input codewords
 
+parameter OracleCycles = 166160; // the number of cycles that are executed according to the oracle.txt
 
 reg clk,reset;
 reg instrumented_clk;
@@ -55,6 +56,8 @@ initial begin
 end
 `endif // DUMP_TRACE
 
+integer cycle_count = 0;
+
 initial begin
 	f = $fopen("output_RS_dec_tb_t1.txt");
 	$fwrite(f, "time,Out_byte[7],Out_byte[6],Out_byte[5],Out_byte[4],Out_byte[3],Out_byte[2],Out_byte[1],Out_byte[0],CEO,Valid_out\n");
@@ -62,6 +65,10 @@ initial begin
 		@(posedge clk);
 		$fwrite(f, "%g,%b,%b,%b,%b,%b,%b,%b,%b,%b,%b\n",
 		$time,Out_byte[7],Out_byte[6],Out_byte[5],Out_byte[4],Out_byte[3],Out_byte[2],Out_byte[1],Out_byte[0],CEO,Valid_out);
+		// exit if we are exceeding the oracle length
+		// this can easily happen when we have a malfunctioning circuit
+		cycle_cout = cycle_count + 1;
+		if(cycle_count > (OracleCycles + 1000)) $finish();
 	end
 end
 
