@@ -102,12 +102,14 @@ def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list)
 
 
 def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
+    sys.stdout.flush()
     # first we just simulate and check the oracle
     if not conf.skip_rtl_sim:
         print(f"RTL Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         other_sources = get_other_sources(benchmark)
         sim_res = check_sim(conf, logfile, benchmark, [repair.filename.resolve()] + other_sources)
         sys.stdout.write(f" RTL-sim {sim_res.emoji}")
+        sys.stdout.flush()
 
     # synthesize to gates
     print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
@@ -120,12 +122,14 @@ def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
     except subprocess.CalledProcessError:
         synthesis_success = False
     sys.stdout.write(f" Synthesis {success_to_emoji(synthesis_success)}")
+    sys.stdout.flush()
 
     # now we do the gate-level sim, do we get the same result?
     if synthesis_success:
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         gate_res = check_sim(conf, logfile, benchmark, [gate_level.resolve()])
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
+        sys.stdout.flush()
 
 
 def find_benchmark(projects: dict, result: Result) -> Benchmark:
