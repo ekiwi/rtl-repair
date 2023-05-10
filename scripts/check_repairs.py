@@ -77,15 +77,19 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
 
 
 def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list):
-    # run testbench
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
+    output = conf.working_dir / benchmark.testbench.output
+    # remove any previous output that might exist from a prior run
+    if output.exists():
+        os.remove(output)
+
+    # run testbench
     tb_sources = benchmark.testbench.sources + design_sources
     run_conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False, logfile=logfile)
     logfile.flush()
     run(conf.working_dir, conf.sim, tb_sources, run_conf)
 
     # check the output
-    output = conf.working_dir / benchmark.testbench.output
     if not output.exists():
         # no output was produced --> fail
         msg = "No output was produced."
@@ -120,7 +124,7 @@ def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
     # now we do the gate-level sim, do we get the same result?
     if synthesis_success:
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
-        gate_res = check_sim(conf, logfile, benchmark, [gate_level.resolve()] + other_sources)
+        gate_res = check_sim(conf, logfile, benchmark, [gate_level.resolve()])
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
 
 
