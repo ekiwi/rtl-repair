@@ -6,6 +6,7 @@
 # check repairs
 
 import os
+import subprocess
 import sys
 import argparse
 from dataclasses import dataclass
@@ -24,9 +25,16 @@ class Config:
     working_dir: Path
     result_dir: Path
     sim: str
+    skip_rtl_sim: bool
 
 def parse_csv_line(line: str) -> list:
     return [n.strip() for n in line.split(',')]
+
+OkEmoji = "✔️"
+FailEmoji = "❌"
+
+def success_to_emoji(success: bool) -> str:
+    return  OkEmoji if success else FailEmoji
 
 @dataclass
 class SimResult:
@@ -36,7 +44,7 @@ class SimResult:
     @property
     def is_success(self): return self.failed_at == -1 and not self.no_output
     @property
-    def emoji(self): return "✔️" if self.is_success else "❌"
+    def emoji(self): return success_to_emoji(self.is_success)
 
 def check_against_oracle(oracle_filename: Path, output_filename: Path):
     with open(oracle_filename) as oracle, open(output_filename) as output:
@@ -68,14 +76,6 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
 
 
 
-def check_gatelevel_sim(conf: Config, logfile, benchmark: Benchmark, repaired: Path):
-    other_sources = get_other_sources(benchmark)
-    # synthesize
-    gate_level = conf.working_dir / f"{repaired.stem}.gatelevel.v"
-    to_gatelevel_netlist(conf.working_dir, gate_level, [repaired] + other_sources, top=benchmark.design.top, logfile=None)
-    # check
-    return check_sim(conf, logfile, benchmark, [gate_level.resolve()] + other_sources)
-
 def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list):
     # run testbench
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
@@ -99,15 +99,29 @@ def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list)
 
 def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
     # first we just simulate and check the oracle
-    print(f"RTL Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
+    if not conf.skip_rtl_sim:
+        print(f"RTL Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
+        other_sources = get_other_sources(benchmark)
+        sim_res = check_sim(conf, logfile, benchmark, [repair.filename.resolve()] + other_sources)
+        sys.stdout.write(f" RTL-sim {sim_res.emoji}")
+
+    # synthesize to gates
+    print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
     other_sources = get_other_sources(benchmark)
-    sim_res = check_sim(conf, logfile, benchmark, [repair.filename.resolve()] + other_sources)
-    sys.stdout.write(f" RTL-sim {sim_res.emoji}")
+    # synthesize
+    gate_level = conf.working_dir / f"{repair.filename.stem}.gatelevel.v"
+    try:
+        to_gatelevel_netlist(conf.working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top, logfile=None)
+        synthesis_success = True
+    except subprocess.CalledProcessError:
+        synthesis_success = False
+    sys.stdout.write(f" Synthesis {success_to_emoji(synthesis_success)}")
 
     # now we do the gate-level sim, do we get the same result?
-    print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
-    gate_res = check_gatelevel_sim(conf, logfile, benchmark, repair.filename)
-    sys.stdout.write(f" Gate-level {gate_res.emoji}")
+    if synthesis_success:
+        print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
+        gate_res = check_sim(conf, logfile, benchmark, [gate_level.resolve()] + other_sources)
+        sys.stdout.write(f" Gate-level {gate_res.emoji}")
 
 
 def find_benchmark(projects: dict, result: Result) -> Benchmark:
@@ -132,9 +146,10 @@ def parse_args() -> Config:
                         required=True)
     parser.add_argument('--results', help='Directory containing the result.toml files.', required=True)
     parser.add_argument("--simulator", default="vcs")
+    parser.add_argument("--skip-rtl-sim", default=False, action='store_true')
     args = parser.parse_args()
     assert args.simulator in {'vcs', 'iverilog'}, f"unknown simulator: {args.simulator}"
-    return Config(Path(args.working_dir), Path(args.results), sim=args.simulator)
+    return Config(Path(args.working_dir), Path(args.results), sim=args.simulator, skip_rtl_sim=args.skip_rtl_sim)
 
 def create_working_dir(working_dir: Path):
     if not os.path.exists(working_dir):
