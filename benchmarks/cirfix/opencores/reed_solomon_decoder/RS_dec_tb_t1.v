@@ -65,10 +65,12 @@ initial begin
 		@(posedge clk);
 		$fwrite(f, "%g,%b,%b,%b,%b,%b,%b,%b,%b,%b,%b\n",
 		$time,Out_byte[7],Out_byte[6],Out_byte[5],Out_byte[4],Out_byte[3],Out_byte[2],Out_byte[1],Out_byte[0],CEO,Valid_out);
+`ifdef LIMIT_CYCLES
 		// exit if we are exceeding the oracle length
 		// this can easily happen when we have a malfunctioning circuit
 		cycle_cout = cycle_count + 1;
 		if(cycle_count > (OracleCycles + 1000)) $finish();
+`endif
 	end
 end
 
