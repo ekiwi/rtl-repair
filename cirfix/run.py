@@ -90,7 +90,7 @@ def check_exists(working_dir: Path) -> bool:
         return False
     if not working_dir.is_dir():
         return False
-    time = working_dir / "time.txt"
+    time = working_dir / "result.toml"
     if not time.exists():
         return False
     return True
