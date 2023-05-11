@@ -129,20 +129,37 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         self.assertEqual(changes, 2)
 
     def test_counter_kgoliya1(self):
-        # CirFix: 
+        # CirFix: correct repair
         changes = self.synth_success(counter_dir, "kgoliya_buggy1", solver=self.solver, init=self.init,
                                      incremental=self.incremental)
         self.assertEqual(changes, 1)
 
     def test_counter_wadden1(self):
+        # CirFix: correct repair
         self.synth_cannot_repair(counter_dir, "wadden_buggy1", solver=self.solver, init=self.init,
                                  incremental=self.incremental)
 
     def test_counter_wadden2(self):
+        # CirFix: correct repair
         self.synth_cannot_repair(counter_dir, "wadden_buggy2", solver=self.solver, init=self.init,
                                  incremental=self.incremental)
 
+    def test_flip_flop_wadden1(self):
+        # CirFix: correct repair
+        changes = self.synth_success(flip_flop_dir, "wadden_buggy1", solver=self.solver, init=self.init,
+                                     incremental=self.incremental)
+        self.assertEqual(changes, 1)
 
+    def test_flip_flop_wadden2(self):
+        # CirFix: correct repair
+        changes = self.synth_success(flip_flop_dir, "wadden_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental)
+        self.assertEqual(changes, 2)
+
+    def test_fsm_full_wadden1(self):
+        # CirFix: timed out
+        self.synth_cannot_repair(fsm_dir, "wadden_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental)
 
 class TestPaperExample(SynthesisTest):
     def test_tb(self):
