@@ -96,9 +96,9 @@ def write_result(working_dir: Path, benchmark: Benchmark, success: bool, repaire
             else:
                 rep_file, meta_data = rep_info
             print_filename("name", rep_file)
-            if original and original.exists():
+            if buggy.exists():
                 repair_diff = working_dir / f"{rep_file.stem}.diff.txt"
-                do_diff(original, rep_file, repair_diff)
+                do_diff(buggy, rep_file, repair_diff)
                 print_filename("diff", repair_diff)
             if meta_data:
                 print("# tool specific meta-data", file=ff)
