@@ -97,6 +97,7 @@ class SynthesisTest(unittest.TestCase):
         self.assertLessEqual(changes, max_changes)
         if _print_time:
             print(f"SUCCESS: {project_path} w/ {solver} in {time.monotonic() - start}s")
+        return changes
 
     def synth_no_repair(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
                       incremental: bool = False, max_changes: int = 2):
@@ -113,6 +114,34 @@ class SynthesisTest(unittest.TestCase):
         self.assertEqual("cannot-repair", status)
         if _print_time:
             print(f"CANNOT-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
+
+
+class TestCirFixBenchmarksIncremental(SynthesisTest):
+    """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """
+    solver: str = 'bitwuzla'
+    incremental: bool = True
+    init: str = 'random'
+
+    def test_decoder_wadden1(self):
+        # CirFix: incorrect repair
+        changes = self.synth_success(decoder_dir, "wadden_buggy1", solver=self.solver, init=self.init,
+                                     incremental=self.incremental)
+        self.assertEqual(changes, 2)
+
+    def test_counter_kgoliya1(self):
+        # CirFix: 
+        changes = self.synth_success(counter_dir, "kgoliya_buggy1", solver=self.solver, init=self.init,
+                                     incremental=self.incremental)
+        self.assertEqual(changes, 1)
+
+    def test_counter_wadden1(self):
+        self.synth_cannot_repair(counter_dir, "wadden_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental)
+
+    def test_counter_wadden2(self):
+        self.synth_cannot_repair(counter_dir, "wadden_buggy2", solver=self.solver, init=self.init,
+                                 incremental=self.incremental)
+
 
 
 class TestPaperExample(SynthesisTest):
