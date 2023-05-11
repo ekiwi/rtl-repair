@@ -28,7 +28,7 @@ def _check_jar():
     assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
 
 
-def _run_synthesizer(design: Path, testbench: Path, opts: SynthOptions) -> dict:
+def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: SynthOptions) -> dict:
     assert design.exists(), f"{design=} does not exist"
     assert testbench.exists(), f"{testbench=} does not exist"
     _check_jar()
@@ -40,8 +40,13 @@ def _run_synthesizer(design: Path, testbench: Path, opts: SynthOptions) -> dict:
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
     cmd_str = ' '.join(str(p) for p in cmd)  # for debugging
     r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
+    output = r.stdout.decode('utf-8')
+    # command write output to file for debugging
+    with open(working_dir / "synth.txt", 'w') as ff:
+        print(cmd_str, file=ff)
+        ff.write(output)
     try:
-        return json.loads(r.stdout.decode('utf-8'))
+        return json.loads(output)
     except json.JSONDecodeError as e:
         print("Failed to parse synthesizer output as JSON:")
         print(r.stdout)
@@ -67,11 +72,11 @@ class Synthesizer:
         additional_sources = get_other_sources(benchmark)
         btor_filename = to_btor(working_dir, working_dir / (synth_filename.stem + ".btor"),
                                 [synth_filename] + additional_sources, benchmark.design.top)
-        result = _run_synthesizer(btor_filename, benchmark.testbench.table, opts)
+        result = _run_synthesizer(working_dir, btor_filename, benchmark.testbench.table, opts)
 
         status = status_name_to_enum[result['status']]
         solutions = []
         if status == Status.Success:
-            solutions = result['solutions']
+            solutions = [s['assignment'] for s in result['solutions']]
 
         return status, solutions

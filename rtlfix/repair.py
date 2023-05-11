@@ -187,6 +187,7 @@ class RepairPass(AstVisitor):
                     isinstance(entry.list[0], vast.Reg) and
                     entry.list[0].name in self.assignment
             )
+
             if is_synth_var:
                 assert len(entry.list) == 2
                 reg = entry.list[0]
