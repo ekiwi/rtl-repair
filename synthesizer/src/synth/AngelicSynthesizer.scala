@@ -26,7 +26,7 @@ object AngelicSynthesizer {
     val exec = Testbench.run(initialized, randInputTb, verbose = true, vcd = Some(os.pwd / "fsm_full.vcd"))
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
-      return NoRepairNecessary
+      return NoRepairNecessary(RepairStats(0))
     }
 
     // add angelic instrumentation
@@ -45,7 +45,8 @@ object AngelicSynthesizer {
     val success = synthesize(ctx, angelicChanges, verbose = config.verbose)
     if (!success) {
       if (config.verbose) { println("Cannot find a solution!") }
-      return CannotRepair
+      ctx.close()
+      return CannotRepair(RepairStats(ctx.getCheckTime))
     }
 
     // extract one solution

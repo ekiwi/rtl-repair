@@ -39,7 +39,11 @@ trait SolverContext {
   final def check(produceModel: Boolean): SolverResult = {
     require(pLogic.isDefined, "Use `setLogic` to select the logic.")
     pCheckCount += 1
-    doCheck(produceModel)
+    val start = System.nanoTime()
+    val res = doCheck(produceModel)
+    val stop = System.nanoTime()
+    pCheckTime += stop - start
+    res
   }
   def runCommand(cmd: SMTCommand): Unit
   def queryModel(e:   BVSymbol):   Option[BigInt]
@@ -63,6 +67,8 @@ trait SolverContext {
   // statistics
   def checkCount: Int = pCheckCount
   private var pCheckCount = 0
+  def getCheckTime:       Long = pCheckTime
+  private var pCheckTime: Long = 0
 
   // internal functions that need to be implemented by the solver
   private var pLogic: Option[String] = None

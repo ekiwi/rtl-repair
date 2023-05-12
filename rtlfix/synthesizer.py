@@ -60,7 +60,7 @@ class Synthesizer:
     def __init__(self):
         pass
 
-    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> (Status, list):
+    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> (Status, list, int):
         assert isinstance(benchmark.testbench, TraceTestbench), f"{benchmark.testbench} : {type(benchmark.testbench)} is not a TraceTestbench"
 
         # save instrumented AST to disk so that we can call yosys
@@ -79,4 +79,4 @@ class Synthesizer:
         if status == Status.Success:
             solutions = [s['assignment'] for s in result['solutions']]
 
-        return status, solutions
+        return status, solutions, result['solver-time']

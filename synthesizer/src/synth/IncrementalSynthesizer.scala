@@ -37,18 +37,21 @@ object IncrementalSynthesizer {
     )
     if (!exec.failed) {
       if (config.verbose) println("No failure. System seems to work without any changes.")
-      return NoRepairNecessary
+      return NoRepairNecessary(RepairStats(0))
     }
 
     var pastK = 0
     var futureK = 0
     def k = pastK + futureK
     val maxWindowSize = 32
+    var totalCheckTime: Long = 0
     while (k <= maxWindowSize) {
-      val candidates = findSolutionWithUnrolling(sys, initialized, randInputTb, config, synthVars, exec, pastK, futureK)
+      val (candidates, checkTime) =
+        findSolutionWithUnrolling(sys, initialized, randInputTb, config, synthVars, exec, pastK, futureK)
+      totalCheckTime += checkTime
       candidates.find(_.correct) match {
         case Some(value) => // return correct solution if it exists
-          return RepairSuccess(Seq(Solution(value.assignment)))
+          return RepairSuccess(Seq(Solution(value.assignment)), RepairStats(totalCheckTime))
         case None => // otherwise, we analyze the solutions that did not work
           val failureDistance = candidates.map(c => c.failAt - exec.failAt)
           val maxFailureDistance = (0 +: failureDistance).max
@@ -59,7 +62,7 @@ object IncrementalSynthesizer {
             val newPastK = Seq(pastK + 2, exec.failAt).min // cannot go back more than the location of the original bug
             if (newPastK == pastK) {
               if (config.verbose) println(s"Cannot go back further in time => no solution found")
-              return CannotRepair
+              return CannotRepair(RepairStats(totalCheckTime))
             }
             if (config.verbose) println(s"updating pastK from $pastK to $newPastK")
             pastK = newPastK
@@ -67,7 +70,7 @@ object IncrementalSynthesizer {
       }
     }
 
-    CannotRepair
+    CannotRepair(RepairStats(totalCheckTime))
   }
 
   /** Try to find a solution while unrolling for up to [[k]] steps. */
@@ -80,7 +83,7 @@ object IncrementalSynthesizer {
     exec:        TestbenchResult,
     pastK:       Int,
     futureK:     Int
-  ): List[CandidateSolution] = {
+  ): (List[CandidateSolution], Long) = {
     val k = pastK + futureK
     if (config.verbose) println(s"Searching for solution with unrolling of pastK=$pastK, futureK = $futureK, k=$k")
 
@@ -107,7 +110,7 @@ object IncrementalSynthesizer {
     val candidates = synthesizeMultiple(ctx, synthVars, config.verbose, checkSolution(initialized, tb, config))
     ctx.close()
 
-    candidates
+    (candidates, ctx.getCheckTime)
   }
 
   /** throws an error if called, can be used with instantiateTestbench if no inputs should be "free" */

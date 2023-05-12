@@ -72,7 +72,7 @@ object SolutionFilter {
       breakable {
         unique.foreach { oldSolution =>
           if (EquivalenceChecker.isCombEquiv(config, ctx, oldSolution.sys, newSolution.sys)) {
-            break // we are done here, this is a duplicate
+            break() // we are done here, this is a duplicate
           }
         }
         // no duplicate

@@ -21,9 +21,9 @@ object Synthesizer {
     val result = run(arguments.design.get, arguments.testbench.get, arguments.config)
     // print result
     result match {
-      case NoRepairNecessary => println("""{"status":"no-repair"}""")
-      case CannotRepair      => println("""{"status":"cannot-repair"}""")
-      case RepairSuccess(solutions) =>
+      case NoRepairNecessary(stats) => println(toJson("no-repair", stats))
+      case CannotRepair(stats)      => println(toJson("cannot-repair", stats))
+      case RepairSuccess(solutions, stats) =>
         val solutionJSON = solutions.map { case Solution(assignments) =>
           val assignmentJSON = assignments.map { case (name, value) => s"""     "$name": $value""" }.mkString(",\n")
           s"""  { "assignment" : {
@@ -34,11 +34,16 @@ object Synthesizer {
         }.mkString(",\n")
 
         println("""{"status":"success",""")
+        println(f""""solver-time": ${stats.solverTimeNs},""")
         println(""" "solutions": [""")
         println(solutionJSON)
         println(" ]")
         println("}")
     }
+  }
+
+  private def toJson(status: String, stats: RepairStats): String = {
+    f"""{"status":"$status", "solver-time": ${stats.solverTimeNs}"""
   }
 
   def run(design: os.Path, testbench: os.Path, config: Config): RepairResult = {
@@ -59,17 +64,17 @@ object Synthesizer {
     val result = doRepair(noSynthVarSys, tb, synthVars, config, rnd)
 
     result match {
-      case NoRepairNecessary => NoRepairNecessary
-      case CannotRepair      => CannotRepair
-      case RepairSuccess(solutions) =>
+      case r: NoRepairNecessary => r
+      case r: CannotRepair      => r
+      case RepairSuccess(solutions, stats) =>
         val sortedSolutions = SolutionFilter.sort(solutions)
         if (config.filterSolutions) {
           val ctx = startSolver(config) // TODO: consider re-using the solver context from the synthesis
           val filtered = SolutionFilter.run(ctx, noSynthVarSys, tb, config, sortedSolutions)
           ctx.close()
-          RepairSuccess(filtered)
+          RepairSuccess(filtered, stats)
         } else {
-          RepairSuccess(sortedSolutions)
+          RepairSuccess(sortedSolutions, stats)
         }
     }
   }
@@ -235,24 +240,27 @@ object Synthesizer {
   }
 }
 
+case class RepairStats(solverTimeNs: Long)
+
 sealed trait RepairResult {
   def isSuccess:         Boolean = false
   def noRepairNecessary: Boolean = false
   def cannotRepair:      Boolean = false
+  def stats: RepairStats
 }
 
 /** indicates that the provided system and testbench pass for all possible unconstraint inputs and initial states */
-case object NoRepairNecessary extends RepairResult {
+case class NoRepairNecessary(stats: RepairStats) extends RepairResult {
   override def noRepairNecessary: Boolean = true
 }
 
 /** indicates that no repair was found, this probably due to constraints in our repair templates */
-case object CannotRepair extends RepairResult {
+case class CannotRepair(stats: RepairStats) extends RepairResult {
   override def cannotRepair: Boolean = true
 }
 
 /** indicates that the repair was successful and provides the repaired system */
-case class RepairSuccess(solutions: Seq[Solution]) extends RepairResult {
+case class RepairSuccess(solutions: Seq[Solution], stats: RepairStats) extends RepairResult {
   require(solutions.nonEmpty, "A success requires at least one solution.")
   override def isSuccess: Boolean = true
 }

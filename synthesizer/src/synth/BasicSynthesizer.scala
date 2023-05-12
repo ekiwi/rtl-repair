@@ -28,7 +28,9 @@ object BasicSynthesizer {
     synthVars.assumeNoChange(ctx)
     val freeVarAssignment = findFreeVarAssignment(ctx, sys, tb, freeVars, config) match {
       case Some(value) => value
-      case None        => ctx.close(); return NoRepairNecessary // testbench does not in fact fail
+      case None =>
+        ctx.close()
+        return NoRepairNecessary(RepairStats(ctx.getCheckTime)) // testbench does not in fact fail
     }
     ctx.pop()
     assert(ctx.stackDepth == 0)
@@ -43,7 +45,9 @@ object BasicSynthesizer {
     // try to synthesize constants
     val minimalSolution = synthesize(ctx, synthVars, config.verbose) match {
       case Some(value) => Solution(value)
-      case None        => return CannotRepair
+      case None =>
+        ctx.close()
+        return CannotRepair(RepairStats(ctx.getCheckTime))
     }
 
     val solutions = config.sampleUpToSize match {
@@ -62,7 +66,7 @@ object BasicSynthesizer {
     }
 
     ctx.close()
-    RepairSuccess(solutions)
+    RepairSuccess(solutions, RepairStats(ctx.getCheckTime))
   }
 
   private def checkCorrectForAll(
