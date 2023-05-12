@@ -43,7 +43,7 @@ object Synthesizer {
   }
 
   private def toJson(status: String, stats: RepairStats): String = {
-    f"""{"status":"$status", "solver-time": ${stats.solverTimeNs}"""
+    f"""{"status":"$status", "solver-time": ${stats.solverTimeNs} }"""
   }
 
   def run(design: os.Path, testbench: os.Path, config: Config): RepairResult = {

@@ -19,6 +19,7 @@ class Status(Enum):
     NoRepair = 'no-repair'
     CannotRepair = 'cannot-repair'
     Success = 'success'
+    Timeout = 'timeout'
 
 status_name_to_enum = {e.value: e for e in Status}
 

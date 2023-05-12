@@ -3,6 +3,8 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
+import signal
+import math
 import argparse
 import copy
 import os
@@ -29,6 +31,7 @@ class Options:
     parallel: bool
     synth: SynthOptions
     single_solution: bool = False # restrict the number of solutions to one
+    timeout: float = None # set timeout after which rtl-repair terminates
 
 @dataclass
 class Config:
@@ -55,6 +58,7 @@ def parse_args() -> Config:
                         action='store_true')
     parser.add_argument('--incremental', dest='incremental', help='use incremental solver',
                         action='store_true')
+    parser.add_argument('--timeout', help='Max time to attempt a repair')
 
 
     args = parser.parse_args()
@@ -68,7 +72,8 @@ def parse_args() -> Config:
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
     synth_opts = SynthOptions(solver = args.solver, init=args.init, incremental=args.incremental)
-    opts = Options(show_ast=args.show_ast, parallel=args.parallel, synth=synth_opts)
+    timeout = None if args.timeout is None else float(args.timeout)
+    opts = Options(show_ast=args.show_ast, parallel=args.parallel, synth=synth_opts, timeout=timeout)
 
     return Config(Path(args.working_dir), benchmark, opts)
 
@@ -203,20 +208,30 @@ def repair(config: Config):
 
     return status, solutions
 
+def timeout_handler(signum, frame):
+    print("timeout")
+    raise TimeoutError()
+
 def main():
     config = parse_args()
     create_working_dir(config.working_dir)
+    if config.opts.timeout:
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(int(math.ceil(config.opts.timeout)))
 
     # create benchmark description to make results self-contained
     create_buggy_and_original_diff(config.working_dir, config.benchmark)
 
     # run repair
     start_time = time.monotonic()
-    status, solutions = repair(config)
+    try:
+        status, solutions = repair(config)
+    except TimeoutError:
+        status, solutions = Status.Timeout, []
     delta_time = time.monotonic() - start_time
 
     # save results to disk
-    success = status != Status.CannotRepair
+    success = status in {Status.Success, Status.NoRepair}
     write_result(config.working_dir, config.benchmark, success,
                   repaired=solutions, seconds=delta_time, tool_name=_ToolName,
                   custom={'status': status.value})

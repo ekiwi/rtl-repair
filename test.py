@@ -37,7 +37,7 @@ chisel_counter_dir = chisel_dir / "counter"
 paper_example_dir = benchmark_dir / "paper_example"
 
 
-def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True):
+def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None):
     if not working_dir.exists():
         os.mkdir(working_dir)
     # determine the directory name from project and bug name
@@ -59,6 +59,8 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
         args += ["--incremental"]
     if _parallel:
         args += ["--parallel"]
+    if timeout:
+        args += ["--timeout", str(timeout)]
 
     cmd = ["./rtlfix.py"] + args
     # for debugging:
@@ -82,7 +84,7 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
 
     # check file format
     if not dd['result']['success']:
-        assert status == 'cannot-repair'
+        assert status == 'cannot-repair' or status == 'timeout'
 
     return status, changes, template
 
@@ -90,9 +92,9 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
 class SynthesisTest(unittest.TestCase):
 
     def synth_success(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, max_changes: int = 2):
+                      incremental: bool = False, timeout: int = None, max_changes: int = 2):
         start = time.monotonic()
-        status, changes, template = run_synth(project_path, bug, testbench, solver, init, incremental)
+        status, changes, template = run_synth(project_path, bug, testbench, solver, init, incremental, timeout)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
@@ -100,17 +102,17 @@ class SynthesisTest(unittest.TestCase):
         return changes
 
     def synth_no_repair(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, max_changes: int = 2):
+                      incremental: bool = False, timeout: int = None, max_changes: int = 2):
         start = time.monotonic()
-        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental)
+        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout)
         self.assertEqual("no-repair", status)
         if _print_time:
             print(f"NO-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
 
     def synth_cannot_repair(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, max_changes: int = 2):
+                      incremental: bool = False, timeout: int = None, max_changes: int = 2):
         start = time.monotonic()
-        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental)
+        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout)
         self.assertEqual("cannot-repair", status)
         if _print_time:
             print(f"CANNOT-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
@@ -121,39 +123,40 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
     solver: str = 'bitwuzla'
     incremental: bool = True
     init: str = 'random'
+    timeout: int = 30
 
     def test_decoder_wadden1(self):
         # CirFix: incorrect repair
         changes = self.synth_success(decoder_dir, "wadden_buggy1", solver=self.solver, init=self.init,
-                                     incremental=self.incremental)
+                                     incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(changes, 2)
 
     def test_counter_kgoliya1(self):
         # CirFix: correct repair
         changes = self.synth_success(counter_dir, "kgoliya_buggy1", solver=self.solver, init=self.init,
-                                     incremental=self.incremental)
+                                     incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(changes, 1)
 
     def test_counter_wadden1(self):
         # CirFix: correct repair
         self.synth_cannot_repair(counter_dir, "wadden_buggy1", solver=self.solver, init=self.init,
-                                 incremental=self.incremental)
+                                 incremental=self.incremental, timeout=self.timeout)
 
     def test_counter_wadden2(self):
         # CirFix: correct repair
         self.synth_cannot_repair(counter_dir, "wadden_buggy2", solver=self.solver, init=self.init,
-                                 incremental=self.incremental)
+                                 incremental=self.incremental, timeout=self.timeout)
 
     def test_flip_flop_wadden1(self):
         # CirFix: correct repair
         changes = self.synth_success(flip_flop_dir, "wadden_buggy1", solver=self.solver, init=self.init,
-                                     incremental=self.incremental)
+                                     incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(changes, 1)
 
     def test_flip_flop_wadden2(self):
         # CirFix: correct repair
         changes = self.synth_success(flip_flop_dir, "wadden_buggy2", solver=self.solver, init=self.init,
-                                     incremental=self.incremental)
+                                     incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(changes, 2)
 
     def test_fsm_full_wadden1(self):
