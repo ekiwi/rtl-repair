@@ -48,7 +48,7 @@ def parse_args() -> Config:
 def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str = None, solver='bitwuzla', init='any', incremental=True):
     # determine the directory name from project and bug name
     out_dir = working_dir / benchmark.name
-
+    print(benchmark.name)
     args = [
         "--project", str(project_toml.resolve()),
         "--solver", solver,

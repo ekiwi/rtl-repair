@@ -131,6 +131,13 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
                                      incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(2, changes)
 
+    def test_decoder_wadden2(self):
+        # CirFix: timeout
+        changes = self.synth_success(decoder_dir, "wadden_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout, max_changes=5)
+        self.assertEqual(5, changes)
+        # note: our repair is only correct for the part that is actually tested
+
     def test_counter_kgoliya1(self):
         # CirFix: correct repair
         changes = self.synth_success(counter_dir, "kgoliya_buggy1", solver=self.solver, init=self.init,
@@ -218,6 +225,15 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
                                      incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(2, changes)
 
+    def test_reed_BM_lambda(self):
+        # CirFix: timeout
+        self.synth_cannot_repair(reed_dir, "BM_lamda_ssscrazy_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_reed_out_stage(self):
+        # CirFix: incorrect repair
+        self.synth_cannot_repair(reed_dir, "out_stage_ssscrazy_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
 class TestPaperExample(SynthesisTest):
     def test_tb(self):
         self.synth_success(paper_example_dir, "buggy", init='random')
