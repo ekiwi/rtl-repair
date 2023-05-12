@@ -159,10 +159,46 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
                                      incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(changes, 2)
 
+    def test_fsm_full_ssscrazy1(self):
+        # CirFix: incorrect repair
+        changes = self.synth_success(fsm_dir, "ssscrazy_buggy1", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(changes, -1) # repaired by pre-processing!
+
+    def test_fsm_full_ssscrazy2(self):
+        # CirFix: incorrect repair
+        changes = self.synth_success(fsm_dir, "ssscrazy_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(changes, -1) # repaired by pre-processing!
+
     def test_fsm_full_wadden1(self):
         # CirFix: timed out
         self.synth_cannot_repair(fsm_dir, "wadden_buggy1", solver=self.solver, init=self.init,
-                                 incremental=self.incremental)
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_fsm_full_wadden2(self):
+        # CirFix: incorrect repair
+        changes = self.synth_success(fsm_dir, "wadden_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(changes, -1) # repaired by pre-processing!
+
+    def test_lshift_reg_kgoliya1(self):
+        # CirFix: correct repair
+        # RTL-Repair: the posedge -> negedge change means that after synthesis it looks like everything works
+        self.synth_no_repair(left_shift_dir, "kgoliya_buggy1", solver=self.solver, init=self.init,
+                             incremental=self.incremental, timeout=self.timeout)
+
+    def test_lshift_reg_wadden1(self):
+        # CirFix: correct repair
+        changes = self.synth_success(left_shift_dir, "wadden_buggy1", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(changes, -1)  # repaired by pre-processing!
+
+    def test_lshift_reg_wadden2(self):
+        # CirFix: correct repair
+        changes = self.synth_success(left_shift_dir, "wadden_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(changes, 1)
 
 class TestPaperExample(SynthesisTest):
     def test_tb(self):

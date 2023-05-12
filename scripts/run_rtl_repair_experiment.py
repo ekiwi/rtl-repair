@@ -95,8 +95,7 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
         bbs = benchmarks.get_benchmarks(project)
         for bb in bbs:
             assert isinstance(bb, Benchmark)
-            seed = benchmarks.get_seed(bb)
-            if seed is None:
+            if not benchmarks.is_cirfix_paper_benchmark(bb):
                 continue
             run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name)
 
