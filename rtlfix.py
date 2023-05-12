@@ -228,6 +228,9 @@ def main():
         status, solutions = repair(config)
     except TimeoutError:
         status, solutions = Status.Timeout, []
+    except subprocess.CalledProcessError:
+        # something crashed, so we cannot repair this bug
+        status, solutions = Status.CannotRepair, []
     delta_time = time.monotonic() - start_time
 
     # save results to disk
