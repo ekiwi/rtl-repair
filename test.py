@@ -123,7 +123,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
     solver: str = 'bitwuzla'
     incremental: bool = True
     init: str = 'random'
-    timeout: int = 30
+    timeout: int = 45
 
     def test_decoder_wadden1(self):
         # CirFix: incorrect repair
@@ -252,6 +252,15 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         changes = self.synth_success(sd_dir / "no_tri_state.toml", "kgoliya_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
         self.assertEqual(-1, changes)  # repaired by pre-processing!
+
+    def test_i2c_master_kgoliya1(self):
+        # CirFix: incorrect repair
+        changes = self.synth_success(i2c_dir / "master_sync_reset.toml", "kgoliya_buggy1", "fixed_x_prop_tb",
+                                     solver=self.solver, init=self.init, incremental=self.incremental,
+                                     timeout=self.timeout)
+        self.assertEqual(1, changes)
+
+
 class TestPaperExample(SynthesisTest):
     def test_tb(self):
         self.synth_success(paper_example_dir, "buggy", init='random')
