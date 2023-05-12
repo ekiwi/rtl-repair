@@ -102,6 +102,8 @@ class InferWidths(AstVisitor):
             value_width = self.expr_width(node.value, None)
             times = self.eval(node.times)
             width = value_width * times
+        elif isinstance(node, vast.StringConst):
+            width = None
         else:
             raise NotImplementedError(f"TODO: deal with {node} : {type(node)}")
         self.widths[node] = width

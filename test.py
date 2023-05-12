@@ -260,6 +260,17 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
                                      timeout=self.timeout)
         self.assertEqual(1, changes)
 
+    def test_i2c_slave_wadden1(self):
+        # Cirfix: correct repair
+        # RTL-Repair: cannot repair since I2C-Slave is not synthesizable
+        self.synth_cannot_repair(i2c_dir / "slave.toml", "wadden_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_i2c_slave_wadden2(self):
+        # Cirfix: incorrect repair
+        # RTL-Repair: cannot repair since I2C-Slave is not synthesizable
+        self.synth_cannot_repair(i2c_dir / "slave.toml", "wadden_buggy2", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
 
 class TestPaperExample(SynthesisTest):
     def test_tb(self):

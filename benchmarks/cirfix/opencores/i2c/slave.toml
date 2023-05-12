@@ -28,3 +28,10 @@ output = "output_tst_bench_top_t1.txt"
 oracle = "oracle.txt"
 timeout = 20.0
 
+
+# NOTE: this testbench makes no sense since the I2C-Slave model is not
+#       a synthesizable synchronous circuit, we just need this here for
+#       rtl-repair to at least attempt to do something
+[[testbenches]]
+name = "orig_tb_sync_reset"
+table = "orig_tb_sync_reset.csv"
