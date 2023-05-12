@@ -234,6 +234,24 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: incorrect repair
         self.synth_cannot_repair(reed_dir, "out_stage_ssscrazy_buggy1", solver=self.solver, init=self.init,
                                  incremental=self.incremental, timeout=self.timeout)
+
+    def test_sdram_wadden1(self):
+        # CirFix: correct repair (minimization fails)
+        changes = self.synth_success(sd_dir / "no_tri_state.toml", "wadden_buggy1", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(1, changes)
+
+    def test_sdram_wadden2(self):
+        # CirFix: timeout
+        changes = self.synth_success(sd_dir / "no_tri_state.toml", "wadden_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(2, changes)
+
+    def test_sdram_kgoliya2(self):
+        # CirFix: timeout
+        changes = self.synth_success(sd_dir / "no_tri_state.toml", "kgoliya_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        self.assertEqual(-1, changes)  # repaired by pre-processing!
 class TestPaperExample(SynthesisTest):
     def test_tb(self):
         self.synth_success(paper_example_dir, "buggy", init='random')
