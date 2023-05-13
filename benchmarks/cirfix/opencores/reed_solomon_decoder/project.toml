@@ -47,6 +47,7 @@ buggy = "BM_lamda.v"
 [[testbenches]]
 name = "oracle-full"
 sources = ["RS_dec_tb_t1.v"]
+init-files = ["input_RS_blocks", "output_RS_blocks"]
 output = "output_RS_dec_tb_t1.txt"
 oracle = "oracle.txt"
 timeout = 8.0

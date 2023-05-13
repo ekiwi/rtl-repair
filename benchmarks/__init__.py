@@ -3,7 +3,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 # benchmark python library
 import os.path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -111,6 +111,7 @@ class VerilogOracleTestbench(Testbench):
     output: str
     oracle: Path
     timeout: float = None
+    init_files: list[Path] = field(default_factory=list)
 
 
 @dataclass
@@ -166,11 +167,13 @@ def _load_bug(base_dir: Path, dd: dict) -> Bug:
 
 def _load_testbench(base_dir: Path, dd: dict) -> Testbench:
     if 'oracle' in dd:
+        inits = [] if 'init-files' not in dd else [parse_path(pp, base_dir, True) for pp in dd['init-files']]
         tt = VerilogOracleTestbench(
             name=dd['name'],
             sources=[parse_path(pp, base_dir, True) for pp in dd['sources']],
             output=dd['output'],
             oracle=parse_path(dd['oracle'], base_dir, True),
+            init_files=inits,
         )
         if "timeout" in dd:
             tt.timeout = float(dd["timeout"])
@@ -316,6 +319,8 @@ def validate_oracle_testbench(project: Project, testbench: VerilogOracleTestbenc
     for source in testbench.sources:
         assert_file_exists(name, source)
         assert source not in project.design.sources, f"{name}: {source} is already a project source!"
+    for init in testbench.init_files:
+        assert_file_exists(name, init)
     assert_file_exists(name, testbench.oracle)
 
 def load_all_projects() -> dict:

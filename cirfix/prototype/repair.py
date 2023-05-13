@@ -1115,6 +1115,11 @@ def main():
     # create benchmark description to make results self-contained
     benchmarks.result.create_buggy_and_original_diff(conf.working_dir, conf.benchmark)
 
+    # copy over any memory initialization files from the testbench
+    assert isinstance(benchmark.testbench, benchmarks.VerilogOracleTestbench)
+    for init_file in benchmark.testbench.init_files:
+        shutil.copy(init_file, conf.working_dir)
+
 
     codegen = ASTCodeGenerator()
     # parse the files (in filelist) to ASTs (PyVerilog ast)
