@@ -261,15 +261,37 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         self.assertEqual(1, changes)
 
     def test_i2c_slave_wadden1(self):
-        # Cirfix: correct repair
+        # CirFix: correct repair
         # RTL-Repair: cannot repair since I2C-Slave is not synthesizable
         self.synth_cannot_repair(i2c_dir / "slave.toml", "wadden_buggy1", solver=self.solver, init=self.init,
                                  incremental=self.incremental, timeout=self.timeout)
 
     def test_i2c_slave_wadden2(self):
-        # Cirfix: incorrect repair
+        # CirFix: incorrect repair
         # RTL-Repair: cannot repair since I2C-Slave is not synthesizable
         self.synth_cannot_repair(i2c_dir / "slave.toml", "wadden_buggy2", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_sha3_keccak_wadden1(self):
+        # CirFix: correct repair
+        self.synth_cannot_repair(sha_dir / "keccak.toml", "wadden_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_sha3_keccak_wadden2(self):
+        # CirFix: timeout
+        self.synth_cannot_repair(sha_dir / "keccak.toml", "wadden_buggy2", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_sha3_round_ssscrazy1(self):
+        # CirFix: timeout
+        # RTL-Repair: current _replace literal_ instrumentation leads to non-synthesizable `if generate`
+        self.synth_cannot_repair(sha_dir / "keccak.toml", "round_ssscrazy_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_sha3_padder_ssscrazy1(self):
+        # CirFix: incorrect repair
+        # RTL-Repair: current _replace variables_ instrumentation leads to topological loop
+        self.synth_cannot_repair(sha_dir / "padder.toml", "ssscrazy_buggy1", solver=self.solver, init=self.init,
                                  incremental=self.incremental, timeout=self.timeout)
 
 class TestPaperExample(SynthesisTest):
