@@ -66,8 +66,6 @@ initial
 begin
 	err=0;
 	lim=6;
-	// Note: Change the path to point to the right directory if there is a file not found error
-	// path="/home/hammada/projects/verilog_repair/benchmarks/opencores/reed_solomon_decoder/";
 	$readmemb("input_RS_blocks", in_mem);
 	$readmemb("output_RS_blocks", out_mem);
 end
