@@ -1,0 +1,8 @@
+[project]
+directory = "."
+sources = ["first_counter.v"]
+toplevel = "first_counter"
+
+[[testbenches]]
+name = "tb"
+table = "tb.csv"
