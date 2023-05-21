@@ -1,0 +1,7 @@
+# this file will be auto generated from the testbench
+tb.v
+
+# tb files
+trace.txt
+dump.vcd
+a.out
