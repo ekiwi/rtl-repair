@@ -17,7 +17,7 @@ case class Testbench(signals: Seq[String], values: Seq[Seq[Option[BigInt]]]) {
 object Testbench {
   def load(filename: os.Path): Testbench = {
     val lines = os.read.lines(filename)
-    val signals = lines.head.split(",").map(_.trim)
+    val signals = lines.head.split(",").map(parseCsvItem)
     val values = lines
       .drop(1)
       .map { line =>
