@@ -18,7 +18,7 @@ from benchmarks.result import load_result
 
 # settings
 solver = "bitwuzla"
-init = "any"
+init = "random"
 timeout = 5
 
 
@@ -46,7 +46,7 @@ def main() -> int:
     status = result.custom['status']
     delta_seconds = result.seconds
     print(f"{status} ({delta_seconds:.02f}s)")
-    if result.success:
+    if status == 'success':
         for ii, repair in enumerate(result.repairs):
             print(f"{ii}) Possible repair with {repair.meta['changes']} changes:")
             with open(repair.diff) as ff:

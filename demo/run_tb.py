@@ -11,7 +11,6 @@ from pathlib import Path
 from pyverilog.vparser.parser import parse
 import pyverilog.vparser.ast as vast
 
-from rtlfix.utils import parse_width
 
 # add root dir in order to be able to load "benchmarks" module
 _script_dir = Path(__file__).parent.resolve()
@@ -20,6 +19,7 @@ from benchmarks import TraceTestbench, Design, load_project, pick_trace_testbenc
     VerilogOracleTestbench
 from scripts.check_repairs import check_sim, parse_csv_line
 from scripts import check_repairs
+from rtlfix.utils import parse_width
 
 @dataclass
 class ToplevelInfo:
