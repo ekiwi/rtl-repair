@@ -20,6 +20,7 @@ from benchmarks.yosys import to_gatelevel_netlist
 from benchmarks.run import run, RunConf
 from benchmarks.result import load_result, Result, Repair
 
+
 @dataclass
 class Config:
     working_dir: Path
@@ -27,22 +28,28 @@ class Config:
     sim: str
     skip_rtl_sim: bool
 
+
 def parse_csv_line(line: str) -> list:
     return [n.strip() for n in line.split(',')]
+
 
 OkEmoji = "✔️"
 FailEmoji = "❌"
 
+
 def success_to_emoji(success: bool) -> str:
-    return  OkEmoji if success else FailEmoji
+    return OkEmoji if success else FailEmoji
+
 
 @dataclass
 class SimResult:
     no_output: bool = False
     failed_at: int = -1
     fail_msg: str = ""
+
     @property
     def is_success(self): return self.failed_at == -1 and not self.no_output
+
     @property
     def emoji(self): return success_to_emoji(self.is_success)
 
@@ -50,6 +57,7 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
     with open(oracle_filename) as oracle, open(output_filename) as output:
         oracle_header, output_header = parse_csv_line(oracle.readline()), parse_csv_line(output.readline())
         assert oracle_header == output_header, f"{oracle_header} != {output_header}"
+        assert oracle_header[0].lower() == 'time', f"{oracle_header}"
         header = oracle_header[1:]
 
         # compare line by line
@@ -57,12 +65,12 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
             expected, actual = parse_csv_line(expected), parse_csv_line(actual)
             # remove first line (time)
             expected, actual = expected[1:], actual[1:]
-            correct = expected == actual
-            if not correct:
-                msg = []
-                for ee, aa, nn in zip(expected, actual, header):
-                    if ee != aa:
-                        msg.append(f"{nn}@{ii}: {aa} != {ee} (expected)")
+            msg = []
+            for ee, aa, nn in zip(expected, actual, header):
+                ee, aa = ee.lower(), aa.lower()
+                if ee != 'x' and ee != aa:
+                    msg.append(f"{nn}@{ii}: {aa} != {ee} (expected)")
+            if len(msg) > 0:
                 return SimResult(failed_at=ii, fail_msg='\n'.join(msg))
 
         # are we missing some output?
@@ -75,7 +83,6 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
     return SimResult()
 
 
-
 def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list):
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     output = conf.working_dir / benchmark.testbench.output
@@ -86,7 +93,8 @@ def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list)
     # run testbench
     tb_sources = benchmark.testbench.sources + design_sources
     run_conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False, logfile=logfile)
-    logfile.flush()
+    if logfile:
+        logfile.flush()
     run(conf.working_dir, conf.sim, tb_sources, run_conf)
 
     # check the output
@@ -96,9 +104,9 @@ def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list)
         res = SimResult(no_output=True, fail_msg=msg)
     else:
         res = check_against_oracle(benchmark.testbench.oracle, output)
-    print(res, file=logfile)
+    if logfile:
+        print(res, file=logfile)
     return res
-
 
 
 def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
@@ -117,7 +125,8 @@ def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
     # synthesize
     gate_level = conf.working_dir / f"{repair.filename.stem}.gatelevel.v"
     try:
-        to_gatelevel_netlist(conf.working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top, logfile=None)
+        to_gatelevel_netlist(conf.working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top,
+                             logfile=None)
         synthesis_success = True
     except subprocess.CalledProcessError:
         synthesis_success = False
@@ -136,8 +145,10 @@ def find_benchmark(projects: dict, result: Result) -> Benchmark:
     project = projects[result.project_name]
     return get_benchmark(project, result.bug_name, use_trace_testbench=False)
 
+
 def load_results(tomls: list[Path]) -> list[Result]:
     return [load_result(toml) for toml in tomls]
+
 
 def find_result_toml(directory: Path) -> list[Path]:
     rr = []
@@ -147,6 +158,7 @@ def find_result_toml(directory: Path) -> list[Path]:
         elif filename.name == "result.toml":
             rr.append(filename)
     return rr
+
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='Check solutions produced by a repair tool.')
@@ -159,9 +171,12 @@ def parse_args() -> Config:
     assert args.simulator in {'vcs', 'iverilog'}, f"unknown simulator: {args.simulator}"
     return Config(Path(args.working_dir), Path(args.results), sim=args.simulator, skip_rtl_sim=args.skip_rtl_sim)
 
+
 def create_working_dir(working_dir: Path):
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
+
+
 def main():
     conf = parse_args()
 
@@ -173,7 +188,7 @@ def main():
     result_tomls = find_result_toml(conf.result_dir)
     print(f"Found {len(result_tomls)} result.toml files in {conf.result_dir}")
     if len(result_tomls) == 0:
-        return # done
+        return  # done
     results = load_results(result_tomls)
 
     # sort results to ensure deterministic results
@@ -210,4 +225,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
