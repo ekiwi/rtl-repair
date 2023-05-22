@@ -23,7 +23,7 @@ object Testbench {
       .map { line =>
         val v = line
           .split(",")
-          .map(_.trim)
+          .map(parseCsvItem)
           .map {
             case "x" | "X" => None
             case num       => Some(BigInt(num, 10))
@@ -34,6 +34,17 @@ object Testbench {
       }
       .toSeq
     Testbench(signals, values)
+  }
+
+  private def parseCsvItem(item: String): String = {
+    val trimmed = item.trim
+    if (trimmed.length <= 1) {
+      trimmed
+    } else if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+      trimmed.drop(1).dropRight(1).trim
+    } else {
+      trimmed
+    }
   }
 
   def save(filename: os.Path, tb: Testbench): Unit = {
