@@ -19,6 +19,7 @@ class Repair:
     diff: Path = None
     meta: dict = field(default_factory=dict)
 
+
 @dataclass
 class Result:
     tool: str
@@ -30,9 +31,14 @@ class Result:
     original: Path = None
     repairs: list[Repair] = field(default_factory=list)
     custom: dict = field(default_factory=dict)
+
     @property
     def result_name(self) -> str:
         return f"{self.tool}.{self.project_name}.{self.bug_name}"
+
+
+def collect_repair_meta(dd: dict) -> dict:
+    return {k: v for k, v in dd.items() if k not in {'name', 'diff'}}
 
 
 def load_result(filename: Path) -> Result:
@@ -44,26 +50,28 @@ def load_result(filename: Path) -> Result:
 
     if 'repairs' not in dd: dd['repairs'] = []
     repairs = [Repair(
-        filename = parse_path(rr['name'], base_dir, must_exist=True),
-        diff = parse_path(rr['diff'], base_dir, must_exist=True) if 'diff' in rr else None,
-        meta = rr['meta'] if 'meta' in rr else {},
+        filename=parse_path(rr['name'], base_dir, must_exist=True),
+        diff=parse_path(rr['diff'], base_dir, must_exist=True) if 'diff' in rr else None,
+        meta=collect_repair_meta(rr),
     ) for rr in dd['repairs']]
 
     res = dd['result']
     result = Result(
-        tool = res['tool'],
-        project_name = res['project'],
-        bug_name = res['bug'],
-        success = res['success'],
-        seconds = res['seconds'],
-        buggy = parse_path(res['buggy'], base_dir, must_exist=True) if 'buggy' in res else None,
-        original = parse_path(res['original'], base_dir, must_exist=True) if 'original' in res else None,
-        repairs = repairs,
-        custom = dd['custom'] if 'custom' in dd else {},
+        tool=res['tool'],
+        project_name=res['project'],
+        bug_name=res['bug'],
+        success=res['success'],
+        seconds=res['seconds'],
+        buggy=parse_path(res['buggy'], base_dir, must_exist=True) if 'buggy' in res else None,
+        original=parse_path(res['original'], base_dir, must_exist=True) if 'original' in res else None,
+        repairs=repairs,
+        custom=dd['custom'] if 'custom' in dd else {},
     )
     return result
 
-def write_result(working_dir: Path, benchmark: Benchmark, success: bool, repaired: list, seconds: float, tool_name: str, custom: dict = None):
+
+def write_result(working_dir: Path, benchmark: Benchmark, success: bool, repaired: list, seconds: float, tool_name: str,
+                 custom: dict = None):
     """ Writes the results to the working directory. """
     with open(working_dir / "result.toml", 'w') as ff:
         print("[result]", file=ff)
@@ -77,7 +85,6 @@ def write_result(working_dir: Path, benchmark: Benchmark, success: bool, repaire
         def print_filename(key: str, filename: Path):
             print(f'{key}="{filename.relative_to(working_dir)}"', file=ff)
 
-
         # these files should have been created by the `create_buggy_and_original_diff` function
         original = working_dir / benchmark.bug.original.name if benchmark.bug.original else None
         buggy = working_dir / benchmark.bug.buggy.name
@@ -85,7 +92,6 @@ def write_result(working_dir: Path, benchmark: Benchmark, success: bool, repaire
             print_filename("buggy", buggy)
         if original and original.exists():
             print_filename("original", original)
-
 
         # do we have a repaired file?
         if success: assert len(repaired) > 0, f"Successful, but a repair is missing!"
@@ -108,9 +114,11 @@ def write_result(working_dir: Path, benchmark: Benchmark, success: bool, repaire
             print("\n[custom]", file=ff)
             _print_custom_key_values(custom, ff)
 
+
 def _print_custom_key_values(cc: dict, ff):
     for kk, vv in cc.items():
         print(f'{kk}={_to_toml_str(vv)}', file=ff)
+
 
 def _to_toml_str(value) -> str:
     if isinstance(value, str):
@@ -125,7 +133,8 @@ def _to_toml_str(value) -> str:
         return "[" + ", ".join(_to_toml_str(ii) for ii in value) + "]"
     # turn into string by default
     return f'"{value}"'
-    #raise NotImplementedError(f"Unsupported type: {type(value)} ({value})")
+    # raise NotImplementedError(f"Unsupported type: {type(value)} ({value})")
+
 
 def create_buggy_and_original_diff(working_dir: Path, benchmark: Benchmark):
     """
@@ -148,12 +157,14 @@ def create_buggy_and_original_diff(working_dir: Path, benchmark: Benchmark):
 
 _codegen = ASTCodeGenerator()
 
+
 def parse_and_serialize_to(src: Path, dst: Path, include=None, define=None):
     """ Makes a "copy" of the source file by parsing it with PyVerilog and serializing the AST to the destination file """
     assert_file_exists("Verilog source", src)
     ast, _ = parse([src], preprocess_include=include, preprocess_define=define)
     with open(dst, 'w') as ff:
         ff.write(_codegen.visit(ast))
+
 
 def do_diff(file_a: Path, file_b: Path, output_file: Path):
     """ Calls the `diff` tool to compare two files and writes the result to a third file. """
