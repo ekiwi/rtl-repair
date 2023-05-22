@@ -125,6 +125,8 @@ def trace_tb_to_verilog(filename: Path, tb: TraceTestbench, top: str, ports: lis
                         if value.lower() != 'x':
                             print(f"  // assert {name} == 'd{value};", file=ff)
                 print(f"  @(posedge {clock});", file=ff)
+        print(f"  // wait one more step to ensure that the last step is committed to the output file", file=ff)
+        print(f"  @(posedge {clock});", file=ff)
         print("  $fclose(f);", file=ff)
         print("  $finish;", file=ff)
         print("end // initial", file=ff)
