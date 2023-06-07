@@ -92,6 +92,14 @@ cirfix_seeds = {
     },
 }
 
+rtlrepair_replacements = {
+    # We had to remove the tri-state buses by replacing them with several digital signals in order to work around
+    # limitations in yosys which we use to lower the circuit into a transition system description.
+    # Replacing tri-state signals _could_ be automated with a yosys are pyverilog based compiler pass, but
+    # we did not deem that necessary for our research prototype.
+    "sdram_controller": _cirfix_benchmark_dir / "sdram_controller" / "no_tri_state.toml",
+}
+
 
 @dataclass
 class Bug:
