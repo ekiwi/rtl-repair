@@ -47,11 +47,18 @@ object Synthesizer {
   }
 
   def run(design: os.Path, testbench: os.Path, config: Config): RepairResult = {
-    // load design and testbench and validate them
+    // load design and transform circuit
     val sys = inlineAndRemoveDeadCode(Btor2.load(design))
+    // yosys will model some uncertainty in the Verilog, mostly relate to X-propagation, by adding
+    // auxiliary inputs. We remove them and instead create a node that is equivalent to zero
+    // since we want to ignore any non-determinism in the circuit when trying to repair it.
     val sysWithoutUndef = setAnonymousInputsToZero(sys)
-    val tbRaw = Testbench.removeRow("time", Testbench.load(testbench))
+    // All our testbenches have a `time` column which we do not care about.
+    val tbRaw = Testbench.removeColumn("time", Testbench.load(testbench))
+    // We validate that the testbench actually matches the design we just loaded.
     val tb = Testbench.checkSignals(sysWithoutUndef, tbRaw, verbose = config.verbose)
+
+    // Create a new random number generator that will be used for the repair operation.
     val rnd = new scala.util.Random(config.seed)
 
     // initialize unconstrained states according to config
@@ -113,6 +120,7 @@ object Synthesizer {
     sys.copy(inputs = inputs, signals = signals)
   }
 
+  /** Initialized the starting states (reg/mem content) of the system to random values, zero or nothing at all. */
   def initSys(sys: TransitionSystem, tpe: InitType, rnd: scala.util.Random): TransitionSystem = tpe match {
     case ZeroInit | RandomInit =>
       val getValue = if (tpe == ZeroInit) { (width: Int) =>
@@ -138,6 +146,7 @@ object Synthesizer {
         }
       }
       sys.copy(states = states)
+    // nothing to do, the synthesizer will have to assign value in a CEGAR loop
     case AnyInit => sys
   }
 

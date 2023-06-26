@@ -61,7 +61,7 @@ object Testbench {
     out.close()
   }
 
-  def removeRow(name: String, tb: Testbench): Testbench = {
+  def removeColumn(name: String, tb: Testbench): Testbench = {
     if (tb.signals.contains(name)) {
       val pos = tb.signals.indexOf(name)
       val values = tb.values.map { row =>
