@@ -28,13 +28,13 @@
      initial  begin
         clk = 0;
         instrumented_clk = 0;
-        f = $fopen("output_decoder_3_to_8_tb_t1.txt");
-        $fwrite(f, "time,Y7,Y6,Y5,Y4,Y3,Y2,Y1,Y0\n");
-        $timeformat(-9, 1, " ns", 6); #1;
         A  = 1'b0;       // time = 0
         B  = 1'b0;
         C  = 1'b0;
         en = 1'b0;
+        f = $fopen("output_decoder_3_to_8_tb_t1.txt");
+        $fwrite(f, "time,Y7,Y6,Y5,Y4,Y3,Y2,Y1,Y0\n");
+        $timeformat(-9, 1, " ns", 6); #1;
         #9;
         en = 1'b1;      // time = 10
         #10;
