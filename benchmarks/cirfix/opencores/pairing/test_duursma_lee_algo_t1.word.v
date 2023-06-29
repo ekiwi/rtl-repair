@@ -33,8 +33,11 @@ module test_duursma_lee_algo;
 
     initial begin
         f = $fopen("output_test_duursma_lee_algo_t1.txt");
-        $fwrite(f, "time,done,out\n");
+        $fwrite(f, "time,clk,reset,xp,yp,xr,yr,done,out\n");
     end
+
+    always @(posedge clk)
+     $fwrite(f, "%g,%d,%d,%d,%d,%d,%d,%d,%d\n", $time,clk,reset,xp,yp,xr,yr,done,out);
 
     integer flag;
 
@@ -58,8 +61,6 @@ module test_duursma_lee_algo;
         @ (negedge clk); reset = 1;
         @ (negedge clk); reset = 0;
         @ (posedge done);
-        #100;
-        $fwrite(f, "%d,%d,%d\n", $time,done,out);
         #100;
         if (out !== {{194'h289898988a561125505a60640642444905248262004845aa6,194'ha6a208a8402504225588a080a124292404061158a96a6a44},{194'h2266261625a9894a45640906a242a99295816525895a98a25,194'h21868921614220506a96a9285119405a15550801829589214},{194'h26a4200680102269189946046919aa804602128246999685a,194'h1a558028a5a964224120a9212a9089a0966a0918a41612219}})
           begin
