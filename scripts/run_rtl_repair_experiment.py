@@ -19,7 +19,6 @@ sys.path.append(str(_root_dir))
 import benchmarks
 from benchmarks import Benchmark
 
-
 # global experiment settings
 _solver = 'bitwuzla'
 _incremental = True
@@ -52,7 +51,8 @@ def parse_args() -> Config:
     return Config(working_dir, args.skip)
 
 
-def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str, solver, init, incremental):
+def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str, solver, init,
+                   incremental):
     # determine the directory name from project and bug name
     out_dir = working_dir / benchmark.name
     print(benchmark.name)
@@ -98,6 +98,7 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
 
 def run_all_cirfix_benchmarks(conf: Config, projects: dict):
     for name, project in projects.items():
+        testbench = benchmarks.pick_trace_testbench(project)
         project_toml = benchmarks.projects[name]
         # overwrite for manual adjustments that we had to make
         if name in benchmarks.rtlrepair_replacements:
@@ -107,9 +108,8 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
             assert isinstance(bb, Benchmark)
             if not benchmarks.is_cirfix_paper_benchmark(bb):
                 continue
-            run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name, solver=_solver, init=_init,
-                           incremental=_incremental)
-
+            run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name, testbench=testbench.name,
+                           solver=_solver, init=_init, incremental=_incremental)
 
     pass
 
