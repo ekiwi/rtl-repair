@@ -109,6 +109,7 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
             if not benchmarks.is_cirfix_paper_benchmark(bb):
                 continue
             sys.stdout.write(f"{bb.name} w/ {testbench.name}")
+            sys.stdout.flush()
             status, changes, template = run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name,
                                                        testbench=testbench.name, solver=_solver, init=_init,
                                                        incremental=_incremental, timeout=_timeout)
