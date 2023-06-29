@@ -16,7 +16,6 @@ from benchmarks import load_project, get_benchmark
 _default_solver = 'yices2'
 # _default_solver = 'bitwuzla'
 _print_time = False
-_parallel = False
 
 root_dir = Path(__file__).parent.resolve()
 working_dir = root_dir / "working-dir"
@@ -57,8 +56,6 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
         args += ["--testbench", testbench]
     if incremental:
         args += ["--incremental"]
-    if _parallel:
-        args += ["--parallel"]
     if timeout:
         args += ["--timeout", str(timeout)]
 
