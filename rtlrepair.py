@@ -11,7 +11,6 @@ import os
 import shutil
 import subprocess
 import time
-from multiprocessing import Pool
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,7 +28,7 @@ _available_templates = {
     'add_inversions': add_inversions,
     'replace_variables': replace_variables
 }
-_default_templates = ['replace_literals', 'assign_const', 'add_inversions']
+_default_templates = ['replace_literals', 'assign_const', 'add_inversions', 'replace_variables']
 
 
 @dataclass
