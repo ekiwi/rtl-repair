@@ -78,7 +78,7 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
         r = subprocess.run(cmd, stdout=subprocess.PIPE, check=True, cwd=_root_dir)
     except subprocess.CalledProcessError as r:
         print(f"Failed to execute command: {cmd_str}")
-        return
+        return 'failed', 0, None
 
     with open(out_dir / "result.toml", 'rb') as ff:
         dd = tomli.load(ff)
