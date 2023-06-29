@@ -23,6 +23,13 @@ from rtlfix.templates import *
 _ToolName = "rtl-repair"
 
 _supported_solvers = {'z3', 'cvc4', 'yices2', 'boolector', 'bitwuzla', 'optimathsat', 'btormc'}
+_available_templates = {
+    'replace_literals': replace_literals,
+    'assign_const': assign_const,
+    'add_inversions': add_inversions,
+    'replace_variables': replace_variables
+}
+_default_templates = ['replace_literals', 'assign_const', 'add_inversions']
 
 
 @dataclass
@@ -30,14 +37,17 @@ class Options:
     show_ast: bool
     parallel: bool
     synth: SynthOptions
-    single_solution: bool = False # restrict the number of solutions to one
-    timeout: float = None # set timeout after which rtl-repair terminates
+    templates: list
+    single_solution: bool = False  # restrict the number of solutions to one
+    timeout: float = None  # set timeout after which rtl-repair terminates
+
 
 @dataclass
 class Config:
     working_dir: Path
     benchmark: Benchmark
     opts: Options
+
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='Repair Verilog file')
@@ -59,10 +69,11 @@ def parse_args() -> Config:
     parser.add_argument('--incremental', dest='incremental', help='use incremental solver',
                         action='store_true')
     parser.add_argument('--timeout', help='Max time to attempt a repair')
-
+    available_template_names = ", ".join(_available_templates.keys())
+    parser.add_argument('--templates', default=",".join(_default_templates),
+                        help=f'Specify repair templates to use. ({available_template_names})')
 
     args = parser.parse_args()
-
 
     # benchmark selection
     project = load_project(Path(args.project))
@@ -71,9 +82,14 @@ def parse_args() -> Config:
     # options
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
-    synth_opts = SynthOptions(solver = args.solver, init=args.init, incremental=args.incremental)
+    synth_opts = SynthOptions(solver=args.solver, init=args.init, incremental=args.incremental)
     timeout = None if args.timeout is None else float(args.timeout)
-    opts = Options(show_ast=args.show_ast, parallel=args.parallel, synth=synth_opts, timeout=timeout)
+    templates = []
+    for t in args.templates.split(','):
+        t = t.strip()
+        assert t in _available_templates, f"Unknown template `{t}`. Try: {available_template_names}"
+        templates.append(_available_templates[t])
+    opts = Options(show_ast=args.show_ast, parallel=args.parallel, synth=synth_opts, timeout=timeout, templates=templates)
 
     return Config(Path(args.working_dir), benchmark, opts)
 
@@ -81,9 +97,6 @@ def parse_args() -> Config:
 def create_working_dir(working_dir: Path):
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
-
-
-_templates = [replace_literals, assign_const, add_inversions, replace_variables]
 
 
 def find_solver_version(solver: str) -> str:
@@ -135,16 +148,16 @@ def try_template(config: Config, ast, prefix: str, template) -> (Status, list):
             with open(repaired_filename, "w") as f:
                 f.write(serialize(ast))
             # meta info for the solution
-            meta = { 'changes': len(changes), 'template': template_name, 'synth_time': synth_time,
-                     'template_time':  time.monotonic() - start_time,
-                     'solver_time': solver_time_ns / 1000.0 / 1000.0 / 1000.0}
+            meta = {'changes': len(changes), 'template': template_name, 'synth_time': synth_time,
+                    'template_time': time.monotonic() - start_time,
+                    'solver_time': solver_time_ns / 1000.0 / 1000.0 / 1000.0}
             solutions.append((repaired_filename, meta))
 
     return status, solutions
 
 
 def try_templates_in_parallel(config: Config, ast) -> (Status, list):
-    tmpls = [(f"{ii + 1}_", tmp) for ii, tmp in enumerate(_templates)]
+    tmpls = [(f"{ii + 1}_", tmp) for ii, tmp in enumerate(config.opts.templates)]
     with Pool() as p:
         procs = [p.apply_async(try_template, (config, ast, prefix, tmp)) for prefix, tmp in tmpls]
         while len(procs) > 0:
@@ -168,7 +181,7 @@ def partition(elements: list, filter_foo):
 def try_templates_in_sequence(config: Config, ast) -> (Status, list):
     # instantiate repair templates, one after another
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
-    for ii, template in enumerate(_templates):
+    for ii, template in enumerate(config.opts.templates):
         prefix = f"{ii + 1}_"
         # we need to deep copy the ast since the template is going to modify it in place!
         ast_copy = copy.deepcopy(ast)
@@ -208,9 +221,11 @@ def repair(config: Config):
 
     return status, solutions
 
+
 def timeout_handler(signum, frame):
     print("timeout")
     raise TimeoutError()
+
 
 def main():
     config = parse_args()
@@ -236,8 +251,9 @@ def main():
     # save results to disk
     success = status in {Status.Success, Status.NoRepair}
     write_result(config.working_dir, config.benchmark, success,
-                  repaired=solutions, seconds=delta_time, tool_name=_ToolName,
-                  custom={'status': status.value})
+                 repaired=solutions, seconds=delta_time, tool_name=_ToolName,
+                 custom={'status': status.value})
+
 
 if __name__ == '__main__':
     main()
