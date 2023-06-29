@@ -20,10 +20,17 @@ import benchmarks
 from benchmarks import Benchmark
 
 
+# global experiment settings
+_solver = 'bitwuzla'
+_incremental = True
+_init = 'random'  # the incremental solver always uses random init
+
+
 @dataclass
 class Config:
     working_dir: Path
     skip_existing: bool
+
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='run repairs')
@@ -45,7 +52,7 @@ def parse_args() -> Config:
     return Config(working_dir, args.skip)
 
 
-def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str = None, solver='bitwuzla', init='any', incremental=True):
+def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str, solver, init, incremental):
     # determine the directory name from project and bug name
     out_dir = working_dir / benchmark.name
     print(benchmark.name)
@@ -100,9 +107,12 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
             assert isinstance(bb, Benchmark)
             if not benchmarks.is_cirfix_paper_benchmark(bb):
                 continue
-            run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name)
+            run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name, solver=_solver, init=_init,
+                           incremental=_incremental)
+
 
     pass
+
 
 def main():
     conf = parse_args()
