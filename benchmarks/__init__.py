@@ -98,6 +98,15 @@ rtlrepair_replacements = {
     # Replacing tri-state signals _could_ be automated with a yosys are pyverilog based compiler pass, but
     # we did not deem that necessary for our research prototype.
     "sdram_controller": _cirfix_benchmark_dir / "sdram_controller" / "no_tri_state.toml",
+    # We had to switch the asynchronous reset to a synchronous one to make our repair implementation work
+    # because for asynchronous resets, the reset value has to be a constant
+    # There are two ways to solve this issue:
+    # 1) Change yosys to allow for non-constant async reset values as this is only important for synthesis, not
+    #    for formal
+    # 2) Transform the Verilog before giving it to yosys to simulate an async reset with a sync reset,
+    #    similar to what the built-in yosys async2sync pass does anyway. We would just need to do it before Yosys
+    #    in order to pass the async value must be const check.
+    "i2c_master": _opencores_dir / "i2c" / "master_sync_reset.toml",
 }
 
 
