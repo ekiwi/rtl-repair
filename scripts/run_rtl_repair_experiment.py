@@ -55,7 +55,6 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
                    incremental):
     # determine the directory name from project and bug name
     out_dir = working_dir / benchmark.name
-    print(benchmark.name)
     args = [
         "--project", str(project_toml.resolve()),
         "--solver", solver,
@@ -108,6 +107,7 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
             assert isinstance(bb, Benchmark)
             if not benchmarks.is_cirfix_paper_benchmark(bb):
                 continue
+            print(f"{bb.name} w/ {testbench.name}")
             run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name, testbench=testbench.name,
                            solver=_solver, init=_init, incremental=_incremental)
 
