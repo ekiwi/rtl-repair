@@ -69,7 +69,7 @@ def parse_args() -> Config:
     available_template_names = ", ".join(_available_templates.keys())
     parser.add_argument('--templates', default=",".join(_default_templates),
                         help=f'Specify repair templates to use. ({available_template_names})')
-    parser.add_argument('--skip-preprocessing',  help='skip the preprocessing step', action='store_true')
+    parser.add_argument('--skip-preprocessing', help='skip the preprocessing step', action='store_true')
 
     args = parser.parse_args()
 
@@ -204,8 +204,21 @@ def timeout_handler(signum, frame):
     raise TimeoutError()
 
 
+def check_verilator_version(opts: Options):
+    """ Makes sure that the major version of verilator is 4 if we are using preprocessing.
+        This is important because verilator 5 has significant changes to what it reports as warnings in lint mode.
+    """
+    if opts.skip_preprocessing: return
+    version_out = subprocess.run(["verilator", "-version"], stdout=subprocess.PIPE).stdout
+    version = version_out.split()[1]
+    major_version = int(version.split(b'.')[0])
+    assert major_version == 4, f"Unsupported verilator version {version} detected. " \
+                               f"Please provide Verilator 4 on your path instead!"
+
+
 def main():
     config = parse_args()
+    check_verilator_version(config.opts)
     create_working_dir(config.working_dir)
     if config.opts.timeout:
         signal.signal(signal.SIGALRM, timeout_handler)
