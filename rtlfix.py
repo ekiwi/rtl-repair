@@ -35,7 +35,6 @@ _default_templates = ['replace_literals', 'assign_const', 'add_inversions']
 @dataclass
 class Options:
     show_ast: bool
-    parallel: bool
     synth: SynthOptions
     templates: list
     single_solution: bool = False  # restrict the number of solutions to one
@@ -64,8 +63,6 @@ def parse_args() -> Config:
                         default="any")
     parser.add_argument('--show-ast', dest='show_ast', help='show the ast before applying any transformation',
                         action='store_true')
-    parser.add_argument('--parallel', dest='parallel', help='try to apply repair templates in parallel',
-                        action='store_true')
     parser.add_argument('--incremental', dest='incremental', help='use incremental solver',
                         action='store_true')
     parser.add_argument('--timeout', help='Max time to attempt a repair')
@@ -89,7 +86,7 @@ def parse_args() -> Config:
         t = t.strip()
         assert t in _available_templates, f"Unknown template `{t}`. Try: {available_template_names}"
         templates.append(_available_templates[t])
-    opts = Options(show_ast=args.show_ast, parallel=args.parallel, synth=synth_opts, timeout=timeout, templates=templates)
+    opts = Options(show_ast=args.show_ast, synth=synth_opts, timeout=timeout, templates=templates)
 
     return Config(Path(args.working_dir), benchmark, opts)
 
@@ -156,28 +153,6 @@ def try_template(config: Config, ast, prefix: str, template) -> (Status, list):
     return status, solutions
 
 
-def try_templates_in_parallel(config: Config, ast) -> (Status, list):
-    tmpls = [(f"{ii + 1}_", tmp) for ii, tmp in enumerate(config.opts.templates)]
-    with Pool() as p:
-        procs = [p.apply_async(try_template, (config, ast, prefix, tmp)) for prefix, tmp in tmpls]
-        while len(procs) > 0:
-            done, procs = partition(procs, lambda pp: pp.ready())
-            for status, solutions in (pp.get() for pp in done):
-                if status != Status.CannotRepair:
-                    return status, solutions
-    return Status.CannotRepair, []
-
-
-def partition(elements: list, filter_foo):
-    a, b = [], []
-    for e in elements:
-        if filter_foo(e):
-            a.append(e)
-        else:
-            b.append(e)
-    return a, b
-
-
 def try_templates_in_sequence(config: Config, ast) -> (Status, list):
     # instantiate repair templates, one after another
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
@@ -200,10 +175,7 @@ def repair(config: Config):
     if config.opts.show_ast:
         ast.show()
 
-    if config.opts.parallel:
-        status, solutions = try_templates_in_parallel(config, ast)
-    else:
-        status, solutions = try_templates_in_sequence(config, ast)
+    status, solutions = try_templates_in_sequence(config, ast)
 
     # create repaired file in the case where the synthesizer had to make no changes
     if status == Status.NoRepair:
