@@ -9,9 +9,9 @@ from pathlib import Path
 import subprocess
 
 from benchmarks import Benchmark, get_other_sources
-from rtlfix import parse_verilog, serialize
-from rtlfix.utils import ensure_block
-from rtlfix.visitor import AstVisitor
+from rtlrepair import parse_verilog, serialize
+from rtlrepair.utils import ensure_block
+from rtlrepair.visitor import AstVisitor
 import pyverilog.vparser.ast as vast
 
 

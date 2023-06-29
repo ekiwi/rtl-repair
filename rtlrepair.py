@@ -17,8 +17,8 @@ from pathlib import Path
 
 from benchmarks import Benchmark, load_project, get_benchmark
 from benchmarks.result import create_buggy_and_original_diff, write_result
-from rtlfix import parse_verilog, serialize, do_repair, Synthesizer, preprocess, SynthOptions, Status
-from rtlfix.templates import *
+from rtlrepair import parse_verilog, serialize, do_repair, Synthesizer, preprocess, SynthOptions, Status
+from rtlrepair.templates import *
 
 _ToolName = "rtl-repair"
 

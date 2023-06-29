@@ -3,7 +3,7 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 #
-# runs rtlfix.py to generate a repair and presents the result to the user
+# runs rtlrepair.py to generate a repair and presents the result to the user
 
 import sys
 from pathlib import Path
@@ -27,7 +27,7 @@ def main() -> int:
     proj_toml = proj_dir / "project.toml"
     working_dir = proj_dir / "repair"
 
-    cmd = ["./rtlfix.py",
+    cmd = ["./rtlrepair.py",
            "--project", str(proj_toml.resolve()),
            "--solver", solver,
            "--init", init,

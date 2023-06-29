@@ -2,9 +2,9 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
-from rtlfix.repair import RepairTemplate
-from rtlfix.types import InferWidths
-from rtlfix.utils import Namespace
+from rtlrepair.repair import RepairTemplate
+from rtlrepair.types import InferWidths
+from rtlrepair.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from benchmarks import Benchmark, TraceTestbench, get_other_sources
-from rtlfix.utils import _root_dir, serialize, Status, status_name_to_enum
+from rtlrepair.utils import _root_dir, serialize, Status, status_name_to_enum
 import pyverilog.vparser.ast as vast
 from benchmarks.yosys import to_btor
 

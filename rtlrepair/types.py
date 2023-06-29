@@ -2,8 +2,8 @@
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
-from rtlfix.visitor import AstVisitor
-from rtlfix.utils import parse_verilog_int_literal
+from rtlrepair.visitor import AstVisitor
+from rtlrepair.utils import parse_verilog_int_literal
 import pyverilog.vparser.ast as vast
 
 

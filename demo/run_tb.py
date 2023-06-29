@@ -19,7 +19,7 @@ from benchmarks import TraceTestbench, Design, load_project, pick_trace_testbenc
     VerilogOracleTestbench
 from scripts.check_repairs import check_sim, parse_csv_line
 from scripts import check_repairs
-from rtlfix.utils import parse_width
+from rtlrepair.utils import parse_width
 
 @dataclass
 class ToplevelInfo:

@@ -62,7 +62,7 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
     if incremental:
         args += ["--incremental"]
 
-    cmd = ["./rtlfix.py"] + args
+    cmd = ["./rtlrepair.py"] + args
     # for debugging:
     cmd_str = ' '.join(cmd)
     try:

@@ -3,8 +3,8 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 import pyverilog.vparser.ast as vast
-from rtlfix.utils import Namespace, serialize, parse_width
-from rtlfix.visitor import AstVisitor
+from rtlrepair.utils import Namespace, serialize, parse_width
+from rtlrepair.visitor import AstVisitor
 
 _synth_var_prefix = "__synth_"
 _synth_change_prefix = "__synth_change_"

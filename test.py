@@ -59,7 +59,7 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
     if timeout:
         args += ["--timeout", str(timeout)]
 
-    cmd = ["./rtlfix.py"] + args
+    cmd = ["./rtlrepair.py"] + args
     # for debugging:
     cmd_str = ' '.join(cmd)
     try:
@@ -532,57 +532,57 @@ def _make_histogram(widths: dict) -> dict:
 
 
 class TestTypeInference(unittest.TestCase):
-    """ actual unittests for code in rtlfix/types.py """
+    """ actual unittests for code in rtlrepair/types.py """
 
     def test_flip_flop_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
         widths = infer_widths(ast)
         self.assertEqual({None: 1, 1: 6}, _make_histogram(widths))
 
     def test_flip_flop_buggy1_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff_wadden_buggy1.v")
         widths = infer_widths(ast)
         self.assertEqual({None: 1, 1: 5}, _make_histogram(widths))
 
     def test_decoder_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 13, 4: 8, 8: 17}, hist)
 
     def test_counter_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 8, 4: 5}, hist)
 
     def test_fsm_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(fsm_dir / "fsm_full.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 19, 3: 8}, hist)
 
     def test_left_shift_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(left_shift_dir / "lshift_reg.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 4, 8: 7, 32: 5}, hist)
 
     def test_sdram_controller_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(sd_dir / "sdram_controller.no_tri_state.v")
         # ast.show()
         widths = infer_widths(ast)
@@ -591,8 +591,8 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_reed_solomon_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(reed_dir / "BM_lamda.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
@@ -600,8 +600,8 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_i2c_bit_widths(self):
-        from rtlfix import parse_verilog
-        from rtlfix.types import infer_widths
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
         ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.sync_reset.v", i2c_dir)
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
@@ -610,11 +610,11 @@ class TestTypeInference(unittest.TestCase):
 
 
 class TestExposeBranches(unittest.TestCase):
-    """ unittests for code in rtlfix/expose_branches.py """
+    """ unittests for code in rtlrepair/expose_branches.py """
 
     def test_flip_flop(self):
-        from rtlfix import parse_verilog
-        from rtlfix.expose_branches import expose_branches
+        from rtlrepair import parse_verilog
+        from rtlrepair.expose_branches import expose_branches
         ast = parse_verilog(flip_flop_dir / "tff.v")
         expose_branches(ast)
 

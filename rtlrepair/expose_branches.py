@@ -3,9 +3,9 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 
-from rtlfix.types import InferWidths
-from rtlfix.utils import Namespace, serialize
-from rtlfix.visitor import AstVisitor
+from rtlrepair.types import InferWidths
+from rtlrepair.utils import Namespace, serialize
+from rtlrepair.visitor import AstVisitor
 import pyverilog.vparser.ast as vast
 
 

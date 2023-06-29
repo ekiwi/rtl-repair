@@ -6,7 +6,7 @@
 import argparse
 from pathlib import Path
 from dataclasses import dataclass
-from rtlfix import to_btor
+from rtlrepair import to_btor
 
 @dataclass
 class Config:
