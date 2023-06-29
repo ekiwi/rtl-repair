@@ -1,5 +1,5 @@
 [project]
-name = "sdram_controller_no_tri_state"
+name = "sdram_controller"
 directory = "."
 sources = ["sdram_controller.no_tri_state.v"]
 toplevel = "sdram_controller"

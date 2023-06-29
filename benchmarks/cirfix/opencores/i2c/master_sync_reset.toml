@@ -2,7 +2,7 @@
 # this is required for RTL-Repair to work.
 # This could be automated in the future.
 [project]
-name = "i2c_master_sync_reset"
+name = "i2c_master"
 directory = "."
 sources = [
     "i2c_master_top.sync_reset.v",

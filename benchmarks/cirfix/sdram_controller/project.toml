@@ -1,4 +1,5 @@
 [project]
+name = "sdram_controller"
 directory = "."
 sources = ["sdram_controller.v"]
 toplevel = "sdram_controller"
