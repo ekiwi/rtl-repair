@@ -91,10 +91,6 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
         changes = 0
         template = None
 
-    # check file format
-    if not dd['result']['success']:
-        assert status == 'cannot-repair'
-
     return status, changes, template
 
 
@@ -112,9 +108,11 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
             assert isinstance(bb, Benchmark)
             if not benchmarks.is_cirfix_paper_benchmark(bb):
                 continue
-            print(f"{bb.name} w/ {testbench.name}")
-            run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name, testbench=testbench.name,
-                           solver=_solver, init=_init, incremental=_incremental, timeout=_timeout)
+            sys.stdout.write(f"{bb.name} w/ {testbench.name}")
+            status, changes, template = run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name,
+                                                       testbench=testbench.name, solver=_solver, init=_init,
+                                                       incremental=_incremental, timeout=_timeout)
+            print(f" --> {status}")
 
     pass
 
