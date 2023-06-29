@@ -37,3 +37,7 @@ output = "output_test_duursma_lee_algo_t1.txt"
 oracle = "oracle.txt"
 timeout = 40.0
 
+# created using the test_duursma_lee_algo_t1.word.v testbench
+[[testbenches]]
+name = "orig_tb"
+table = "orig_tb.csv"

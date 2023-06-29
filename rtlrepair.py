@@ -65,7 +65,7 @@ def parse_args() -> Config:
                         action='store_true')
     parser.add_argument('--incremental', dest='incremental', help='use incremental solver',
                         action='store_true')
-    parser.add_argument('--timeout', help='Max time to attempt a repair')
+    parser.add_argument('--timeout', help='Max time to attempt a repair in seconds')
     available_template_names = ", ".join(_available_templates.keys())
     parser.add_argument('--templates', default=",".join(_default_templates),
                         help=f'Specify repair templates to use. ({available_template_names})')

@@ -23,6 +23,7 @@ from benchmarks import Benchmark
 _solver = 'bitwuzla'
 _incremental = True
 _init = 'random'  # the incremental solver always uses random init
+_timeout = 60  # one minute timeout
 
 
 @dataclass
@@ -52,7 +53,7 @@ def parse_args() -> Config:
 
 
 def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str, solver, init,
-                   incremental):
+                   incremental, timeout=None):
     # determine the directory name from project and bug name
     out_dir = working_dir / benchmark.name
     args = [
@@ -67,6 +68,8 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
         args += ["--testbench", testbench]
     if incremental:
         args += ["--incremental"]
+    if timeout is not None:
+        args += [f"--timeout", str(timeout)]
 
     cmd = ["./rtlrepair.py"] + args
     # for debugging:
@@ -111,7 +114,7 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
                 continue
             print(f"{bb.name} w/ {testbench.name}")
             run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name, testbench=testbench.name,
-                           solver=_solver, init=_init, incremental=_incremental)
+                           solver=_solver, init=_init, incremental=_incremental, timeout=_timeout)
 
     pass
 
