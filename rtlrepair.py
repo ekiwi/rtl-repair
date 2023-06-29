@@ -36,6 +36,7 @@ class Options:
     show_ast: bool
     synth: SynthOptions
     templates: list
+    skip_preprocessing: bool
     single_solution: bool = False  # restrict the number of solutions to one
     timeout: float = None  # set timeout after which rtl-repair terminates
 
@@ -68,6 +69,7 @@ def parse_args() -> Config:
     available_template_names = ", ".join(_available_templates.keys())
     parser.add_argument('--templates', default=",".join(_default_templates),
                         help=f'Specify repair templates to use. ({available_template_names})')
+    parser.add_argument('--skip-preprocessing',  help='skip the preprocessing step', action='store_true')
 
     args = parser.parse_args()
 
@@ -85,7 +87,8 @@ def parse_args() -> Config:
         t = t.strip()
         assert t in _available_templates, f"Unknown template `{t}`. Try: {available_template_names}"
         templates.append(_available_templates[t])
-    opts = Options(show_ast=args.show_ast, synth=synth_opts, timeout=timeout, templates=templates)
+    opts = Options(show_ast=args.show_ast, synth=synth_opts, timeout=timeout, templates=templates,
+                   skip_preprocessing=args.skip_preprocessing)
 
     return Config(Path(args.working_dir), benchmark, opts)
 
@@ -167,8 +170,11 @@ def try_templates_in_sequence(config: Config, ast) -> (Status, list):
 
 
 def repair(config: Config):
-    # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
-    filename, preprocess_changed = preprocess(config.working_dir, config.benchmark)
+    if config.opts.skip_preprocessing:
+        filename, preprocess_changed = config.benchmark.bug.buggy, False
+    else:
+        # preprocess the input file to fix some obvious problems that violate coding styles and basic lint rules
+        filename, preprocess_changed = preprocess(config.working_dir, config.benchmark)
 
     ast = parse_verilog(filename, config.benchmark.design.directory)
     if config.opts.show_ast:
