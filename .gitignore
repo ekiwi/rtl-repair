@@ -6,6 +6,8 @@ target/
 
 # Intellij Idea
 .idea/
+.metals/
+.vscode/
 
 # chisel testers
 /test_run_dir/
