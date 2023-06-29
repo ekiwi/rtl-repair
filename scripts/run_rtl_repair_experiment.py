@@ -97,11 +97,13 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
 
 def run_all_cirfix_benchmarks(conf: Config, projects: dict):
     for name, project in projects.items():
-        testbench = benchmarks.pick_trace_testbench(project)
-        project_toml = benchmarks.projects[name]
         # overwrite for manual adjustments that we had to make
         if name in benchmarks.rtlrepair_replacements:
             project_toml = benchmarks.rtlrepair_replacements[name]
+            project = benchmarks.load_project(project_toml)
+        else:
+            project_toml = benchmarks.projects[name]
+        testbench = benchmarks.pick_trace_testbench(project)
         bbs = benchmarks.get_benchmarks(project)
         for bb in bbs:
             assert isinstance(bb, Benchmark)
