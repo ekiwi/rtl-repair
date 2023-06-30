@@ -110,6 +110,72 @@ rtlrepair_replacements = {
 }
 
 
+# see table 3 in the cirfix paper
+# (description, cat, repair time, status)
+Correct = 'correct'
+Plausible = 'plausible'
+Timeout = 'timeout'
+benchmark_to_cirfix_paper_table_3 = {
+    "decoder_3_to_8": {
+        "wadden_buggy1": ("Two separate numeric errors", 1, 13984.3, Correct),
+        "wadden_buggy2": ("Incorrect assignment", 2, None, Timeout),
+    },
+    "first_counter_overflow": {
+        "wadden_buggy1":  ("Incorrect sensitivity list", 1, 19.8, Correct),
+        "kgoliya_buggy1":  ("Incorrect reset", 1, 32239.2, Correct),
+        "wadden_buggy2": ("Incorrect incremental of counter", 1, 27781.3, Correct)
+    },
+    "flip_flop": {
+        "wadden_buggy1": ("Incorrect conditional", 1, 7.8, Correct),
+        "wadden_buggy2": ("Branches of if-statement swapped", 1, 923.5, Correct),
+    },
+    "fsm_full": {
+        "wadden_buggy1":   ("Incorrect case statement", 1, None, Timeout),
+        "ssscrazy_buggy2":   ("Incorrectly blocking assignments", 1, 4282.2, Plausible),
+        "wadden_buggy2": ("Assignment to next state and default in case statement omitted", 2, 1536.4, Plausible),
+        "ssscrazy_buggy1": ("Assignment to next state omitted, incorrect sensitivity list", 2, 37.0, Correct),
+    },
+    "lshift_reg": {
+        "wadden_buggy1":  ("Incorrect blocking assignment", 1, 14.6, Correct),
+        "wadden_buggy2":  ("Incorrect conditional", 1, 33.74, Correct),
+        "kgoliya_buggy1": ("Incorrect sensitivity list", 1, 7.8, Correct),
+    },
+    "mux_4_1": {
+        "kgoliya_buggy1":  ("1 bit instead of 4 bit output", 1, None, Timeout),
+        "wadden_buggy2":  ("Hex instead of binary constants", 1, 10315.4, Plausible),
+        "wadden_buggy1": ("Three separate numeric errors", 2, 15387.9, Plausible),
+    },
+    "i2c_slave": {
+        "wadden_buggy1": ("Incorrect sensitivity list", 2, 183.0, Correct),
+        "wadden_buggy2": ("Incorrect address assignment", 2, 57.9, Plausible),
+    },
+    "i2c_master": {
+        "kgoliya_buggy1": ("No command acknowledgement", 2, 1560.5, Correct),
+    },
+    "sha3_keccak": {
+        "wadden_buggy1": ("Off-by-one error in loop", 1, 50.4, Correct),
+        "round_ssscrazy_buggy1": ("Incorrect bitwise negation", 1, None, Timeout),
+        "wadden_buggy2": ("Incorrect assignment to wires", 2, None, Timeout),
+    },
+    "sha3_padder": {
+        "ssscrazy_buggy1": ("Skipped buffer overflow check", 2, 50.0, Correct),
+    },
+    "pairing": {
+        "wadden_buggy1":  ("Incorrect logic for bitshifting", 1, None , Timeout),
+        "kgoliya_buggy1":  ("Incorrect operator for bitshifting", 1, None, Timeout),
+        "wadden_buggy2": ("Incorrect instantiation of modules", 1, None, Timeout),
+    },
+    "reed_solomon_decoder": {
+        "BM_lamda_ssscrazy_buggy1": ("Insufficient register size for decimal values", 1, None, Timeout),
+        "out_stage_ssscrazy_buggy1": ("Incorrect sensitivity list for reset", 2, 28547.8, Correct),
+    },
+    "sdram_controller": {
+        "wadden_buggy2":  ("Numeric error in definitions", 1, None, Timeout),
+        "kgoliya_buggy2":  ("Incorrect case statement", 2, None, Timeout),
+        "wadden_buggy1": ("Incorrect assignments to registers during synchronous reset", 2, 16607.6, Correct),
+    },
+}
+
 @dataclass
 class Bug:
     name: str
