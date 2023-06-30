@@ -22,6 +22,7 @@ class Repair:
 
 @dataclass
 class Result:
+    name: str
     tool: str
     project_name: str
     bug_name: str
@@ -32,16 +33,12 @@ class Result:
     repairs: list[Repair] = field(default_factory=list)
     custom: dict = field(default_factory=dict)
 
-    @property
-    def result_name(self) -> str:
-        return f"{self.tool}.{self.project_name}.{self.bug_name}"
-
 
 def collect_repair_meta(dd: dict) -> dict:
     return {k: v for k, v in dd.items() if k not in {'name', 'diff'}}
 
 
-def load_result(filename: Path) -> Result:
+def load_result(filename: Path, name: str = None) -> Result:
     assert_file_exists("result file", filename)
     with open(filename, 'rb') as ff:
         dd = tomli.load(ff)
@@ -56,7 +53,11 @@ def load_result(filename: Path) -> Result:
     ) for rr in dd['repairs']]
 
     res = dd['result']
+    # default name
+    if name is None:
+        name = f"{res['tool']}.{res['project']}.{res['bug']}"
     result = Result(
+        name=name,
         tool=res['tool'],
         project_name=res['project'],
         bug_name=res['bug'],

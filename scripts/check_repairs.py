@@ -6,6 +6,7 @@
 # check repairs
 
 import os
+import shutil
 import subprocess
 import sys
 import argparse
@@ -93,9 +94,9 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
     return SimResult()
 
 
-def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list):
+def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list):
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
-    output = conf.working_dir / benchmark.testbench.output
+    output = working_dir / benchmark.testbench.output
     # remove any previous output that might exist from a prior run
     if output.exists():
         os.remove(output)
@@ -105,7 +106,7 @@ def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list)
     run_conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False, logfile=logfile)
     if logfile:
         logfile.flush()
-    run(conf.working_dir, conf.sim, tb_sources, run_conf)
+    run(working_dir, conf.sim, tb_sources, run_conf)
 
     # check the output
     if not output.exists():
@@ -119,23 +120,32 @@ def check_sim(conf: Config, logfile, benchmark: Benchmark, design_sources: list)
     return res
 
 
-def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
+def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, repair: Repair):
+    assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     sys.stdout.flush()
+    # copy over the oracle for easier debugging later
+    shutil.copy(benchmark.testbench.oracle, working_dir)
+
     # first we just simulate and check the oracle
     if not conf.skip_rtl_sim:
         print(f"RTL Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         other_sources = get_other_sources(benchmark)
-        sim_res = check_sim(conf, logfile, benchmark, [repair.filename.resolve()] + other_sources)
+        sim_res = check_sim(conf, working_dir, logfile, benchmark, [repair.filename.resolve()] + other_sources)
         sys.stdout.write(f" RTL-sim {sim_res.emoji}")
         sys.stdout.flush()
+        # rename output in order to preserve it
+        try:
+            shutil.move(working_dir / benchmark.testbench.output, working_dir / f"{benchmark.testbench.output}.rtl")
+        except:
+            pass
 
     # synthesize to gates
     print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
     other_sources = get_other_sources(benchmark)
     # synthesize
-    gate_level = conf.working_dir / f"{repair.filename.stem}.gatelevel.v"
+    gate_level = working_dir / f"{repair.filename.stem}.gatelevel.v"
     try:
-        to_gatelevel_netlist(conf.working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top,
+        to_gatelevel_netlist(working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top,
                              logfile=None)
         synthesis_success = True
     except subprocess.CalledProcessError:
@@ -146,7 +156,7 @@ def check_repair(conf: Config, logfile, benchmark: Benchmark, repair: Repair):
     # now we do the gate-level sim, do we get the same result?
     if synthesis_success:
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
-        gate_res = check_sim(conf, logfile, benchmark, [gate_level.resolve()])
+        gate_res = check_sim(conf, working_dir, logfile, benchmark, [gate_level.resolve()])
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
         sys.stdout.flush()
 
@@ -157,7 +167,11 @@ def find_benchmark(projects: dict, result: Result) -> Benchmark:
 
 
 def load_results(tomls: list[Path]) -> list[Result]:
-    return [load_result(toml) for toml in tomls]
+    res = []
+    for toml in tomls:
+        result_name = toml.parent.name
+        res.append(load_result(toml, result_name))
+    return res
 
 
 def find_result_toml(directory: Path) -> list[Path]:
@@ -182,7 +196,7 @@ def parse_args() -> Config:
     return Config(Path(args.working_dir), Path(args.results), sim=args.simulator, skip_rtl_sim=args.skip_rtl_sim)
 
 
-def create_working_dir(working_dir: Path):
+def create_dir(working_dir: Path):
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
 
@@ -202,10 +216,10 @@ def main():
     results = load_results(result_tomls)
 
     # sort results to ensure deterministic results
-    results = sorted(results, key=lambda r: r.result_name)
+    results = sorted(results, key=lambda r: r.name)
 
     # ensure that the working dir exists
-    create_working_dir(conf.working_dir)
+    create_dir(conf.working_dir)
 
     # load all projects so that we can find the necessary info to evaluate repairs
     projects = load_all_projects()
@@ -213,10 +227,13 @@ def main():
     # check each result
     print("Checking Repairs:")
     for res in results:
-        print(res.result_name)
+        print(res.name)
         bb = find_benchmark(projects, res)
+        # create a folder for this result
+        result_working_dir = conf.working_dir / res.name
+        create_dir(result_working_dir)
         # open a log file
-        logfile_name = conf.working_dir / f"{res.result_name}.log"
+        logfile_name = conf.working_dir / f"{res.name}.log"
         with open(logfile_name, 'w') as logfile:
             print(f"Checking: {res}", file=logfile)
             # if we have an original, we want to make sure that our tests work on that
@@ -224,12 +241,16 @@ def main():
                 fake_repair = Repair(filename=bb.bug.original)
                 print(f"Original: {fake_repair}", file=logfile)
                 sys.stdout.write(f"  - {fake_repair.filename.name}:")
-                check_repair(conf, logfile, bb, fake_repair)
+                repair_dir = result_working_dir / fake_repair.filename.stem
+                create_dir(repair_dir)
+                check_repair(conf, repair_dir, logfile, bb, fake_repair)
                 print()
             for repair in res.repairs:
                 print(f"Repair: {repair}", file=logfile)
                 sys.stdout.write(f"  - {repair.filename.name}:")
-                check_repair(conf, logfile, bb, repair)
+                repair_dir = result_working_dir / repair.filename.stem
+                create_dir(repair_dir)
+                check_repair(conf, repair_dir, logfile, bb, repair)
                 print()
 
 
