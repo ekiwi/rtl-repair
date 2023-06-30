@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 import os
 from benchmarks import VerilogOracleTestbench
 
+
 @dataclass
 class RunConf:
     include_dir: Path = None
@@ -18,11 +19,12 @@ class RunConf:
     verbose: bool = False
     show_stdout: bool = False
     defines: list = field(default_factory=list)
-    logfile: io.TextIOBase  = None
+    logfile: io.TextIOBase = None
 
 
 def run_oracle_tb(working_dir: Path, sim: str, tb: VerilogOracleTestbench, conf: RunConf) -> bool:
     raise NotImplementedError("TODO")
+
 
 def run(working_dir: Path, sim: str, files: list, conf: RunConf) -> bool:
     if sim == 'vcs':
@@ -32,11 +34,13 @@ def run(working_dir: Path, sim: str, files: list, conf: RunConf) -> bool:
     else:
         raise NotImplementedError(f"Simulator `{sim}` is not supported! Try `vcs` or `iverilog`!")
 
+
 def _print(conf: RunConf, msg: str):
     if conf.logfile is not None:
         print(msg, file=conf.logfile)
     if conf.verbose:
         print(msg)
+
 
 def _conf_streams(conf: RunConf):
     if conf.logfile:
@@ -46,9 +50,11 @@ def _conf_streams(conf: RunConf):
         return None, stderr
     return subprocess.PIPE, stderr
 
+
 def _flush_log(conf: RunConf):
     if conf.logfile:
         conf.logfile.flush()
+
 
 def run_with_iverilog(working_dir: Path, files: list, conf: RunConf) -> bool:
     cmd = ['iverilog', '-g2012']
@@ -62,7 +68,8 @@ def run_with_iverilog(working_dir: Path, files: list, conf: RunConf) -> bool:
     # while iverilog generally does not timeout, we add the timeout here for feature parity with the VCS version
     try:
         _flush_log(conf)
-        r = subprocess.run(cmd, cwd=working_dir, check=False, stdout=stdout, stderr=stderr, timeout=conf.compile_timeout)
+        r = subprocess.run(cmd, cwd=working_dir, check=False, stdout=stdout, stderr=stderr,
+                           timeout=conf.compile_timeout)
         compiled_successfully = r.returncode == 0
     except subprocess.TimeoutExpired:
         compiled_successfully = False
@@ -72,15 +79,16 @@ def run_with_iverilog(working_dir: Path, files: list, conf: RunConf) -> bool:
         try:
             _print(conf, './a.out')
             _flush_log(conf)
-            r = subprocess.run(['./a.out'], cwd=working_dir, shell=True, timeout=conf.timeout, stdout=stdout, stderr=stderr)
+            r = subprocess.run(['./a.out'], cwd=working_dir, shell=True, timeout=conf.timeout, stdout=stdout,
+                               stderr=stderr)
             success = r.returncode == 0
         except subprocess.TimeoutExpired:
             success = False  # failed
         _flush_log(conf)
         os.remove(os.path.join(working_dir, 'a.out'))
-        return  success
+        return success
     else:
-        return False # failed to compile
+        return False  # failed to compile
 
 
 _vcs_flags = ["-sverilog", "-full64"]
@@ -97,7 +105,8 @@ def run_with_vcs(working_dir: Path, files: list, conf: RunConf) -> bool:
     stdout, stderr = _conf_streams(conf)
     # VCS can take hours to compile for some changes ...
     try:
-        r = subprocess.run(cmd, cwd=working_dir, check=False, stdout=stdout, stderr=stderr, timeout=conf.compile_timeout)
+        r = subprocess.run(cmd, cwd=working_dir, check=False, stdout=stdout, stderr=stderr,
+                           timeout=conf.compile_timeout)
         compiled_successfully = r.returncode == 0
     except subprocess.TimeoutExpired:
         compiled_successfully = False
@@ -105,10 +114,11 @@ def run_with_vcs(working_dir: Path, files: list, conf: RunConf) -> bool:
     if compiled_successfully:
         try:
             _print(conf, './simv')
-            r = subprocess.run(['./simv'], cwd=working_dir, shell=False, timeout=conf.timeout, stdout=stdout, stderr=stderr)
+            r = subprocess.run(['./simv'], cwd=working_dir, shell=False, timeout=conf.timeout, stdout=stdout,
+                               stderr=stderr)
             success = r.returncode == 0
         except subprocess.TimeoutExpired:
-            success = False # failed
+            success = False  # failed
         return success
     else:
-        return False # failed to compile
+        return False  # failed to compile

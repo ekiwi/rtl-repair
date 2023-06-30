@@ -103,7 +103,9 @@ def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, de
 
     # run testbench
     tb_sources = benchmark.testbench.sources + design_sources
-    run_conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False, logfile=logfile)
+    run_conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False, logfile=logfile,
+                       # dump a trace for easier debugging
+                       defines=[("DUMP_TRACE", 1)])
     if logfile:
         logfile.flush()
     run(working_dir, conf.sim, tb_sources, run_conf)
@@ -138,6 +140,9 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
             shutil.move(working_dir / benchmark.testbench.output, working_dir / f"{benchmark.testbench.output}.rtl")
         except:
             pass
+        # rename trace
+        if (working_dir / "dump.vcd").exists():
+            shutil.move(working_dir / "dump.vcd", working_dir / "rtl.vcd")
 
     # synthesize to gates
     print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
@@ -159,6 +164,9 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
         gate_res = check_sim(conf, working_dir, logfile, benchmark, [gate_level.resolve()])
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
         sys.stdout.flush()
+        # rename trace
+        if (working_dir / "dump.vcd").exists():
+            shutil.move(working_dir / "dump.vcd", working_dir / "gatelevel.vcd")
 
 
 def find_benchmark(projects: dict, result: Result) -> Benchmark:
