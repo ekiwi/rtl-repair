@@ -44,14 +44,14 @@ output = "output_tst_bench_top_t1.txt"
 oracle = "oracle.txt"
 timeout = 20.0
 
-# trace recorded by executing the original Verilog testbench converted to use
-# synchronous reset
-[[testbenches]]
-name = "orig_tb_sync_reset"
-table = "orig_tb_sync_reset.csv"
-
 # unfortunatelly there is some synthesis/simulation mismatch due to X-propagation
 # we thus had to alter the testbench trace to fix these X-propagation issues
 [[testbenches]]
 name = "fixed_x_prop_tb"
 table = "fixed_x_prop_tb.csv"
+
+# trace recorded by executing the original Verilog testbench converted to use
+# synchronous reset
+[[testbenches]]
+name = "orig_tb_sync_reset"
+table = "orig_tb_sync_reset.csv"
