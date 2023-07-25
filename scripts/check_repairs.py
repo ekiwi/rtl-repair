@@ -132,7 +132,9 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
     if not conf.skip_rtl_sim:
         print(f"RTL Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         other_sources = get_other_sources(benchmark)
-        sim_res = check_sim(conf, working_dir, logfile, benchmark, [repair.filename.resolve()] + other_sources)
+        run_logfile = working_dir / f"{repair.filename.stem}.sim.log"
+        with open(run_logfile, 'w') as logff:
+            sim_res = check_sim(conf, working_dir, logff, benchmark, [repair.filename.resolve()] + other_sources)
         sys.stdout.write(f" RTL-sim {sim_res.emoji}")
         sys.stdout.flush()
         # rename output in order to preserve it
@@ -150,8 +152,9 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
     # synthesize
     gate_level = working_dir / f"{repair.filename.stem}.gatelevel.v"
     try:
-        to_gatelevel_netlist(working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top,
-                             logfile=None)
+        with open(working_dir / f"{repair.filename.stem}.synthesis.log", 'w') as gate_level_logfile:
+            to_gatelevel_netlist(working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top,
+                                 logfile=gate_level_logfile)
         synthesis_success = True
     except subprocess.CalledProcessError:
         synthesis_success = False
@@ -161,7 +164,9 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
     # now we do the gate-level sim, do we get the same result?
     if synthesis_success:
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
-        gate_res = check_sim(conf, working_dir, logfile, benchmark, [gate_level.resolve()])
+        run_logfile = working_dir / f"{repair.filename.stem}.gatelevel.sim.log"
+        with open(run_logfile, 'w') as logff:
+            gate_res = check_sim(conf, working_dir, logff, benchmark, [gate_level.resolve()])
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
         sys.stdout.flush()
         # rename trace
