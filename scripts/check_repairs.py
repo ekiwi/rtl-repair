@@ -56,6 +56,7 @@ class SimResult:
     no_output: bool = False
     failed_at: int = -1
     fail_msg: str = ""
+    cycles: int = None # number of cycles executed
 
     @property
     def is_success(self): return self.failed_at == -1 and not self.no_output
@@ -65,6 +66,11 @@ class SimResult:
 
 
 def check_against_oracle(oracle_filename: Path, output_filename: Path):
+    # check output length to determine the number of cycles
+    with open(output_filename) as output:
+        cycles = 0
+        for _ in output:
+            cycles += 1
     with open(oracle_filename) as oracle, open(output_filename) as output:
         oracle_header, output_header = parse_csv_line(oracle.readline()), parse_csv_line(output.readline())
         assert oracle_header == output_header, f"{oracle_header} != {output_header}"
@@ -82,19 +88,20 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
                 if ee != 'x' and ee != aa:
                     msg.append(f"{nn}@{ii}: {aa} != {ee} (expected)")
             if len(msg) > 0:
-                return SimResult(failed_at=ii, fail_msg='\n'.join(msg))
+                return SimResult(failed_at=ii, fail_msg='\n'.join(msg), cycles=cycles)
 
         # are we missing some output?
         remaining_oracle_lines = oracle.readlines()
         if len(remaining_oracle_lines) > 0:
             # we expected more output => fail!
             msg = f"Output stopped at {ii}. Expected {len(remaining_oracle_lines)} more lines."
-            return SimResult(failed_at=ii, fail_msg=msg)
+            return SimResult(failed_at=ii, fail_msg=msg, cycles=cycles)
 
-    return SimResult()
+    return SimResult(cycles=cycles)
 
 
-def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list):
+def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list,
+              max_cycles: int = None):
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     output = working_dir / benchmark.testbench.output
     # remove any previous output that might exist from a prior run
@@ -104,6 +111,7 @@ def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, de
     # run testbench
     tb_sources = benchmark.testbench.sources + design_sources
     run_conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False, logfile=logfile,
+                       timeout=60 * 2, # 2 minutes max
                        # dump a trace for easier debugging
                        defines=[("DUMP_TRACE", 1)])
     if logfile:
@@ -114,7 +122,7 @@ def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, de
     if not output.exists():
         # no output was produced --> fail
         msg = "No output was produced."
-        res = SimResult(no_output=True, fail_msg=msg)
+        res = SimResult(no_output=True, fail_msg=msg, cycles=0)
     else:
         res = check_against_oracle(benchmark.testbench.oracle, output)
     if logfile:
@@ -127,6 +135,9 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
     sys.stdout.flush()
     # copy over the oracle for easier debugging later
     shutil.copy(benchmark.testbench.oracle, working_dir)
+
+    # by default, the gate level sim runs until it terminates
+    max_cycles = None
 
     # first we just simulate and check the oracle
     if not conf.skip_rtl_sim:
@@ -145,6 +156,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
         # rename trace
         if (working_dir / "dump.vcd").exists():
             shutil.move(working_dir / "dump.vcd", working_dir / "rtl.vcd")
+        max_cycles = sim_res.cycles
 
     # synthesize to gates
     print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
@@ -166,7 +178,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         run_logfile = working_dir / f"{repair.filename.stem}.gatelevel.sim.log"
         with open(run_logfile, 'w') as logff:
-            gate_res = check_sim(conf, working_dir, logff, benchmark, [gate_level.resolve()])
+            gate_res = check_sim(conf, working_dir, logff, benchmark, [gate_level.resolve()], max_cycles=max_cycles)
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
         sys.stdout.flush()
         # rename trace
