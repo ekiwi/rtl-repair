@@ -13,11 +13,10 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
-import benchmarks
-
 # add root dir in order to be able to load "benchmarks" module
 _script_dir = Path(__file__).parent.resolve()
 sys.path.append(str(_script_dir.parent))
+import benchmarks
 from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects
 from benchmarks.yosys import to_gatelevel_netlist
 from benchmarks.run import run, RunConf
