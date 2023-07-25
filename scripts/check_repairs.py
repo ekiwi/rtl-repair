@@ -13,6 +13,8 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
+import benchmarks
+
 # add root dir in order to be able to load "benchmarks" module
 _script_dir = Path(__file__).parent.resolve()
 sys.path.append(str(_script_dir.parent))
@@ -188,6 +190,10 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
 
 def find_benchmark(projects: dict, result: Result) -> Benchmark:
     project = projects[result.project_name]
+    # overwrite for manual adjustments that we had to make
+    if result.tool == "rtl-repair" and result.project_name in benchmarks.rtlrepair_replacements:
+        project_toml = benchmarks.rtlrepair_replacements[result.project_name]
+        project = benchmarks.load_project(project_toml)
     return get_benchmark(project, result.bug_name, use_trace_testbench=False)
 
 
