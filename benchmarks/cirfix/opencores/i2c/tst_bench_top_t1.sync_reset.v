@@ -68,6 +68,9 @@
 
 `include "timescale.v"
 
+// enable cirfix oracle compatible output, this is required by the check_results.py script
+`define CIRFIX_OUTPUT
+
 module tst_bench_top();
 
 	//
@@ -209,16 +212,25 @@ module tst_bench_top();
 
 	initial begin
 		f = $fopen("output_tst_bench_top_t1.txt");
+`ifdef CIRFIX_OUTPUT
+		$fwrite(f, "time,wb_dat_o[7],wb_dat_o[6],wb_dat_o[5],wb_dat_o[4],wb_dat_o[3],wb_dat_o[2],wb_dat_o[1],wb_dat_o[0],wb_ack_o,wb_inta_o,scl_pad_o,scl_padoen_o\n");
+`else
 		// Note: cirfix decided not to look at the SDA output for some reason (not sure why) so we also exclude it
 		$fwrite(f, "time,wb_clk_i,wb_rst_i,arst_i,wb_adr_i,wb_dat_i,wb_we_i,wb_stb_i,wb_cyc_i,scl_pad_i,sda_pad_i,wb_dat_o,wb_ack_o,wb_inta_o,scl_pad_o,scl_padoen_o\n");
+`endif
 		
 		forever begin
 			@(posedge clk);
+`ifdef CIRFIX_OUTPUT
+			$fwrite(f, "%g,%b,%b,%b,%b,%b,%b,%b,%b,%b,%b,%b,%b\n", 
+			$time,dat0_i[7],dat0_i[6],dat0_i[5],dat0_i[4],dat0_i[3],dat0_i[2],dat0_i[1],dat0_i[0],ack,inta,scl0_o,scl0_oen);
+`else
 			$fwrite(f, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,",
 			$time,clk,1'b0,rstn,adr[2:0],dat_o,we,stb0,cyc,scl,sda);
 			#1;
 			// sample outputs delyed by one because the register updates are delayed by one
 			$fwrite(f, "%d,%d,%d,%d,%d\n" ,dat0_i,wb_ack_o,wb_inta_o,scl0_o,scl0_oen);
+`endif
 		end
 	end
 
