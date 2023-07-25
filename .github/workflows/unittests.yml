@@ -130,7 +130,7 @@ jobs:
       run: |
         source venv/bin/activate
         ./scripts/check_repairs.py --working-dir=tmp --results=results/test-results --sim=iverilog
-        cat tmp/cirfix.mux_4_1.wadden_buggy1.log
+        cat tmp/mux_4_1_wadden_buggy1_oracle-full_repair_2021-07-20-23:50:05.log
 
   test-cirfix:
     name: Test CirFix Quick Repairs
