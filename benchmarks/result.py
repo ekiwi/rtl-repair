@@ -17,6 +17,7 @@ from benchmarks import Benchmark, assert_file_exists, assert_dir_exists, parse_p
 class Repair:
     filename: Path
     diff: Path = None
+    manual: Path = None  # manually ported patch
     meta: dict = field(default_factory=dict)
 
 
@@ -35,7 +36,7 @@ class Result:
 
 
 def collect_repair_meta(dd: dict) -> dict:
-    return {k: v for k, v in dd.items() if k not in {'name', 'diff'}}
+    return {k: v for k, v in dd.items() if k not in {'name', 'diff', 'manual'}}
 
 
 def load_result(filename: Path, name: str = None) -> Result:
@@ -49,6 +50,7 @@ def load_result(filename: Path, name: str = None) -> Result:
     repairs = [Repair(
         filename=parse_path(rr['name'], base_dir, must_exist=True),
         diff=parse_path(rr['diff'], base_dir, must_exist=True) if 'diff' in rr else None,
+        manual=parse_path(rr['manual'], base_dir, must_exist=True) if 'manual' in rr else None,
         meta=collect_repair_meta(rr),
     ) for rr in dd['repairs']]
 

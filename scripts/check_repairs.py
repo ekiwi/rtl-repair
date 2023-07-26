@@ -138,6 +138,13 @@ def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, de
 def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, repair: Repair):
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     sys.stdout.flush()
+
+    # if there is a manual port of the fix, then we want to use that instead of the original repair
+    if repair.manual is not None:
+        repair_filename = repair.manual
+    else:
+        repair_filename = repair.filename
+
     # copy over the oracle for easier debugging later
     shutil.copy(benchmark.testbench.oracle, working_dir)
 
@@ -148,9 +155,9 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
     if not conf.skip_rtl_sim:
         print(f"RTL Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         other_sources = get_other_sources(benchmark)
-        run_logfile = working_dir / f"{repair.filename.stem}.sim.log"
+        run_logfile = working_dir / f"{repair_filename.stem}.sim.log"
         with open(run_logfile, 'w') as logff:
-            sim_res = check_sim(conf, working_dir, logff, benchmark, [repair.filename.resolve()] + other_sources)
+            sim_res = check_sim(conf, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
         sys.stdout.write(f" RTL-sim {sim_res.emoji}")
         sys.stdout.flush()
         # rename output in order to preserve it
@@ -167,10 +174,10 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
     print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
     other_sources = get_other_sources(benchmark)
     # synthesize
-    gate_level = working_dir / f"{repair.filename.stem}.gatelevel.v"
+    gate_level = working_dir / f"{repair_filename.stem}.gatelevel.v"
     try:
-        with open(working_dir / f"{repair.filename.stem}.synthesis.log", 'w') as gate_level_logfile:
-            to_gatelevel_netlist(working_dir, gate_level, [repair.filename] + other_sources, top=benchmark.design.top,
+        with open(working_dir / f"{repair_filename.stem}.synthesis.log", 'w') as gate_level_logfile:
+            to_gatelevel_netlist(working_dir, gate_level, [repair_filename] + other_sources, top=benchmark.design.top,
                                  logfile=gate_level_logfile)
         synthesis_success = True
     except subprocess.CalledProcessError:
@@ -181,7 +188,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
     # now we do the gate-level sim, do we get the same result?
     if synthesis_success:
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
-        run_logfile = working_dir / f"{repair.filename.stem}.gatelevel.sim.log"
+        run_logfile = working_dir / f"{repair_filename.stem}.gatelevel.sim.log"
         with open(run_logfile, 'w') as logff:
             gate_res = check_sim(conf, working_dir, logff, benchmark, [gate_level.resolve()], max_cycles=max_cycles)
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
