@@ -16,7 +16,6 @@ from pathlib import Path
 # add root dir in order to be able to load "benchmarks" module
 _script_dir = Path(__file__).parent.resolve()
 sys.path.append(str(_script_dir.parent))
-import benchmarks
 from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects
 from benchmarks.yosys import to_gatelevel_netlist
 from benchmarks.run import run, RunConf
@@ -109,9 +108,14 @@ def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, de
     if output.exists():
         os.remove(output)
 
+    # copy over any memory initialization files from the testbench
+    for init_file in benchmark.testbench.init_files:
+        shutil.copy(init_file, working_dir)
+
     # run testbench
     tb_sources = benchmark.testbench.sources + design_sources
-    run_conf = RunConf(include_dir=benchmark.design.directory, verbose=False, show_stdout=False, logfile=logfile,
+    run_conf = RunConf(include_dir=benchmark.design.directory,
+                       verbose=False, show_stdout=False, logfile=logfile,
                        timeout=60 * 2, # 2 minutes max
                        # dump a trace for easier debugging
                        defines=[("DUMP_TRACE", 1)])
