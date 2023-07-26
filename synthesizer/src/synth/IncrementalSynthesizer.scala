@@ -51,7 +51,10 @@ object IncrementalSynthesizer {
       totalCheckTime += checkTime
       candidates.find(_.correct) match {
         case Some(value) => // return correct solution if it exists
-          return RepairSuccess(Seq(Solution(value.assignment)), RepairStats(totalCheckTime))
+          return RepairSuccess(
+            Seq(Solution(value.assignment)),
+            RepairStats(totalCheckTime, pastK = pastK, futureK = futureK)
+          )
         case None => // otherwise, we analyze the solutions that did not work
           val failureDistance = candidates.map(c => c.failAt - exec.failAt)
           val maxFailureDistance = (0 +: failureDistance).max
@@ -62,7 +65,7 @@ object IncrementalSynthesizer {
             val newPastK = Seq(pastK + 2, exec.failAt).min // cannot go back more than the location of the original bug
             if (newPastK == pastK) {
               if (config.verbose) println(s"Cannot go back further in time => no solution found")
-              return CannotRepair(RepairStats(totalCheckTime))
+              return CannotRepair(RepairStats(totalCheckTime, pastK = pastK, futureK = futureK))
             }
             if (config.verbose) println(s"updating pastK from $pastK to $newPastK")
             pastK = newPastK
@@ -70,7 +73,7 @@ object IncrementalSynthesizer {
       }
     }
 
-    CannotRepair(RepairStats(totalCheckTime))
+    CannotRepair(RepairStats(totalCheckTime, pastK = pastK, futureK = futureK))
   }
 
   /** Try to find a solution while unrolling for up to [[k]] steps. */

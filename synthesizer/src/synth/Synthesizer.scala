@@ -35,6 +35,8 @@ object Synthesizer {
 
         println("""{"status":"success",""")
         println(f""""solver-time": ${stats.solverTimeNs},""")
+        println(f""""past-k": ${stats.pastK},""")
+        println(f""""future-k": ${stats.futureK},""")
         println(""" "solutions": [""")
         println(solutionJSON)
         println(" ]")
@@ -249,7 +251,7 @@ object Synthesizer {
   }
 }
 
-case class RepairStats(solverTimeNs: Long)
+case class RepairStats(solverTimeNs: Long, pastK: Int = -1, futureK: Int = -1)
 
 sealed trait RepairResult {
   def isSuccess:         Boolean = false
