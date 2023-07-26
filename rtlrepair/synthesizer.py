@@ -24,6 +24,13 @@ class SynthOptions:
     init: str
     incremental: bool
 
+
+@dataclass
+class SynthStats:
+    solver_time_ns: int
+    past_k: int
+    future_k: int
+
 def _check_jar():
     assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
 
@@ -60,7 +67,7 @@ class Synthesizer:
     def __init__(self):
         pass
 
-    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> (Status, list, int):
+    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> (Status, list, SynthStats):
         assert isinstance(benchmark.testbench, TraceTestbench), f"{benchmark.testbench} : {type(benchmark.testbench)} is not a TraceTestbench"
 
         # save instrumented AST to disk so that we can call yosys
@@ -79,4 +86,6 @@ class Synthesizer:
         if status == Status.Success:
             solutions = [s['assignment'] for s in result['solutions']]
 
-        return status, solutions, result['solver-time']
+        stats = SynthStats(solver_time_ns=result['solver-time'], past_k=result['past-k'], future_k=result['future-k'])
+
+        return status, solutions, stats

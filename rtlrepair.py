@@ -126,7 +126,7 @@ def try_template(config: Config, ast, prefix: str, template) -> (Status, list):
     # try to find a change that fixes the design
     synth_start_time = time.monotonic()
     synth = Synthesizer()
-    status, assignments, solver_time_ns = synth.run(template_dir, config.opts.synth, ast, config.benchmark)
+    status, assignments, synth_stats = synth.run(template_dir, config.opts.synth, ast, config.benchmark)
     synth_time = time.monotonic() - synth_start_time
 
     solutions = []
@@ -149,7 +149,9 @@ def try_template(config: Config, ast, prefix: str, template) -> (Status, list):
             # meta info for the solution
             meta = {'changes': len(changes), 'template': template_name, 'synth_time': synth_time,
                     'template_time': time.monotonic() - start_time,
-                    'solver_time': solver_time_ns / 1000.0 / 1000.0 / 1000.0}
+                    'solver_time': synth_stats.solver_time_ns / 1000.0 / 1000.0 / 1000.0,
+                    'past_k': synth_stats.past_k, 'future_k': synth_stats.future_k,
+                    }
             solutions.append((repaired_filename, meta))
 
     return status, solutions
