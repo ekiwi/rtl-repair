@@ -24,7 +24,7 @@ _solver = 'bitwuzla'
 _incremental = True
 _init = 'random'  # the incremental solver always uses random init
 _timeout = 60  # one minute timeout
-
+_verbose_synth = True
 
 @dataclass
 class Config:
@@ -70,6 +70,8 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
         args += ["--incremental"]
     if timeout is not None:
         args += [f"--timeout", str(timeout)]
+    if _verbose_synth:
+        args += ["--verbose-synthesizer"]
 
     cmd = ["./rtlrepair.py"] + args
     # for debugging:
