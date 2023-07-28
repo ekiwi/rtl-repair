@@ -125,7 +125,7 @@ def try_template(config: Config, ast, prefix: str, template) -> (Status, list):
     os.mkdir(template_dir)
 
     # apply template any try to synthesize a solution
-    template(ast)
+    blockified = template(ast)
 
     # try to find a change that fixes the design
     synth_start_time = time.monotonic()
@@ -140,7 +140,7 @@ def try_template(config: Config, ast, prefix: str, template) -> (Status, list):
             assignments = assignments[:1]
         for ii, assignment in enumerate(assignments):
             # execute synthesized repair
-            changes = do_repair(ast, assignment)
+            changes = do_repair(ast, assignment, blockified)
             prefix = f"{config.benchmark.bug.buggy.stem}.repaired.{ii}"
             with open(template_dir / f"{prefix}.changes.txt", "w") as f:
                 f.write(f"{template_name}\n")

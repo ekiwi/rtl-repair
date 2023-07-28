@@ -73,10 +73,14 @@ def parse_width(width) -> int:
     return msb - lsb + 1
 
 
-def ensure_block(stmt: vast.Node) -> vast.Block:
+def ensure_block(stmt: vast.Node, blockify_tracker_list: list = None) -> vast.Block:
     if isinstance(stmt, vast.Block):
         return stmt
-    return vast.Block(tuple([stmt]))
+    else:
+        new_block = vast.Block(tuple([stmt]))
+        if blockify_tracker_list is not None:
+            blockify_tracker_list.append(id(new_block))
+        return new_block
 
 
 _bases = {'b': 2, 'o': 8, 'h': 16, 'd': 10}

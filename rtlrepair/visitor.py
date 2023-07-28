@@ -34,7 +34,6 @@ class AstVisitor:
             # put items to the back so that we visit the port declarations first
             assert children[2][0] == "items"
             children = children[0:2] + children[3:] + [children[2]]
-            print()
         else:
             children = children_items(node)
 

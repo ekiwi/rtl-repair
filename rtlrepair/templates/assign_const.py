@@ -20,6 +20,7 @@ def assign_const(ast: vast.Source):
     infer.run(ast)
     repl = ConstAssigner(infer.widths)
     repl.apply(namespace, ast)
+    return repl.blockified
 
 
 class ConstAssigner(RepairTemplate):
@@ -28,6 +29,9 @@ class ConstAssigner(RepairTemplate):
         self.widths = widths
         self.use_blocking = False
         self.assigned_vars = []
+        # we use this list to track which new blocks we introduced in order to minimize the diff between
+        # buggy and repaired version
+        self.blockified = []
 
     def visit_Always(self, node: vast.Always):
         analysis = ProcessAnalyzer()
@@ -57,7 +61,7 @@ class ConstAssigner(RepairTemplate):
     def add_assignments(self, stmt):
         if stmt is None:
             return None
-        block = ensure_block(stmt)
+        block = ensure_block(stmt, self.blockified)
         # add assignments to the beginning and to the end of the block
         block.statements = tuple(self.make_assignments(stmt.lineno) + list(block.statements) + self.make_assignments(stmt.lineno))
         return block
