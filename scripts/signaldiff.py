@@ -392,7 +392,7 @@ def print_result(res: Result):
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='Calculate output / state divergence delta')
     parser.add_argument('--working-dir', dest='working_dir',
-                        help='Working directory. Should contain the output from `generate_vcd_traces.py`',
+                        help='Working directory. Should contain the VCD traces produced by `generate_vcd_traces.py`',
                         required=True)
     parser.add_argument('--project', help='Project TOML')
     parser.add_argument('--bug', help='Bug name.')
