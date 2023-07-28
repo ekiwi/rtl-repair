@@ -169,7 +169,7 @@ class RepairPass(AstVisitor):
         self.assignment = dict()
         self.width = dict()
         self.changes = []
-        self.blockified = set(blockified)
+        self.blockified = set() if blockified is None else set(blockified)
 
     def run(self, ast: vast.Source, assignment: dict):
         self.changes = []
