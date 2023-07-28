@@ -23,6 +23,7 @@ class SynthOptions:
     solver: str
     init: str
     incremental: bool
+    verbose: bool
 
 
 @dataclass
@@ -30,6 +31,7 @@ class SynthStats:
     solver_time_ns: int
     past_k: int
     future_k: int
+
 
 def _check_jar():
     assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
@@ -42,6 +44,8 @@ def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: Syn
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", opts.solver, "--init", opts.init]
     if opts.incremental:
         args += ["--incremental"]
+    if opts.verbose:
+        args += ["--verbose"]
     # test: multiple solutions
     # args += ["--sample-solutions", "2"]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
@@ -53,12 +57,13 @@ def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: Syn
         print(cmd_str, file=ff)
         ff.write(output)
     try:
-        return json.loads(output)
+        # the JSON output follows the needle
+        needle = "== RESULT ==\n"
+        return json.loads(output.split(needle)[-1])
     except json.JSONDecodeError as e:
         print("Failed to parse synthesizer output as JSON:")
         print(r.stdout)
         raise e
-
 
 
 class Synthesizer:
@@ -67,8 +72,10 @@ class Synthesizer:
     def __init__(self):
         pass
 
-    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> (Status, list, SynthStats):
-        assert isinstance(benchmark.testbench, TraceTestbench), f"{benchmark.testbench} : {type(benchmark.testbench)} is not a TraceTestbench"
+    def run(self, working_dir: Path, opts: SynthOptions, instrumented_ast: vast.Source, benchmark: Benchmark) -> (
+            Status, list, SynthStats):
+        assert isinstance(benchmark.testbench,
+                          TraceTestbench), f"{benchmark.testbench} : {type(benchmark.testbench)} is not a TraceTestbench"
 
         # save instrumented AST to disk so that we can call yosys
         synth_filename = working_dir / f"{benchmark.bug.buggy.stem}.instrumented.v"

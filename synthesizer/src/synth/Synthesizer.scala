@@ -20,6 +20,7 @@ object Synthesizer {
     val arguments = parser.parse(args, Arguments(None, None)).get
     val result = run(arguments.design.get, arguments.testbench.get, arguments.config)
     // print result
+    println("== RESULT ==") // needle to find the JSON output
     result match {
       case NoRepairNecessary(stats) => println(toJson("no-repair", stats))
       case CannotRepair(stats)      => println(toJson("cannot-repair", stats))

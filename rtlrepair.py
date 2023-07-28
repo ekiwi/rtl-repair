@@ -70,6 +70,9 @@ def parse_args() -> Config:
     parser.add_argument('--templates', default=",".join(_default_templates),
                         help=f'Specify repair templates to use. ({available_template_names})')
     parser.add_argument('--skip-preprocessing', help='skip the preprocessing step', action='store_true')
+    parser.add_argument('--verbose-synthesizer',
+                        help='collect verbose output from the synthesizer which will be available in synth.txt',
+                        action='store_true')
 
     args = parser.parse_args()
 
@@ -80,7 +83,8 @@ def parse_args() -> Config:
     # options
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
-    synth_opts = SynthOptions(solver=args.solver, init=args.init, incremental=args.incremental)
+    synth_opts = SynthOptions(solver=args.solver, init=args.init, incremental=args.incremental,
+                              verbose=args.verbose_synthesizer)
     timeout = None if args.timeout is None else float(args.timeout)
     templates = []
     for t in args.templates.split(','):
