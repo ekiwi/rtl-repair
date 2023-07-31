@@ -342,7 +342,7 @@ def main():
     results = load_results(result_tomls)
 
     # sort results to ensure deterministic results
-    results = sorted(results, key=lambda r: r.name)
+    results = sorted(results, key=lambda r: r[0].name)
 
     # ensure that the working dir exists
     create_dir(conf.working_dir)
