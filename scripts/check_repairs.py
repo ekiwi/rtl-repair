@@ -19,7 +19,7 @@ from pathlib import Path
 _script_dir = Path(__file__).parent.resolve()
 sys.path.append(str(_script_dir.parent))
 import benchmarks
-from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects, Project
+from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects, Project, find_project_name_and_toml
 from benchmarks.yosys import to_gatelevel_netlist
 from benchmarks.run import run, RunConf
 from benchmarks.result import load_result, Result, Repair
@@ -369,7 +369,7 @@ def main():
 
         # copy over project and result toml
         shutil.copy(src=res_toml, dst=result_working_dir)
-        project_toml = benchmarks.projects[project.name]
+        project_toml = find_project_name_and_toml(benchmarks.projects[project.name])[1]
         shutil.copy(src=project_toml, dst=result_working_dir)
 
         # open a log file

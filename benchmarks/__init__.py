@@ -274,17 +274,22 @@ def _load_list(project_dir: Path, dd: dict, name: str, load_foo) -> list:
         return []
     return [load_foo(project_dir, ee) for ee in dd[name]]
 
-
-def load_project(filename: Path) -> Project:
+def find_project_name_and_toml(filename: Path) -> (str, Path):
+    """ auto discovers the concrete path to the project toml and the project name """
     # if a directory is provided, we try to open to project.toml
-    if filename.is_dir(): # <-- this is the good case: the project specifies what it wants to be called
+    if filename.is_dir():  # <-- this is the good case: the project specifies what it wants to be called
         name = filename.name
         filename = filename / "project.toml"
-    else: # <-- ugly, hacky heuristics to get a "good" project name base on the filepath
+    else:  # <-- ugly, hacky heuristics to get a "good" project name base on the filepath
         name = filename.stem
         # if we are given a path to a file name `project.toml` we assume that the directory is the project name
         if name == "project":
             name = filename.parent.name
+    return name, filename
+
+
+def load_project(filename: Path) -> Project:
+    name, filename = find_project_name_and_toml(filename)
     with open(filename, 'rb') as ff:
         dd = tomli.load(ff)
     assert 'project' in dd, f"{filename}: no project entry"
