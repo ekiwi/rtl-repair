@@ -36,6 +36,7 @@ buggy = "decoder_3_to_8_super_buggy.v"
 # This is the original testbench from CirFix
 [[testbenches]]
 name = "oracle-full"
+tags = ["cirfix"]
 sources = ["decoder_3_to_8_tb_t1.v"]
 output = "output_decoder_3_to_8_tb_t1.txt"
 oracle = "oracle.txt"
@@ -57,3 +58,12 @@ table = "orig_min_tb.csv"
 [[testbenches]]
 name = "complete_min_tb"
 table = "complete_min_tb.csv"
+
+# the "complete_min_tb" turned from a CSV to Verilog
+[[testbenches]]
+name = "oracle-full"
+tags = ["extended"]
+sources = ["decoder_3_to_8_tb_complete.v"]
+output = "output_decoder_3_to_8_tb_t1.txt"
+oracle = "oracle_complete.txt"
+timeout = 7.0

@@ -16,7 +16,7 @@ from pathlib import Path
 # add root dir in order to be able to load "benchmarks" module
 _script_dir = Path(__file__).parent.resolve()
 sys.path.append(str(_script_dir.parent))
-from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects
+from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects, Project
 from benchmarks.yosys import to_gatelevel_netlist
 from benchmarks.run import run, RunConf
 from benchmarks.result import load_result, Result, Repair
@@ -135,7 +135,9 @@ def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, de
     return res
 
 
-def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, repair: Repair):
+def check_repair(conf: Config, working_dir: Path, logfile, project: Project, repair: Repair, bug_name: str, cirfix_tb: str,
+                extended_tbs: list[str]):
+    benchmark = get_benchmark(project, bug_name, cirfix_tb)
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     sys.stdout.flush()
 
@@ -196,6 +198,31 @@ def check_repair(conf: Config, working_dir: Path, logfile, benchmark: Benchmark,
         # rename trace
         if (working_dir / "dump.vcd").exists():
             shutil.move(working_dir / "dump.vcd", working_dir / "gatelevel.vcd")
+
+    # is there an extended testbench?
+    for extended_name in extended_tbs:
+        benchmark = get_benchmark(project, bug_name, extended_name)
+        assert isinstance(benchmark.testbench, VerilogOracleTestbench)
+
+        # copy over the oracle for easier debugging later
+        shutil.copy(benchmark.testbench.oracle, working_dir)
+
+        print(f"RTL Simulation with Extended Oracle Testbench: {benchmark.testbench.name}", file=logfile)
+        other_sources = get_other_sources(benchmark)
+        run_logfile = working_dir / f"{repair_filename.stem}.sim.{benchmark.testbench.name}.log"
+        with open(run_logfile, 'w') as logff:
+            sim_res = check_sim(conf, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+        sys.stdout.write(f" Extended RTL-sim {sim_res.emoji}")
+        sys.stdout.flush()
+        # rename output in order to preserve it
+        try:
+            shutil.move(working_dir / benchmark.testbench.output, working_dir / f"{benchmark.testbench.output}.{benchmark.testbench.name}.rtl")
+        except:
+            pass
+        # rename trace
+        if (working_dir / "dump.vcd").exists():
+            shutil.move(working_dir / "dump.vcd", working_dir / f"rtl.{benchmark.testbench.name}.vcd")
+
 
 
 def find_benchmark(projects: dict, result: Result) -> Benchmark:
@@ -265,7 +292,15 @@ def main():
     print("Checking Repairs:")
     for res in results:
         print(res.name)
-        bb = find_benchmark(projects, res)
+
+        # identify testbenches
+        project = projects[res.project_name]
+        tbs: list[VerilogOracleTestbench] = [tb for tb in project.testbenches if isinstance(tb, VerilogOracleTestbench)]
+        cirfix_tbs = [tb for tb in tbs if "cirfix" in tb.tags]
+        cirfix_tb = (tbs[0] if len(cirfix_tbs) == 0 else cirfix_tbs[0]).name
+        extended_tbs = [tb.name for tb in tbs if "extended" in tb.tags]
+        bug = next(bb for bb in project.bugs if bb.name == res.bug_name)
+
         # create a folder for this result
         result_working_dir = conf.working_dir / res.name
         create_dir(result_working_dir)
@@ -274,20 +309,20 @@ def main():
         with open(logfile_name, 'w') as logfile:
             print(f"Checking: {res}", file=logfile)
             # if we have an original, we want to make sure that our tests work on that
-            if bb.bug.original is not None:
-                fake_repair = Repair(filename=bb.bug.original)
+            if bug.original is not None:
+                fake_repair = Repair(filename=bug.original)
                 print(f"Original: {fake_repair}", file=logfile)
                 sys.stdout.write(f"  - {fake_repair.filename.name}:")
                 repair_dir = result_working_dir / fake_repair.filename.stem
                 create_dir(repair_dir)
-                check_repair(conf, repair_dir, logfile, bb, fake_repair)
+                check_repair(conf, repair_dir, logfile, project, fake_repair, bug.name, cirfix_tb, extended_tbs)
                 print()
             for repair in res.repairs:
                 print(f"Repair: {repair}", file=logfile)
                 sys.stdout.write(f"  - {repair.filename.name}:")
                 repair_dir = result_working_dir / repair.filename.stem
                 create_dir(repair_dir)
-                check_repair(conf, repair_dir, logfile, bb, repair)
+                check_repair(conf, repair_dir, logfile, project, repair, bug.name, cirfix_tb, extended_tbs)
                 print()
 
 

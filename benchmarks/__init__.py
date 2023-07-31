@@ -185,6 +185,7 @@ class Bug:
 @dataclass
 class Testbench:
     name: str
+    tags: list[str]
 
 
 @dataclass
@@ -249,10 +250,13 @@ def _load_bug(base_dir: Path, dd: dict) -> Bug:
 
 
 def _load_testbench(base_dir: Path, dd: dict) -> Testbench:
+    # common to both kinds of testbenches
+    name = dd['name']
+    tags = dd['tags'] if 'tags' in dd else []
     if 'oracle' in dd:
         inits = [] if 'init-files' not in dd else [parse_path(pp, base_dir, True) for pp in dd['init-files']]
         tt = VerilogOracleTestbench(
-            name=dd['name'],
+            name=name, tags=tags,
             sources=[parse_path(pp, base_dir, True) for pp in dd['sources']],
             output=dd['output'],
             oracle=parse_path(dd['oracle'], base_dir, True),
@@ -261,7 +265,7 @@ def _load_testbench(base_dir: Path, dd: dict) -> Testbench:
         if "timeout" in dd:
             tt.timeout = float(dd["timeout"])
     else:
-        tt = TraceTestbench(name=dd['name'], table=parse_path(dd['table'], base_dir, True))
+        tt = TraceTestbench(name=name, tags=tags, table=parse_path(dd['table'], base_dir, True))
     return tt
 
 
