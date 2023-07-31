@@ -44,6 +44,7 @@ class RepairResult:
     rtl_sim: TestResult = TestResult.NA
     gatelevel_sim: TestResult = TestResult.NA
     extended_rtl_sim: TestResult = TestResult.NA
+    iverilog_rtl_sim: TestResult = TestResult.NA
 
 
 def _parse_csv_item(item: str) -> str:
@@ -116,7 +117,7 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path):
     return SimResult(cycles=cycles)
 
 
-def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list,
+def check_sim(sim: str, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list,
               max_cycles: int = None):
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     output = working_dir / benchmark.testbench.output
@@ -137,7 +138,7 @@ def check_sim(conf: Config, working_dir: Path, logfile, benchmark: Benchmark, de
                        defines=[("DUMP_TRACE", 1)])
     if logfile:
         logfile.flush()
-    run(working_dir, conf.sim, tb_sources, run_conf)
+    run(working_dir, sim, tb_sources, run_conf)
 
     # check the output
     if not output.exists():
@@ -176,7 +177,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
         other_sources = get_other_sources(benchmark)
         run_logfile = working_dir / f"{repair_filename.stem}.sim.log"
         with open(run_logfile, 'w') as logff:
-            sim_res = check_sim(conf, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+            sim_res = check_sim(conf.sim, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
         sys.stdout.write(f" RTL-sim {sim_res.emoji}")
         sys.stdout.flush()
         # rename output in order to preserve it
@@ -189,6 +190,27 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
             shutil.move(working_dir / "dump.vcd", working_dir / "rtl.vcd")
         max_cycles = sim_res.cycles
         result.rtl_sim = TestResult.Pass if sim_res.is_success else TestResult.Fail
+
+    # try to do the same simulation with iverilog as simulator
+    # note: this could be skipped, if the script is configured to use iverilog instead of vcs
+    #       however, in order to cover this code in our CI flow, we always execute this part
+    if not conf.skip_rtl_sim:
+        print(f"RTL Simulation with iVerilog and Oracle Testbench: {benchmark.testbench.name}", file=logfile)
+        other_sources = get_other_sources(benchmark)
+        run_logfile = working_dir / f"{repair_filename.stem}.sim.iverilog.log"
+        with open(run_logfile, 'w') as logff:
+            sim_res = check_sim("iverilog", working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+        sys.stdout.write(f" iVerilog-RTL-sim {sim_res.emoji}")
+        sys.stdout.flush()
+        # rename output in order to preserve it
+        try:
+            shutil.move(working_dir / benchmark.testbench.output, working_dir / f"{benchmark.testbench.output}.iverilog.rtl")
+        except:
+            pass
+        # rename trace
+        if (working_dir / "dump.vcd").exists():
+            shutil.move(working_dir / "dump.vcd", working_dir / "rtl.iverilog.vcd")
+        result.iverilog_rtl_sim = TestResult.Pass if sim_res.is_success else TestResult.Fail
 
     # synthesize to gates
     print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
@@ -210,7 +232,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         run_logfile = working_dir / f"{repair_filename.stem}.gatelevel.sim.log"
         with open(run_logfile, 'w') as logff:
-            gate_res = check_sim(conf, working_dir, logff, benchmark, [gate_level.resolve()], max_cycles=max_cycles)
+            gate_res = check_sim(conf.sim, working_dir, logff, benchmark, [gate_level.resolve()], max_cycles=max_cycles)
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
         sys.stdout.flush()
         # rename trace
@@ -230,7 +252,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
         other_sources = get_other_sources(benchmark)
         run_logfile = working_dir / f"{repair_filename.stem}.sim.{benchmark.testbench.name}.log"
         with open(run_logfile, 'w') as logff:
-            sim_res = check_sim(conf, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+            sim_res = check_sim(conf.sim, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
         sys.stdout.write(f" Extended RTL-sim {sim_res.emoji}")
         sys.stdout.flush()
         # rename output in order to preserve it
@@ -302,6 +324,7 @@ def combine_repair_with_original_result(original: RepairResult, repair: RepairRe
         rtl_sim=combine_test_result(original.rtl_sim, repair.rtl_sim),
         gatelevel_sim=combine_test_result(original.gatelevel_sim, repair.gatelevel_sim),
         extended_rtl_sim=combine_test_result(original.extended_rtl_sim, repair.extended_rtl_sim),
+        iverilog_rtl_sim=combine_test_result(original.iverilog_rtl_sim, repair.iverilog_rtl_sim),
     )
 
 def write_check_toml(filename: Path, repair_check_results: dict[str,RepairResult], cirfix_table_3: str):
@@ -312,9 +335,10 @@ def write_check_toml(filename: Path, repair_check_results: dict[str,RepairResult
             print("[[checks]]", file=ff)
             print(f'name="{name}"', file=ff)
             print("# results of running Verilog testbenches", file=ff)
-            print(f'rtl-sim="{res.rtl_sim.name}"', file=ff)
-            print(f'gate-sim="{res.gatelevel_sim.name}"', file=ff)
-            print(f'extended="{res.extended_rtl_sim.name}"', file=ff)
+            print(f'rtl-sim="{res.rtl_sim.name.lower()}"', file=ff)
+            print(f'gate-sim="{res.gatelevel_sim.name.lower()}"', file=ff)
+            print(f'extended-sim="{res.extended_rtl_sim.name.lower()}"', file=ff)
+            print(f'iverilog-sim="{res.iverilog_rtl_sim.name.lower()}"', file=ff)
             print("# reported result from the CirFix paper", file=ff)
             if cirfix_table_3 == 'correct':
                 tool, human = TestResult.Pass, TestResult.Pass
@@ -323,8 +347,8 @@ def write_check_toml(filename: Path, repair_check_results: dict[str,RepairResult
             else:
                 assert cirfix_table_3 == 'timeout'
                 tool, human = TestResult.Fail, TestResult.Fail
-            print(f'cirfix-tool="{tool.name}"', file=ff)
-            print(f'cirfix-author="{human.name}"', file=ff)
+            print(f'cirfix-tool="{tool.name.lower()}"', file=ff)
+            print(f'cirfix-author="{human.name.lower()}"', file=ff)
 
 
 def main():
