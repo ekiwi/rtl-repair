@@ -61,7 +61,7 @@ table = "complete_min_tb.csv"
 
 # the "complete_min_tb" turned from a CSV to Verilog
 [[testbenches]]
-name = "oracle-full"
+name = "oracle-extended"
 tags = ["extended"]
 sources = ["decoder_3_to_8_tb_complete.v"]
 output = "output_decoder_3_to_8_tb_t1.txt"

@@ -379,6 +379,14 @@ def assert_dir_exists(name: str, filename: Path):
     assert filename.is_dir(), f"{name}: {filename} is not a directory!"
 
 
+def _check_unique_name(project_name: str, names: list[str], kind: str):
+    other_names = set()
+    for name in names:
+        assert name not in other_names, (f"{project_name}: {name} is already used by another {kind} entry. "
+        f"All {kind}s are required to have unique names!")
+        other_names.add(name)
+
+
 def validate_project(project: Project):
     assert_dir_exists(project.name, project.design.directory)
     for source in project.design.sources:
@@ -387,6 +395,8 @@ def validate_project(project: Project):
         validate_bug(project, bug)
     for tb in project.testbenches:
         validate_testbench(project, tb)
+    _check_unique_name(project.name, [tb.name for tb in project.testbenches], "testbench")
+    _check_unique_name(project.name, [bb.name for bb in project.bugs], "bug")
 
 
 def validate_bug(project: Project, bug: Bug):
