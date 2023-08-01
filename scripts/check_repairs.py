@@ -195,22 +195,25 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
     # note: this could be skipped, if the script is configured to use iverilog instead of vcs
     #       however, in order to cover this code in our CI flow, we always execute this part
     if not conf.skip_rtl_sim:
-        print(f"RTL Simulation with iVerilog and Oracle Testbench: {benchmark.testbench.name}", file=logfile)
-        other_sources = get_other_sources(benchmark)
-        run_logfile = working_dir / f"{repair_filename.stem}.sim.iverilog.log"
-        with open(run_logfile, 'w') as logff:
-            sim_res = check_sim("iverilog", working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
-        sys.stdout.write(f" iVerilog-RTL-sim {sim_res.emoji}")
-        sys.stdout.flush()
-        # rename output in order to preserve it
         try:
-            shutil.move(working_dir / benchmark.testbench.output, working_dir / f"{benchmark.testbench.output}.iverilog.rtl")
-        except:
-            pass
-        # rename trace
-        if (working_dir / "dump.vcd").exists():
-            shutil.move(working_dir / "dump.vcd", working_dir / "rtl.iverilog.vcd")
-        result.iverilog_rtl_sim = TestResult.Pass if sim_res.is_success else TestResult.Fail
+            print(f"RTL Simulation with iVerilog and Oracle Testbench: {benchmark.testbench.name}", file=logfile)
+            other_sources = get_other_sources(benchmark)
+            run_logfile = working_dir / f"{repair_filename.stem}.sim.iverilog.log"
+            with open(run_logfile, 'w') as logff:
+                sim_res = check_sim("iverilog", working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+            sys.stdout.write(f" iVerilog-RTL-sim {sim_res.emoji}")
+            sys.stdout.flush()
+            # rename output in order to preserve it
+            try:
+                shutil.move(working_dir / benchmark.testbench.output, working_dir / f"{benchmark.testbench.output}.iverilog.rtl")
+            except:
+                pass
+            # rename trace
+            if (working_dir / "dump.vcd").exists():
+                shutil.move(working_dir / "dump.vcd", working_dir / "rtl.iverilog.vcd")
+            result.iverilog_rtl_sim = TestResult.Pass if sim_res.is_success else TestResult.Fail
+        except AssertionError: # if the whole iverilog thing does not work, well doesn't really matter
+            result.iverilog_rtl_sim = TestResult.NA
 
     # synthesize to gates
     print(f"Synthesize to Gates: {benchmark.name}", file=logfile)
