@@ -74,7 +74,7 @@ def write_osdd_toml(filename: Path, results: list[Result]):
             print(f'ground_truth_testbench_cycles={res.ground_truth_testbench_cycles}', file=ff)
             print(f'notes="{res.notes}"', file=ff)
             warnings = "[ " + ", ".join(f'"{w}"' for w in res.warnings) + " ]"
-            print(f'warnings={warnings}')
+            print(f'warnings={warnings}', file=ff)
 
 _logfile: typing.Optional[typing.TextIO] = None
 
