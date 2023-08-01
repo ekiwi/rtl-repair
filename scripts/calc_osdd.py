@@ -57,7 +57,9 @@ class Result:
     bug: str
     delta: int
     first_output_disagreement: int
+    ground_truth_testbench_cycles: int
     notes: str
+    warnings: list[str]
 
 def write_osdd_toml(filename: Path, results: list[Result]):
     with open(filename, 'w') as ff:
@@ -69,7 +71,10 @@ def write_osdd_toml(filename: Path, results: list[Result]):
             print(f'bug="{res.bug}"', file=ff)
             print(f'delta={res.delta}', file=ff)
             print(f'first_output_disagreement={res.first_output_disagreement}', file=ff)
+            print(f'ground_truth_testbench_cycles={res.ground_truth_testbench_cycles}', file=ff)
             print(f'notes="{res.notes}"', file=ff)
+            warnings = "[ " + ", ".join(f'"{w}"' for w in res.warnings) + " ]"
+            print(f'warnings={warnings}')
 
 _logfile: typing.Optional[typing.TextIO] = None
 
@@ -306,7 +311,8 @@ def filer_mem_regs(states: list) -> list:
 
 def compare_traces(conf: Config) -> Result:
     res = Result(project=conf.benchmark.project_name, bug=conf.benchmark.bug.name,
-                 delta=-1, first_output_disagreement=-1, notes="")
+                 delta=-1, first_output_disagreement=-1, ground_truth_testbench_cycles=-1,
+                 notes="", warnings=[])
 
     # check to see if this is a project where our OSDD metric does not make sense
     if (res.project, res.bug) in out_of_scope:
@@ -342,6 +348,8 @@ def compare_traces(conf: Config) -> Result:
         else:
             states_missing_from_buggy = set(gt_states) - set(buggy_states)
             print(f"WARN: states are not the same!\nMissing states in buggy design: {states_missing_from_buggy}")
+            res.warnings.append("states are not the same!")
+            res.warnings.append(f"Missing states in buggy design: {states_missing_from_buggy}")
             buggy_states = gt_states
 
     # display warning if outputs are not the same
@@ -349,6 +357,9 @@ def compare_traces(conf: Config) -> Result:
         print(f"WARN: outputs are not the same")
         print(f"Missing in buggy: {list(set(gt_outputs) - set(buggy_outputs))}")
         print(f"Additional in buggy: {list(set(buggy_outputs) - set(gt_outputs))}")
+        res.warnings.append("outputs are not the same")
+        res.warnings.append(f"Missing in buggy: {list(set(gt_outputs) - set(buggy_outputs))}")
+        res.warnings.append(f"Additional in buggy: {list(set(buggy_outputs) - set(gt_outputs))}")
 
     # we are only interested in signals that are contained in both circuits, but the widths are allowed to differ
     interesting_states = common_list([n for n, _ in gt_states], [n for n, _ in buggy_states])
@@ -369,6 +380,7 @@ def compare_traces(conf: Config) -> Result:
 
     # convert VCD files into CSV tables for easier (line-by-line) comparison
     gt_csv, gt_samples = vcd_to_csv(conf.working_dir, interesting_signals, gt_vcd)
+    res.ground_truth_testbench_cycles = gt_samples
     # sometimes the buggy code runs longer than the ground truth, however there is no reason to sample that far!
     buggy_csv, _ = vcd_to_csv(conf.working_dir, interesting_signals, buggy_vcd, max_depth=gt_samples)
 
