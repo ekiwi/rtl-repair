@@ -21,7 +21,7 @@ sys.path.append(str(_script_dir.parent))
 import benchmarks
 from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects, Project, find_project_name_and_toml
 from benchmarks.yosys import to_gatelevel_netlist
-from benchmarks.run import run, RunConf, SimResult, check_against_oracle
+from benchmarks.run import run, RunConf, SimResult, check_against_oracle, success_to_emoji
 from benchmarks.result import load_result, Result, Repair
 
 
