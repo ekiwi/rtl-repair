@@ -82,7 +82,7 @@ def save_results(filename: Path, results: list):
             print(f'bug="{bug}"', file=ff)
             print(f'no_output={str(res.no_output).lower()}', file=ff)
             print(f'failed_at={str(res.failed_at)}', file=ff)
-            print(f'fail_msg="{res.fail_msg}"', file=ff)
+            print(f'fail_msg="""{res.fail_msg}"""', file=ff)
             print(f'cycles={str(res.cycles)}', file=ff)
 
 def parse_args() -> (Path, str, bool, float):
