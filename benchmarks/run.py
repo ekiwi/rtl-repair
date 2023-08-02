@@ -145,6 +145,18 @@ class SimResult:
     def emoji(self): return success_to_emoji(self.is_success)
 
 
+def _parse_csv_item(item: str) -> str:
+    item = item.strip()
+    if len(item) <= 1:
+        return item
+    if item[0] == '"' and item[-1] == '"':
+        item = item[1:-1].strip()
+    return item
+
+
+def parse_csv_line(line: str) -> list:
+    return [_parse_csv_item(n) for n in line.split(',')]
+
 def check_against_oracle(oracle_filename: Path, output_filename: Path) -> SimResult:
     # check output length to determine the number of cycles
     with open(output_filename) as output:

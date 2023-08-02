@@ -47,19 +47,6 @@ class RepairResult:
     iverilog_rtl_sim: TestResult = TestResult.NA
 
 
-def _parse_csv_item(item: str) -> str:
-    item = item.strip()
-    if len(item) <= 1:
-        return item
-    if item[0] == '"' and item[-1] == '"':
-        item = item[1:-1].strip()
-    return item
-
-
-def parse_csv_line(line: str) -> list:
-    return [_parse_csv_item(n) for n in line.split(',')]
-
-
 def check_sim(sim: str, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list,
               max_cycles: int = None):
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
