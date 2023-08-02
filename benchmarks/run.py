@@ -122,3 +122,59 @@ def run_with_vcs(working_dir: Path, files: list, conf: RunConf) -> bool:
         return success
     else:
         return False  # failed to compile
+
+_OkEmoji = "✔️"
+_FailEmoji = "❌"
+
+
+def success_to_emoji(success: bool) -> str:
+    return _OkEmoji if success else _FailEmoji
+
+
+@dataclass
+class SimResult:
+    no_output: bool = False
+    failed_at: int = -1
+    fail_msg: str = ""
+    cycles: int = None # number of cycles executed
+
+    @property
+    def is_success(self): return self.failed_at == -1 and not self.no_output
+
+    @property
+    def emoji(self): return success_to_emoji(self.is_success)
+
+
+def check_against_oracle(oracle_filename: Path, output_filename: Path) -> SimResult:
+    # check output length to determine the number of cycles
+    with open(output_filename) as output:
+        cycles = 0
+        for _ in output:
+            cycles += 1
+    with open(oracle_filename) as oracle, open(output_filename) as output:
+        oracle_header, output_header = parse_csv_line(oracle.readline()), parse_csv_line(output.readline())
+        assert oracle_header == output_header, f"{oracle_header} != {output_header}"
+        assert oracle_header[0].lower() == 'time', f"{oracle_header}"
+        header = oracle_header[1:]
+
+        # compare line by line
+        for (ii, (expected, actual)) in enumerate(zip(oracle, output)):
+            expected, actual = parse_csv_line(expected), parse_csv_line(actual)
+            # remove first line (time)
+            expected, actual = expected[1:], actual[1:]
+            msg = []
+            for ee, aa, nn in zip(expected, actual, header):
+                ee, aa = ee.lower(), aa.lower()
+                if ee != 'x' and ee != aa:
+                    msg.append(f"{nn}@{ii}: {aa} != {ee} (expected)")
+            if len(msg) > 0:
+                return SimResult(failed_at=ii, fail_msg='\n'.join(msg), cycles=cycles)
+
+        # are we missing some output?
+        remaining_oracle_lines = oracle.readlines()
+        if len(remaining_oracle_lines) > 0:
+            # we expected more output => fail!
+            msg = f"Output stopped at {ii}. Expected {len(remaining_oracle_lines)} more lines."
+            return SimResult(failed_at=ii, fail_msg=msg, cycles=cycles)
+
+    return SimResult(cycles=cycles)

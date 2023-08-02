@@ -21,7 +21,7 @@ sys.path.append(str(_script_dir.parent))
 import benchmarks
 from benchmarks import Benchmark, get_other_sources, VerilogOracleTestbench, get_benchmark, load_all_projects, Project, find_project_name_and_toml
 from benchmarks.yosys import to_gatelevel_netlist
-from benchmarks.run import run, RunConf
+from benchmarks.run import run, RunConf, SimResult, check_against_oracle
 from benchmarks.result import load_result, Result, Repair
 
 
@@ -58,63 +58,6 @@ def _parse_csv_item(item: str) -> str:
 
 def parse_csv_line(line: str) -> list:
     return [_parse_csv_item(n) for n in line.split(',')]
-
-
-OkEmoji = "✔️"
-FailEmoji = "❌"
-
-
-def success_to_emoji(success: bool) -> str:
-    return OkEmoji if success else FailEmoji
-
-
-@dataclass
-class SimResult:
-    no_output: bool = False
-    failed_at: int = -1
-    fail_msg: str = ""
-    cycles: int = None # number of cycles executed
-
-    @property
-    def is_success(self): return self.failed_at == -1 and not self.no_output
-
-    @property
-    def emoji(self): return success_to_emoji(self.is_success)
-
-
-def check_against_oracle(oracle_filename: Path, output_filename: Path):
-    # check output length to determine the number of cycles
-    with open(output_filename) as output:
-        cycles = 0
-        for _ in output:
-            cycles += 1
-    with open(oracle_filename) as oracle, open(output_filename) as output:
-        oracle_header, output_header = parse_csv_line(oracle.readline()), parse_csv_line(output.readline())
-        assert oracle_header == output_header, f"{oracle_header} != {output_header}"
-        assert oracle_header[0].lower() == 'time', f"{oracle_header}"
-        header = oracle_header[1:]
-
-        # compare line by line
-        for (ii, (expected, actual)) in enumerate(zip(oracle, output)):
-            expected, actual = parse_csv_line(expected), parse_csv_line(actual)
-            # remove first line (time)
-            expected, actual = expected[1:], actual[1:]
-            msg = []
-            for ee, aa, nn in zip(expected, actual, header):
-                ee, aa = ee.lower(), aa.lower()
-                if ee != 'x' and ee != aa:
-                    msg.append(f"{nn}@{ii}: {aa} != {ee} (expected)")
-            if len(msg) > 0:
-                return SimResult(failed_at=ii, fail_msg='\n'.join(msg), cycles=cycles)
-
-        # are we missing some output?
-        remaining_oracle_lines = oracle.readlines()
-        if len(remaining_oracle_lines) > 0:
-            # we expected more output => fail!
-            msg = f"Output stopped at {ii}. Expected {len(remaining_oracle_lines)} more lines."
-            return SimResult(failed_at=ii, fail_msg=msg, cycles=cycles)
-
-    return SimResult(cycles=cycles)
 
 
 def check_sim(sim: str, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list,
@@ -315,7 +258,7 @@ def combine_test_result(original: TestResult, repair: TestResult):
     # if there is no original result, then we do not have a result at all
     if original == TestResult.NA:
         return TestResult.NA
-    # if the test fails with the original, we cannot say anothing about the quality of the repair
+    # if the test fails with the original, we cannot say anything about the quality of the repair
     if original == TestResult.Fail:
         return TestResult.Indeterminate
     # the test work with the original ground truth file
