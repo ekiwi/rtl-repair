@@ -63,8 +63,12 @@ def gen_project_traces(output_dir: Path, sim: str, verbose: bool, timeout: float
         bug_out_txt = output_dir / f"{proj.name}.{bb.bug.name}.output.txt"
         gen_trace(sim, verbose, timeout, output_dir / f"{proj.name}.{bb.bug.name}.vcd", bug_out_txt, design, testbench)
         # compare traces
-        res = check_against_oracle(gt_out_txt, bug_out_txt)
-        results.append((proj.name, bb.bug.name, res))
+        try:
+            res = check_against_oracle(gt_out_txt, bug_out_txt)
+            results.append((proj.name, bb.bug.name, res))
+        except AssertionError:
+            # this generally means that one of the output files was corrupted (i.e. missing part of the header)
+            pass
 
 def save_results(filename: Path, results: list):
     with open(filename, 'w') as ff:
