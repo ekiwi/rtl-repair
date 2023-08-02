@@ -7,6 +7,7 @@
 
 import sys
 import argparse
+import tomli
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -38,7 +39,7 @@ def _calc_short_names():
         to_short_name[project_name] = {}
         short = project_short_names[project_name]
         for bug in entry.keys():
-            to_short_name[project_name][bug] = short + "_" + bug[0] + bug[-1]
+            to_short_name[project_name][bug] = short + "_" + bug[0].lower() + bug[-1].lower()
 _calc_short_names()
 def get_short_name(project: str, bug: str):
     return to_short_name[project][bug]
@@ -64,12 +65,18 @@ def parse_args() -> Config:
     return conf
 
 def _render_latex_row(column_width: list[int], row: list[str]) -> str:
-    padded = [str(cell).ljust(width, ' ') for width, cell in zip(column_width, row)]
+    padded = [cell.ljust(width, ' ') for width, cell in zip(column_width, row)]
     return " & ".join(padded)
+
+def _latex_escape(cell: str) -> str:
+    return cell.replace('_', '\\_')
 
 def render_latex(table: list[list[str]], has_header: bool) -> str:
     if len(table) == 0:
         return ""
+
+    # stringify and escape all cells
+    table = [[_latex_escape(str(cell)) for cell in row] for row in table]
 
     # determine number and size of columns
     column_width = [0] * len(table[0])
@@ -77,7 +84,7 @@ def render_latex(table: list[list[str]], has_header: bool) -> str:
         assert len(row) == len(column_width),\
         f"Expected all rows to have {len(column_width)} columns, but this one has {len(row)}"
         for ii, cell in enumerate(row):
-            column_width[ii] = max(column_width[ii], len(str(cell)))
+            column_width[ii] = max(column_width[ii], len(cell))
 
     if has_header:
         header = table[0]
@@ -89,6 +96,11 @@ def render_latex(table: list[list[str]], has_header: bool) -> str:
 
     if has_header:
         table_str = _render_latex_row(column_width, header) + " \\\\ \\midrule\n" + table_str
+
+    # add tabular environment
+    start_tab = "\\begin{tabular}{" + '|'.join('c' * len(column_width)) +"}"
+    end_tab = "\\end{tabular}"
+    table_str = start_tab + "\n" + table_str + end_tab + "\n"
 
     return table_str
 
@@ -106,6 +118,31 @@ def benchmark_description_table(conf: Config) -> list[list[str]]:
             row = [project_name, description, get_short_name(project_name, bug)]
             rows.append(row)
     return rows
+
+def load_toml(filename: Path) -> dict:
+    with open(filename, 'rb') as ff:
+        return tomli.load(ff)
+
+
+def osdd_table(conf: Config) -> list[list[str]]:
+    header = ["Benchmark", "Testbench Cycles", "First Output Div.", "OSDD", "Repair Window", "Note"]
+    def num_to_str(num: int) -> str:
+        return "" if num < 0 else str(num)
+
+    osdds = load_toml(conf.osdd_toml)['osdds']
+
+    rows = []
+    for osdd in osdds:
+        name = get_short_name(osdd['project'], osdd['bug'])
+        cycles = num_to_str(osdd['ground_truth_testbench_cycles'])
+        fail_at = num_to_str(osdd['first_output_disagreement'])
+        delta = num_to_str(osdd['delta'])
+        window = "TBD"
+        note = osdd['notes']
+        rows.append([name, cycles, fail_at, delta, window, note])
+
+    return [header] + rows
+
 def main():
     conf = parse_args()
 
@@ -115,6 +152,9 @@ def main():
 
     write_to(conf.working_dir / "benchmark_description_table.tex",
              render_latex(benchmark_description_table(conf), has_header=True))
+
+    write_to(conf.working_dir / "osdd_table.tex",
+             render_latex(osdd_table(conf), has_header=True))
 
 
 
