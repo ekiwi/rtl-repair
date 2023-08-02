@@ -120,7 +120,7 @@ def main():
         if verbose:
             print(f"Generating VCD traces for {proj.name}")
         gen_project_traces(output_dir, sim, verbose, timeout, proj, results)
-    save_results(output_dir / "baseline_results.toml")
+    save_results(output_dir / "baseline_results.toml", results)
 
 
 if __name__ == '__main__':
