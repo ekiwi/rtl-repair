@@ -137,7 +137,7 @@ def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment
         table_str = _render_latex_row(column_width, header, len(rows) == 0, right_cols_to_comment, separator="\\\\ \\midrule") + "\n" + table_str
 
     # add tabular environment
-    start_tab = "\\begin{tabular}{" + '|'.join('c' * len(column_width)) +"}"
+    start_tab = "\\begin{tabular}{" + ''.join('r' * len(column_width)) +"}"
     end_tab = "\\end{tabular}"
     table_str = start_tab + "\n" + table_str + end_tab + "\n"
 
