@@ -153,7 +153,7 @@ def _combine_values(kind: str, preferred: int, other: int):
     return preferred
 
 def osdd_table(conf: Config, results: dict) -> list[list[str]]:
-    header = ["Benchmark", "Testbench Cycles", "First Output Div.", "OSDD", "Repair Window", "Note"]
+    header = ["Benchmark", "Testbench Cycles", "First Output Div.", "OSDD", "Repair Window", "RTL-Repair", "CirFix", "Note"]
     def num_to_str(num: int) -> str:
         return "" if num < 0 else str(num)
 
@@ -176,15 +176,52 @@ def osdd_table(conf: Config, results: dict) -> list[list[str]]:
             window = f"[{window_start} .. {rtl_repair_data['future_k']}]"
         else:
             window = ""
+        rtl_repair_success = results[name][RtlRepair]['success']
+        cirfix_success = results[name][CirFix]['success']
         note = osdd['notes']
-        rows[name] = [name, num_to_str(cycles), num_to_str(fail_at), delta, window, note]
+        rows[name] = [name, num_to_str(cycles), num_to_str(fail_at), delta, window, rtl_repair_success, cirfix_success, note]
 
     # make sure we always use the same order of benchmarks!
     sorted_rows = [rows[name] for name in all_short_names if name in rows]
+    missing_benchmarks = [name for name in all_short_names if not name in rows]
+    if len(missing_benchmarks) > 0:
+        print(f"WARN: {conf.osdd_toml} did not contain an entry for {missing_benchmarks}")
     return [header] + sorted_rows
 
 CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
+
+
+NoRepair = "➖"
+Success = "✔️"
+Fail = "❌"
+
+Checks = ['cirfix-tool', 'cirfix-author', 'rtl-sim', 'gate-sim', 'extended-sim', 'iverilog-sim']
+def _summarize_checks(checks: dict) -> bool:
+    check_success = True
+    for cc in Checks:
+        assert checks[cc] in {'pass', 'fail', 'na', 'indeterminate'}
+        check_success &= checks[cc] != 'fail'
+    return check_success
+
+
+def create_repair_summary(results):
+    """ analyzes the results of our check_repair.py script to come up with an overall assessment """
+    for name in all_short_names:
+        for tool in [CirFix, RtlRepair]:
+            tool_res = results[name][tool]
+            # i.e. does the tool think it created a correct repair?
+            tool_success = 'result' in tool_res and tool_res['result']['success']
+            if not tool_success:
+                results[name][tool]['success'] = NoRepair
+            else:
+                checked_repairs = results[name][tool]['checks']
+                # we are happy if any of the repairs pass (in one case a CirFix repair only passes in its minimized form)
+                check_successes = [_summarize_checks(cc) for cc in checked_repairs]
+                check_success = True in check_successes
+                results[name][tool]['success'] = Success if check_success else Fail
+
+
 
 def _try_load_one_result(directory: Path, tool: str, results: dict) -> bool:
     check_toml = directory / "check.toml"
@@ -226,6 +263,7 @@ def load_results(conf: Config) -> dict:
     _load_results(conf.cirfix_result_dir, CirFix, results)
     _load_results(conf.rtlrepair_result_dir, RtlRepair, results)
     _load_baseline_results(conf.baseline_toml, results)
+    create_repair_summary(results)
     return results
 
 def main():
