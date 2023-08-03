@@ -257,12 +257,14 @@ Success  = "✔️"
 Fail     = "❌"
 
 Checks = ['cirfix-tool', 'cirfix-author', 'rtl-sim', 'gate-sim', 'extended-sim', 'iverilog-sim']
-def _summarize_checks(checks: dict) -> bool:
-    check_success = True
-    for cc in Checks:
-        assert checks[cc] in {'pass', 'fail', 'na', 'indeterminate'}
-        check_success &= checks[cc] != 'fail'
-    return check_success
+def _summarize_checks(checks: dict, cirfix: bool) -> bool:
+    # skip cirfix specific checks for rtl repair
+    considered_checks = Checks if cirfix else Checks[2:]
+    status = [checks[cc] for cc in considered_checks]
+    for s in status:
+        assert s in {'pass', 'fail', 'na', 'indeterminate'}
+    fails = [s == 'fail' for s in status]
+    return not True in fails
 
 
 def create_repair_summary(results):
@@ -277,7 +279,7 @@ def create_repair_summary(results):
             else:
                 checked_repairs = results[name][tool]['checks']
                 # we are happy if any of the repairs pass (in one case a CirFix repair only passes in its minimized form)
-                check_successes = [_summarize_checks(cc) for cc in checked_repairs]
+                check_successes = [_summarize_checks(cc, tool == CirFix) for cc in checked_repairs]
                 check_success = True in check_successes
                 results[name][tool]['success'] = Success if check_success else Fail
 
