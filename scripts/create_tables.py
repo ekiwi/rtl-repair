@@ -230,7 +230,15 @@ def check_to_emoji(checked_repairs: list, check_name: str) -> str:
 def correctness_table(results: dict) -> list[list[str]]:
     header = ["Benchmark", "Tool", "Tool Status", "Sim", "CirFix Author", "Gate-Level", "iVerilog", "Extended", "Overall"]
     rows = []
+    skipped = []
     for name in all_short_names:
+        # we skip benchmarks were neither of the tools offered a solution
+        cirfix_tool_success = 'result' in results[name][CirFix] and results[name][CirFix]['result']['success']
+        rtlrepair_tool_success = 'result' in results[name][RtlRepair] and results[name][RtlRepair]['result']['success']
+        if not cirfix_tool_success and not rtlrepair_tool_success:
+            skipped += [name]
+            continue
+
         benchmark = multicol(2, name)
         for tool in [RtlRepair, CirFix]:
             tool_res = results[name][tool]
@@ -258,7 +266,7 @@ def correctness_table(results: dict) -> list[list[str]]:
 
             rows.append(row)
 
-
+    print(f"Correctness: skipped {skipped} benchmarks for which neither tool had a solution.")
 
 
     return [header] + rows
