@@ -159,7 +159,7 @@ def osdd_table(conf: Config, results: dict) -> list[list[str]]:
 
     osdds = load_toml(conf.osdd_toml)['osdds']
 
-    rows = {}
+    rows = []
     for osdd in osdds:
         name = get_short_name(osdd['project'], osdd['bug'])
         cycles_from_osdd = osdd['ground_truth_testbench_cycles']
@@ -179,22 +179,82 @@ def osdd_table(conf: Config, results: dict) -> list[list[str]]:
         rtl_repair_success = results[name][RtlRepair]['success']
         cirfix_success = results[name][CirFix]['success']
         note = osdd['notes']
-        rows[name] = [name, num_to_str(cycles), num_to_str(fail_at), delta, window, rtl_repair_success, cirfix_success, note]
+        rows.append([name, num_to_str(cycles), num_to_str(fail_at), delta, window, rtl_repair_success, cirfix_success, note])
 
-    # make sure we always use the same order of benchmarks!
-    sorted_rows = [rows[name] for name in all_short_names if name in rows]
-    missing_benchmarks = [name for name in all_short_names if not name in rows]
-    if len(missing_benchmarks) > 0:
-        print(f"WARN: {conf.osdd_toml} did not contain an entry for {missing_benchmarks}")
+    sorted_rows = sort_rows_by_benchmark_column(f"{conf.osdd_toml}", rows)
     return [header] + sorted_rows
+
+def sort_rows_by_benchmark_column(what: str, rows: list[list[str]]) -> list[list[str]]:
+    """ assumes that the header is excluded and the benchmark names are all in the left most column """
+    by_name = {r[0]: r for r in rows}
+    # make sure we always use the same order of benchmarks!
+    sorted_rows = [by_name[name] for name in all_short_names if name in by_name]
+    missing_benchmarks = [name for name in all_short_names if not name in by_name]
+    if len(missing_benchmarks) > 0:
+        print(f"WARN: {what} did not contain an entry for {missing_benchmarks}")
+    return sorted_rows
+
+def multicol(num: int, value: str) -> str:
+    return "\multirow[t]{" + str(num) + "}{*}{" + value + "}"
+
+def check_to_emoji(checked_repairs: list, check_name: str) -> str:
+    assert check_name in Checks
+    res = [r[check_name] for r in checked_repairs]
+    all_pass = all(r == 'pass' for r in res)
+    all_fail = all(r == 'fail' for r in res)
+    only_pass_fail = all(r == 'fail' or r == 'pass' for r in res)
+    at_least_once_pass = 'pass' in res
+    if not only_pass_fail:
+        assert not at_least_once_pass, f"Check {check_name} was not available for one repair but passed for the other {res}"
+        return ""
+    # for one benchmark, CirFix provides a solution that fails, but passes after minimization
+    return Success if at_least_once_pass else Fail
+
+def correctness_table(results: dict) -> list[list[str]]:
+    header = ["Benchmark", "Tool", "Tool Status", "Sim", "CirFix Author", "Gate-Level", "iVerilog", "Extended", "Overall"]
+    rows = []
+    for name in all_short_names:
+        benchmark = multicol(2, name)
+        for tool in [RtlRepair, CirFix]:
+            tool_res = results[name][tool]
+            row = [benchmark, tool]
+            benchmark = ""
+
+            # tool status: does the tool think that it provided a correct repair?
+            tool_success = 'result' in tool_res and tool_res['result']['success']
+            row += [Success if tool_success else NoRepair]
+
+            # if the tool has no solution, we skip all checks
+            if not tool_success:
+                row += [""] * 5
+            else:
+                checked_repairs = results[name][tool]['checks']
+                row += [check_to_emoji(checked_repairs, 'rtl-sim')]
+                if tool == CirFix:
+                    row += [check_to_emoji(checked_repairs, 'cirfix-author')]
+                else:
+                    row += [""]
+                for check_name in ['gate-sim', 'iverilog-sim', 'extended-sim']:
+                    row += [check_to_emoji(checked_repairs, check_name)]
+            row += [tool_res['success']]
+
+
+            rows.append(row)
+
+
+
+
+    return [header] + rows
+
 
 CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
 
 
 NoRepair = "➖"
-Success = "✔️"
-Fail = "❌"
+# Success  = "✔"
+Success  = "✔️"
+Fail     = "❌"
 
 Checks = ['cirfix-tool', 'cirfix-author', 'rtl-sim', 'gate-sim', 'extended-sim', 'iverilog-sim']
 def _summarize_checks(checks: dict) -> bool:
@@ -281,7 +341,8 @@ def main():
     write_to(conf.working_dir / "osdd_table.tex",
              render_latex(osdd_table(conf, results), has_header=True, right_cols_to_comment=1))
 
-
+    write_to(conf.working_dir / "correctness_table.tex",
+             render_latex(correctness_table(results), has_header=True))
 
 
 
