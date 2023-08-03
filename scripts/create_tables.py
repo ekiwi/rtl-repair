@@ -75,22 +75,28 @@ def parse_args() -> Config:
     assert_dir_exists("rtl-repair result directory", conf.rtlrepair_result_dir)
     return conf
 
-def _render_latex_row(column_width: list[int], row: list[str]) -> str:
+def _render_latex_row(column_width: list[int], row: list[str], is_last: bool, right_cols_to_comment: int, separator: str = "\\\\") -> str:
     padded = [cell.ljust(width, ' ') for width, cell in zip(column_width, row)]
-    return " & ".join(padded)
+    content = padded if right_cols_to_comment == 0 else padded[0:-right_cols_to_comment]
+    comments = [] if right_cols_to_comment == 0 else padded[-right_cols_to_comment:]
+    comment_sep = "" if len(comments) == 0 else "  % "
+    line = " & ".join(content) + " " + separator + comment_sep + " & ".join(comments)
+    return line
 
 def _latex_escape(cell: str) -> str:
     return cell.replace('_', '\\_')
 
-def render_latex(table: list[list[str]], has_header: bool) -> str:
+def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment: int = 0) -> str:
     if len(table) == 0:
         return ""
+    column_count = len(table[0])
+    assert column_count > right_cols_to_comment >= 0
 
     # stringify and escape all cells
     table = [[_latex_escape(str(cell)) for cell in row] for row in table]
 
     # determine number and size of columns
-    column_width = [0] * len(table[0])
+    column_width = [0] * column_count
     for row in table:
         assert len(row) == len(column_width),\
         f"Expected all rows to have {len(column_width)} columns, but this one has {len(row)}"
@@ -101,12 +107,13 @@ def render_latex(table: list[list[str]], has_header: bool) -> str:
         header = table[0]
         table = table[1:]
 
-    rows = [_render_latex_row(column_width, row) for row in table]
-    row_sep = " \\\\\n"
-    table_str = row_sep.join(rows) + "\n"
+    last_col_ii = column_count - 1
+    rows = [_render_latex_row(column_width, row, (ii==last_col_ii), right_cols_to_comment)
+            for ii, row in enumerate(table)]
+    table_str = "\n".join(rows) + "\n"
 
     if has_header:
-        table_str = _render_latex_row(column_width, header) + " \\\\ \\midrule\n" + table_str
+        table_str = _render_latex_row(column_width, header, len(rows) == 0, right_cols_to_comment, separator="\\\\ \\midrule") + "\n" + table_str
 
     # add tabular environment
     start_tab = "\\begin{tabular}{" + '|'.join('c' * len(column_width)) +"}"
@@ -145,13 +152,18 @@ def osdd_table(conf: Config, results: dict) -> list[list[str]]:
     rows = []
     for osdd in osdds:
         name = get_short_name(osdd['project'], osdd['bug'])
-        cycles = num_to_str(osdd['ground_truth_testbench_cycles'])
+        cycles_from_osdd = num_to_str(osdd['ground_truth_testbench_cycles'])
         fail_at = num_to_str(osdd['first_output_disagreement'])
         delta = num_to_str(osdd['delta'])
-        rtl_repair_data = results[name][RtlRepair]['custom']
-        window = "TBD"
+        repairs = results[name][RtlRepair]['repairs']
+        if len(repairs) > 0 and 'past_k' in repairs[0] and repairs[0]['past_k'] >= 0:
+            rtl_repair_data = repairs[0]
+            window_start = "0" if rtl_repair_data['past_k'] == 0 else str(-rtl_repair_data['past_k'])
+            window = f"[{window_start} .. {rtl_repair_data['future_k']}]"
+        else:
+            window = ""
         note = osdd['notes']
-        rows.append([name, cycles, fail_at, delta, window, note])
+        rows.append([name, cycles_from_osdd, fail_at, delta, window, note])
 
     return [header] + rows
 
@@ -166,9 +178,11 @@ def _try_load_one_result(directory: Path, tool: str, results: dict) -> bool:
     dd = load_toml(result_toml)
     res, custom = dd['result'], dd['custom']
     benchmark_name = get_short_name(res['project'], res['bug'])
+    repairs = dd['repairs'] if 'repairs' in dd else []
     dd = load_toml(check_toml)
     checks = dd['checks'] if 'checks' in dd else []
-    results[benchmark_name][tool]['repair'] = res
+    results[benchmark_name][tool]['result'] = res
+    results[benchmark_name][tool]['repairs'] = repairs
     results[benchmark_name][tool]['custom'] = custom
     results[benchmark_name][tool]['checks'] = checks
 
@@ -205,7 +219,7 @@ def main():
              render_latex(benchmark_description_table(conf), has_header=True))
 
     write_to(conf.working_dir / "osdd_table.tex",
-             render_latex(osdd_table(conf, results), has_header=True))
+             render_latex(osdd_table(conf, results), has_header=True, right_cols_to_comment=1))
 
 
 
