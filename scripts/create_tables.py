@@ -87,8 +87,25 @@ def _render_latex_row(column_width: list[int], row: list[str], is_last: bool, ri
     line = " & ".join(content) + " " + separator + comment_sep + " & ".join(comments)
     return line
 
+NoRepair = "○"
+Success  = "✔"
+Fail     = "✖"
+
+def _fontspec(character: str) -> str:
+    code = f"{ord(character):x}".upper()
+    return '{\\fontspec{Symbola}\\symbol{"' + code + '}}'
+
+EmojiMapping = {
+    "○": _fontspec("○"),
+    "✔": _fontspec("✔"),
+    "✖": _fontspec("✖"),
+}
+
 def _latex_escape(cell: str) -> str:
-    return cell.replace('_', '\\_')
+    for e, r in EmojiMapping.items():
+        cell = cell.replace(e, r)
+    cell = cell.replace('_', '\\_')
+    return cell
 
 def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment: int = 0) -> str:
     if len(table) == 0:
@@ -251,10 +268,7 @@ CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
 
 
-NoRepair = "➖"
-# Success  = "✔"
-Success  = "✔️"
-Fail     = "❌"
+
 
 Checks = ['cirfix-tool', 'cirfix-author', 'rtl-sim', 'gate-sim', 'extended-sim', 'iverilog-sim']
 def _summarize_checks(checks: dict, cirfix: bool) -> bool:
