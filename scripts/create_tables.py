@@ -4,7 +4,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 #
 # creates the tables for the evaluation section of the RTL-Repair paper
-
+import math
 import sys
 import argparse
 import tomli
@@ -271,13 +271,49 @@ def correctness_table(results: dict) -> list[list[str]]:
 
     return [header] + rows
 
+def format_time_s(time_in_s: float) -> str:
+    hours: float = time_in_s / 60 / 60
+    minutes: float = time_in_s / 60
+    seconds: float = time_in_s
+    if hours >= 1.0:
+        msg = f"{hours:.2f}h"
+    elif minutes >= 1.0:
+        msg = f"{minutes:.2f}min"
+    else:
+        msg = f"{seconds:.2f}s"
+    return msg
+
+CirFixTimeout = 16 * 60 * 60
+def get_time(tool_res: dict) -> int:
+    # TODO: include benchmarks that time out in cirfix experiment
+    return tool_res['result']['seconds'] if 'result' in tool_res else CirFixTimeout
+
+
+def performance_table(results: dict) -> list[list[str]]:
+    header = ["Benchmark", "RTL-Repair", "CirFix", "Speedup"]
+    rows = []
+
+    for name in all_short_names:
+        row = [name]
+        res = results[name]
+        rtl_repair_time = get_time(res[RtlRepair])
+        cirfix_time = get_time(res[CirFix])
+        for tool in [RtlRepair, CirFix]:
+            tool_res = res[tool]
+            row += [tool_res['success'] + " (" + format_time_s(get_time(tool_res)) + ")"]
+
+        # conservative speedup
+        speedup = f"{int(math.floor(cirfix_time / rtl_repair_time)):,}x"
+        if res[RtlRepair]['success'] == Success and res[CirFix]['success'] == Success:
+            speedup = "\\textbf{" + speedup + "}"
+        row += [speedup]
+
+        rows.append(row)
+    return [header] + rows
+
 
 CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
-
-
-
-
 Checks = ['cirfix-tool', 'cirfix-author', 'rtl-sim', 'gate-sim', 'extended-sim', 'iverilog-sim']
 def _summarize_checks(checks: dict, cirfix: bool) -> bool:
     # skip cirfix specific checks for rtl repair
@@ -367,6 +403,9 @@ def main():
 
     write_to(conf.working_dir / "correctness_table.tex",
              render_latex(correctness_table(results), has_header=True))
+
+    write_to(conf.working_dir / "performance_table.tex",
+             render_latex(performance_table(results), has_header=True))
 
 
 
