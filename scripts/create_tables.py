@@ -45,6 +45,7 @@ def _calc_short_names():
 _calc_short_names()
 def get_short_name(project: str, bug: str):
     return to_short_name[project][bug]
+all_short_names = [name for entry in to_short_name.values() for name in entry.values()]
 
 @dataclass
 class Config:
@@ -149,7 +150,7 @@ def osdd_table(conf: Config, results: dict) -> list[list[str]]:
 
     osdds = load_toml(conf.osdd_toml)['osdds']
 
-    rows = []
+    rows = {}
     for osdd in osdds:
         name = get_short_name(osdd['project'], osdd['bug'])
         cycles_from_osdd = num_to_str(osdd['ground_truth_testbench_cycles'])
@@ -163,9 +164,11 @@ def osdd_table(conf: Config, results: dict) -> list[list[str]]:
         else:
             window = ""
         note = osdd['notes']
-        rows.append([name, cycles_from_osdd, fail_at, delta, window, note])
+        rows[name] = [name, cycles_from_osdd, fail_at, delta, window, note]
 
-    return [header] + rows
+    # make sure we always use the same order of benchmarks!
+    sorted_rows = [rows[name] for name in all_short_names if name in rows]
+    return [header] + sorted_rows
 
 CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
@@ -199,9 +202,8 @@ def _load_results(directory: Path, tool: str, results: dict):
 
 def load_results(conf: Config) -> dict:
     results = {}
-    for entry in to_short_name.values():
-        for name in entry.values():
-            results[name] = {CirFix: {}, RtlRepair: {}}
+    for name in all_short_names:
+        results[name] = {CirFix: {}, RtlRepair: {}}
     _load_results(conf.cirfix_result_dir, CirFix, results)
     _load_results(conf.rtlrepair_result_dir, RtlRepair, results)
     return results
