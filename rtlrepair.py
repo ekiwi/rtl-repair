@@ -146,8 +146,13 @@ def try_template(config: Config, ast, prefix: str, template, statistics: dict) -
 
     try:
         status, assignments, synth_stats = synth.run(template_dir, config.opts.synth, ast, config.benchmark)
-    except TimeoutError:
-        status, assignments, synth_stats = Status.Timeout, [], NoSynthStat
+    except TimeoutError as e:
+        # is this error for us?
+        if config.opts.per_template_timeout is not None:
+            status, assignments, synth_stats = Status.Timeout, [], NoSynthStat
+        else:
+            assert config.opts.timeout is not None # global timeout instead!
+            raise e # dispatch to top
     except subprocess.CalledProcessError:
         # something crashed, so we cannot repair this bug
         status, assignments, synth_stats = Status.CannotRepair, [], NoSynthStat
