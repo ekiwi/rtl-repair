@@ -101,8 +101,14 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
     cmd = ["./rtlrepair.py"] + args
     # for debugging:
     cmd_str = ' '.join(cmd)
+    
+    # run from working directory, this is necessary because PyVerilog creates some
+    # temporary files that might otherwise conflict with other experiments that are
+    # run in parallel
+    cwd = working_dir
+
     try:
-        r = subprocess.run(cmd, stdout=subprocess.PIPE, check=True, cwd=_root_dir)
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, check=True, cwd=cwd)
     except subprocess.CalledProcessError as r:
         print(f"Failed to execute command: {cmd_str}")
         return 'failed', 0, None
