@@ -17,6 +17,7 @@ from pathlib import Path
 from benchmarks import Benchmark, load_project, get_benchmark
 from benchmarks.result import create_buggy_and_original_diff, write_result
 from rtlrepair import parse_verilog, serialize, do_repair, Synthesizer, preprocess, SynthOptions, Status
+from rtlrepair.synthesizer import SynthStats
 from rtlrepair.templates import *
 
 _ToolName = "rtl-repair"
@@ -144,7 +145,7 @@ def try_template(config: Config, ast, prefix: str, template, statistics: dict) -
     try:
         status, assignments, synth_stats = synth.run(template_dir, config.opts.synth, ast, config.benchmark)
     except TimeoutError:
-        status, assignments, synth_stats = Status.Timeout, [], {}
+        status, assignments, synth_stats = Status.Timeout, [], SynthStats(solver_time_ns=0, past_k=-1, future_k=-1)
 
     synth_time = time.monotonic() - synth_start_time
     template_time = time.monotonic() - start_time
