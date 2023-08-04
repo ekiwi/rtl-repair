@@ -8,6 +8,7 @@ import math
 import sys
 import argparse
 import tomli
+import statistics as py_stats
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -211,8 +212,11 @@ def sort_rows_by_benchmark_column(what: str, rows: list[list[str]]) -> list[list
         print(f"WARN: {what} did not contain an entry for {missing_benchmarks}")
     return sorted_rows
 
-def multicol(num: int, value: str) -> str:
+def multirow(num: int, value: str) -> str:
     return "\multirow[t]{" + str(num) + "}{*}{" + value + "}"
+
+def multicol(num: int, value: str) -> str:
+    return "\multicolumn{" + str(num) + "}{c}{" + value + "}"
 
 def check_to_emoji(checked_repairs: list, check_name: str) -> str:
     assert check_name in Checks
@@ -239,7 +243,7 @@ def correctness_table(results: dict) -> list[list[str]]:
             skipped += [name]
             continue
 
-        benchmark = multicol(2, name)
+        benchmark = multirow(2, name)
         for tool in [RtlRepair, CirFix]:
             tool_res = results[name][tool]
             row = [benchmark, tool]
@@ -289,22 +293,40 @@ def get_time(tool_res: dict) -> int:
     return tool_res['result']['seconds'] if 'result' in tool_res else CirFixTimeout
 
 
-def performance_table(results: dict) -> list[list[str]]:
+def simulate_combination(rtl_repair_time: float, rtl_repair_success: str, cirfix_time: float, cirfix_success: str) -> (float, str):
+    """ This predicts what would happen if we ran RTL-Repair first and then CirFix """
+    # if RTL-Repair found a repair, we go with it
+    if rtl_repair_success != NoRepair:
+        return rtl_repair_time, rtl_repair_success
+    # otherwise we go with CirFix
+    return rtl_repair_time + cirfix_time, cirfix_success
+
+def performance_table(results: dict, statistics: dict) -> list[list[str]]:
     header = ["Benchmark", "RTL-Repair", "CirFix", "Speedup"]
     rows = []
+    for tool in [CirFix, RtlRepair, Combined]:
+        statistics[tool] = {Success:[], Fail:[], NoRepair:[]}
 
     for name in all_short_names:
         row = [name]
         res = results[name]
+
         rtl_repair_time = get_time(res[RtlRepair])
+        rtl_repair_success = res[RtlRepair]['success']
+        statistics[RtlRepair][rtl_repair_success] += [rtl_repair_time]
+        row += [rtl_repair_success + " (" + format_time_s(rtl_repair_time) + ")"]
+
         cirfix_time = get_time(res[CirFix])
-        for tool in [RtlRepair, CirFix]:
-            tool_res = res[tool]
-            row += [tool_res['success'] + " (" + format_time_s(get_time(tool_res)) + ")"]
+        cirfix_success = res[CirFix]['success']
+        statistics[CirFix][cirfix_success] += [cirfix_time]
+        row += [cirfix_success + " (" + format_time_s(cirfix_time) + ")"]
+
+        combined_time, combined_success = simulate_combination(rtl_repair_time, rtl_repair_success, cirfix_time, cirfix_success)
+        statistics[Combined][combined_success] += [combined_time]
 
         # conservative speedup
         speedup = f"{int(math.floor(cirfix_time / rtl_repair_time)):,}x"
-        if res[RtlRepair]['success'] == Success and res[CirFix]['success'] == Success:
+        if rtl_repair_success == Success and cirfix_success == Success:
             speedup = "\\textbf{" + speedup + "}"
         row += [speedup]
 
@@ -312,8 +334,26 @@ def performance_table(results: dict) -> list[list[str]]:
     return [header] + rows
 
 
+def _perf_row(title: str, success: str, statistics: dict) -> list[str]:
+    row = [title]
+    for tool in [RtlRepair, CirFix, Combined]:
+        st = statistics[tool][success]
+        row += [str(len(st)), format_time_s(py_stats.median(st))]
+    return row
+
+def performance_statistics_table(statistics: dict) ->  list[list[str]]:
+    header1 = ["", multicol(2, "RTL-Repair"), "", multicol(2,"CirFix"), "", multicol(2, "Combined"), ""]
+    header2 = [""] + ["\\#", "median"] * 3
+    return [header1, header2,
+        _perf_row(Success + " Correct Repairs", Success, statistics),
+        _perf_row(Fail + " Wrong Repairs", Fail, statistics),
+        _perf_row(NoRepair + " Cannot Repair", NoRepair, statistics),
+    ]
+
+
 CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
+Combined = 'combined'
 Checks = ['cirfix-tool', 'cirfix-author', 'rtl-sim', 'gate-sim', 'extended-sim', 'iverilog-sim']
 def _summarize_checks(checks: dict, cirfix: bool) -> bool:
     # skip cirfix specific checks for rtl repair
@@ -404,10 +444,13 @@ def main():
     write_to(conf.working_dir / "correctness_table.tex",
              render_latex(correctness_table(results), has_header=True))
 
+    performance_statistics = {}
     write_to(conf.working_dir / "performance_table.tex",
-             render_latex(performance_table(results), has_header=True))
+             render_latex(performance_table(results, performance_statistics), has_header=True))
+    write_to(conf.working_dir / "performance_statistics_table.tex",
+             render_latex(performance_statistics_table(performance_statistics), has_header=True))
 
-
+    pass
 
 if __name__ == '__main__':
     main()
