@@ -50,7 +50,7 @@ def preprocess(working_dir: Path, benchmark: Benchmark) -> (Path, int):
         fixed_filename = preprocess_dir / f"{filename.stem}.{ii}.v"
         ast = parse_verilog(filename, include)
         fixer = LintFixer(warnings)
-        fixer.apply(ast)
+        change_count += fixer.apply(ast)
         with open(fixed_filename, "w") as f:
             f.write(serialize(ast))
         filename = fixed_filename
