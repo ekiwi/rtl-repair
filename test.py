@@ -350,7 +350,7 @@ class TestMux(SynthesisTest):
 
     def test_orig_orig_tb(self):
         # the blocking assignment is turned into a non-blocking one, which is why a "SUCCESS" is reported
-        self.synth_success(mux_dir)
+        self.synth_success(mux_dir, max_changes=4)
 
     def test_wadden_buggy1_orig_tb(self):
         self.synth_success(mux_dir, "wadden_buggy1", max_changes=3)
@@ -366,7 +366,7 @@ class TestLeftShiftReg(SynthesisTest):
 
     def test_wadden_buggy1_orig_tb(self):
         # blocking vs. non-blocking
-        self.synth_success(left_shift_dir, "wadden_buggy1")
+        self.synth_success(left_shift_dir, "wadden_buggy1", max_changes=4)
 
     def test_wadden_buggy2_orig_tb(self):
         # blocking vs. non-blocking
@@ -400,12 +400,12 @@ class TestFsmFull(SynthesisTest):
 
     def test_ssscrazy_buggy2_orig_tb(self):
         # we repair this by fixing the blocking assignment lint warning
-        self.synth_success(fsm_dir, "ssscrazy_buggy2")
+        self.synth_success(fsm_dir, "ssscrazy_buggy2", max_changes=15)
 
     def test_wadden_buggy2_orig_tb(self):
         # latch bug
         # this is repaired (by accident) by our linter based preprocessing
-        self.synth_success(fsm_dir, "wadden_buggy2")
+        self.synth_success(fsm_dir, "wadden_buggy2", max_changes=3)
 
     def test_ssscrazy_buggy1(self):
         # latch bug
