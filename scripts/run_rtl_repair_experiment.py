@@ -90,7 +90,7 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
     if incremental:
         args += ["--incremental"]
     if all_templates:
-        args += ["--all-templates"]
+        args += ["--run-all-templates"]
         if timeout is not None:
             args += [f"--template-timeout", str(timeout)]
     elif timeout is not None:
