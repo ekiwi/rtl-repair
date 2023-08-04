@@ -50,6 +50,12 @@ def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: Syn
     # args += ["--sample-solutions", "2"]
     cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
     cmd_str = ' '.join(str(p) for p in cmd)  # for debugging
+
+    # write command to file in order to be able to reproduce the failed synthesis command
+    with open(working_dir / "run_synth.sh", 'w') as ff:
+        print("#!/usr/bin/env bash", file=ff)
+        print(cmd_str, file=ff)
+
     r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
     output = r.stdout.decode('utf-8')
     # command write output to file for debugging
