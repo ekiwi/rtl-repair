@@ -122,6 +122,8 @@ def find_solver_version(solver: str) -> str:
     r = subprocess.run([solver] + arg, check=True, stdout=subprocess.PIPE)
     return r.stdout.decode('utf-8').splitlines()[0].strip()
 
+# return this if the synthesizer did not run or did not run properly (i.e. crashed)
+NoSynthStat = SynthStats(solver_time_ns=0, past_k=-1, future_k=-1)
 
 def try_template(config: Config, ast, prefix: str, template, statistics: dict) -> (Status, list):
     if config.opts.per_template_timeout is not None:
@@ -145,7 +147,10 @@ def try_template(config: Config, ast, prefix: str, template, statistics: dict) -
     try:
         status, assignments, synth_stats = synth.run(template_dir, config.opts.synth, ast, config.benchmark)
     except TimeoutError:
-        status, assignments, synth_stats = Status.Timeout, [], SynthStats(solver_time_ns=0, past_k=-1, future_k=-1)
+        status, assignments, synth_stats = Status.Timeout, [], NoSynthStat
+    except subprocess.CalledProcessError:
+        # something crashed, so we cannot repair this bug
+        status, assignments, synth_stats = Status.CannotRepair, [], NoSynthStat
 
     synth_time = time.monotonic() - synth_start_time
     template_time = time.monotonic() - start_time
@@ -275,9 +280,6 @@ def main():
         status, solutions = repair(config, statistics)
     except TimeoutError:
         status, solutions = Status.Timeout, []
-    except subprocess.CalledProcessError:
-        # something crashed, so we cannot repair this bug
-        status, solutions = Status.CannotRepair, []
     delta_time = time.monotonic() - start_time
     statistics['total_time'] =  delta_time
 
