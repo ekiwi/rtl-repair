@@ -109,4 +109,14 @@ class IncrementalSynthesizerTests extends SynthesizerSpec with ParallelTestExecu
     )
     assert(r.noRepairNecessary)
   }
+
+  // TODO: to fix this we need to add support for copying array state in our incremental solver!
+  //       (the _state_1 symbol that cannot be found by the simulator peek method is an array symbol ...)
+  it should "repair sdram controller with add_inversion" ignore {
+    val r = Synthesizer.run(
+      BenchmarkDir / "sdram_controller_wadden_buggy2.no_tri_state.instrumented.add_inversion.btor",
+      CirFixDir / "sdram_controller" / "orig_tb.csv",
+      DefaultConfig.changeSolver("bitwuzla").useIncremental().makeVerbose()
+    )
+  }
 }
