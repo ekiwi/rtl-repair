@@ -351,6 +351,11 @@ def performance_statistics_table(statistics: dict) ->  list[list[str]]:
     ]
 
 
+def ablation_table(results: dict) ->  list[list[str]]:
+    header = ["Benchmark", "TODO"]
+
+    return [header]
+
 CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
 Combined = 'combined'

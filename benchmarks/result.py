@@ -6,6 +6,7 @@
 
 import subprocess
 import tomli
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from pyverilog.ast_code_generator.codegen import ASTCodeGenerator
@@ -134,8 +135,8 @@ def _to_toml_str(value) -> str:
         return str(value)
     if isinstance(value, list):
         return "[" + ", ".join(_to_toml_str(ii) for ii in value) + "]"
-    # turn into string by default
-    return f'"{value}"'
+    # turn into json string by default
+    return f'"""{json.dumps(value)}"""'
     # raise NotImplementedError(f"Unsupported type: {type(value)} ({value})")
 
 

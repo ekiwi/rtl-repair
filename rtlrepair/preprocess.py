@@ -15,7 +15,7 @@ from rtlrepair.visitor import AstVisitor
 import pyverilog.vparser.ast as vast
 
 
-def preprocess(working_dir: Path, benchmark: Benchmark):
+def preprocess(working_dir: Path, benchmark: Benchmark) -> (Path, int):
     """ runs a linter on the verilog file and tries to address some issues """
     # create directory
     assert working_dir.exists()
@@ -27,7 +27,7 @@ def preprocess(working_dir: Path, benchmark: Benchmark):
     os.mkdir(preprocess_dir)
 
     # run linter up to four times
-    changed = False
+    change_count = 0
     previous_warnings = []
     other_files = get_other_sources(benchmark)
     filename = benchmark.bug.buggy
@@ -40,7 +40,7 @@ def preprocess(working_dir: Path, benchmark: Benchmark):
         if len(warnings) == 0:
             break  # no warnings -> nothing to fix
 
-        if changed:
+        if change_count > 0:
             # check to see if warnings actually changed or if we are at a fixed point
             if _same_warnings(previous_warnings, warnings):
                 break
@@ -57,7 +57,7 @@ def preprocess(working_dir: Path, benchmark: Benchmark):
         previous_warnings = warnings
 
     # return path to preprocessed file
-    return filename, changed
+    return filename, change_count
 
 
 def _same_warnings(old: list, new: list) -> bool:
@@ -168,6 +168,7 @@ class LintFixer(AstVisitor):
     def __init__(self, warnings: list):
         super().__init__()
         self.warnings = filter_warnings(warnings)
+        self.change_count = 0
 
     def _find_warnings(self, tpe: str, line: int):
         out = []
@@ -176,8 +177,10 @@ class LintFixer(AstVisitor):
                 out.append(warn)
         return out
 
-    def apply(self, ast: vast.Source):
-        return self.visit(ast)
+    def apply(self, ast: vast.Source) -> int:
+        self.change_count = 0
+        self.visit(ast)
+        return self.change_count
 
     def visit_CaseStatement(self, node: vast.CaseStatement):
         node = self.generic_visit(node)
@@ -185,6 +188,7 @@ class LintFixer(AstVisitor):
         if len(self._find_warnings("CASEINCOMPLETE", node.lineno)) > 0:
             default = vast.Case(None, vast.Block(tuple([])))
             node.caselist = tuple(list(node.caselist) + [default])
+            self.change_count += 1
         return node
 
     def visit_Always(self, node: vast.Always):
@@ -197,6 +201,7 @@ class LintFixer(AstVisitor):
         stmt = ensure_block(node.statement)
         stmt.statements = tuple(assignments + list(stmt.statements))
         node.statement = stmt
+        self.change_count += len(assignments)
         return node
 
     def visit_BlockingSubstitution(self, node: vast.BlockingSubstitution):
@@ -204,6 +209,7 @@ class LintFixer(AstVisitor):
         # change to non-blocking if we got a blocking assignment in sequential logic process
         if len(self._find_warnings("BLKSEQ", node.lineno)) > 0:
             node = vast.NonblockingSubstitution(node.left, node.right, node.ldelay, node.rdelay, node.lineno)
+            self.change_count += 1
         return node
 
     def visit_NonblockingSubstitution(self, node: vast.NonblockingSubstitution):
@@ -211,4 +217,5 @@ class LintFixer(AstVisitor):
         # change to blocking if we got a non-blocking assignment in combinatorial logic process
         if len(self._find_warnings("COMBDLY", node.lineno)) > 0:
             node = vast.BlockingSubstitution(node.left, node.right, node.ldelay, node.rdelay, node.lineno)
+            self.change_count += 1
         return node

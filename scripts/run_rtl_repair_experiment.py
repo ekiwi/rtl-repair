@@ -19,7 +19,7 @@ sys.path.append(str(_root_dir))
 import benchmarks
 from benchmarks import Benchmark
 
-# global experiment settings
+# global experiment default settings
 _solver = 'bitwuzla'
 _incremental = True
 _init = 'random'  # the incremental solver always uses random init
@@ -27,17 +27,38 @@ _timeout = 60  # one minute timeout
 _verbose_synth = True
 
 @dataclass
+class ExpConfig:
+    incremental: bool
+    timeout: int    # per template timeout when all_templates is true
+    all_templates: bool
+
+@dataclass
 class Config:
     working_dir: Path
     skip_existing: bool
+    experiment: str
 
+
+# possible experiments:
+ExpDefault = 'default'
+ExpAllTemplates = 'all-templates'
+ExpBasicSynth = 'basic-synth'
+Exps = [ExpDefault, ExpAllTemplates, ExpBasicSynth]
+Configs: dict[str, ExpConfig] = {
+    ExpDefault: ExpConfig(incremental=True, timeout=_timeout, all_templates=False),
+    ExpAllTemplates: ExpConfig(incremental=True, timeout=_timeout, all_templates=True),
+    ExpBasicSynth: ExpConfig(incremental=False, timeout=_timeout, all_templates=False),
+}
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='run repairs')
     parser.add_argument("--working-dir", dest="working_dir", required=True)
     parser.add_argument("--skip-existing", dest="skip", action="store_true", default=False)
     parser.add_argument("--clear", dest="clear", help="clear working dir", action="store_true", default=False)
+    parser.add_argument("--experiment", help=f'Pick one of: {Exps}', default=ExpDefault)
     args = parser.parse_args()
+
+    assert args.experiment in Exps, f"Invalid experiment {args.experiment}, pick one of: {Exps}"
 
     # parse and create working dir
     working_dir = Path(args.working_dir)
@@ -49,11 +70,11 @@ def parse_args() -> Config:
     if not working_dir.exists():
         os.mkdir(working_dir)
 
-    return Config(working_dir, args.skip)
+    return Config(working_dir, args.skip, args.experiment)
 
 
 def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str, solver, init,
-                   incremental, timeout=None):
+                   incremental, timeout=None, all_templates: bool = False):
     # determine the directory name from project and bug name
     out_dir = working_dir / benchmark.name
     args = [
@@ -68,7 +89,11 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
         args += ["--testbench", testbench]
     if incremental:
         args += ["--incremental"]
-    if timeout is not None:
+    if all_templates:
+        args += ["--all-templates"]
+        if timeout is not None:
+            args += [f"--template-timeout", str(timeout)]
+    elif timeout is not None:
         args += [f"--timeout", str(timeout)]
     if _verbose_synth:
         args += ["--verbose-synthesizer"]
@@ -112,9 +137,12 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
                 continue
             sys.stdout.write(f"{bb.name} w/ {testbench.name}")
             sys.stdout.flush()
+            exp_conf = Configs[conf.experiment]
             status, changes, template = run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name,
                                                        testbench=testbench.name, solver=_solver, init=_init,
-                                                       incremental=_incremental, timeout=_timeout)
+                                                       incremental=exp_conf.incremental,
+                                                       timeout=exp_conf.timeout,
+                                                       all_templates=exp_conf.all_templates)
             print(f" --> {status}")
 
     pass
