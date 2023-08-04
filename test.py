@@ -167,13 +167,13 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: incorrect repair
         changes = self.synth_success(fsm_dir, "ssscrazy_buggy1", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(-1, changes) # repaired by pre-processing!
+        self.assertEqual(2, changes) # repaired by pre-processing!
 
     def test_fsm_full_ssscrazy2(self):
         # CirFix: incorrect repair
         changes = self.synth_success(fsm_dir, "ssscrazy_buggy2", solver=self.solver, init=self.init,
-                                     incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(-1, changes) # repaired by pre-processing!
+                                     incremental=self.incremental, timeout=self.timeout, max_changes=20)
+        self.assertEqual(15, changes) # repaired by pre-processing!
 
     def test_fsm_full_wadden1(self):
         # CirFix: timed out
@@ -183,8 +183,8 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
     def test_fsm_full_wadden2(self):
         # CirFix: incorrect repair
         changes = self.synth_success(fsm_dir, "wadden_buggy2", solver=self.solver, init=self.init,
-                                     incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(-1, changes) # repaired by pre-processing!
+                                     incremental=self.incremental, timeout=self.timeout, max_changes=10)
+        self.assertEqual(3, changes) # repaired by pre-processing!
 
     def test_lshift_reg_kgoliya1(self):
         # CirFix: correct repair
@@ -195,8 +195,8 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
     def test_lshift_reg_wadden1(self):
         # CirFix: correct repair
         changes = self.synth_success(left_shift_dir, "wadden_buggy1", solver=self.solver, init=self.init,
-                                     incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(-1, changes)  # repaired by pre-processing!
+                                     incremental=self.incremental, timeout=self.timeout, max_changes=10)
+        self.assertEqual(4, changes)  # repaired by pre-processing!
 
     def test_lshift_reg_wadden2(self):
         # CirFix: correct repair
@@ -248,7 +248,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: timeout
         changes = self.synth_success(sd_dir / "no_tri_state.toml", "kgoliya_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(-1, changes)  # repaired by pre-processing!
+        self.assertEqual(2, changes)  # repaired by pre-processing!
 
     def test_i2c_master_kgoliya1(self):
         # CirFix: incorrect repair
