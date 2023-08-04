@@ -69,6 +69,10 @@ object Synthesizer {
 
     // find synthesis variables and remove them from the system for now
     val (noSynthVarSys, synthVars) = collectSynthesisVars(initializedSys)
+    if (synthVars.change.isEmpty) {
+      if (config.verbose) println(f"No synthesis change variables in design --> Cannot Repair")
+      return CannotRepair(RepairStats(0))
+    }
 
     // run repair
     val result = doRepair(noSynthVarSys, tb, synthVars, config, rnd)
