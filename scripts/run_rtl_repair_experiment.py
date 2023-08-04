@@ -17,7 +17,7 @@ _script_dir = Path(__file__).parent.resolve()
 _root_dir = _script_dir.parent
 sys.path.append(str(_root_dir))
 import benchmarks
-from benchmarks import Benchmark
+from benchmarks import Benchmark, assert_file_exists
 
 # global experiment default settings
 _solver = 'bitwuzla'
@@ -98,10 +98,12 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
     if _verbose_synth:
         args += ["--verbose-synthesizer"]
 
-    cmd = ["./rtlrepair.py"] + args
+    rtl_repair = _root_dir / "rtlrepair.py"
+    assert_file_exists("RTL-Repair script", rtl_repair)
+    cmd = [str(rtl_repair.resolve())] + args
     # for debugging:
     cmd_str = ' '.join(cmd)
-    
+
     # run from working directory, this is necessary because PyVerilog creates some
     # temporary files that might otherwise conflict with other experiments that are
     # run in parallel
