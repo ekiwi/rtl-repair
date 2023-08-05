@@ -4,6 +4,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 #
 # creates the tables for the evaluation section of the RTL-Repair paper
+import json
 import math
 import sys
 import argparse
@@ -288,12 +289,15 @@ def format_time_s(time_in_s: float) -> str:
     hours: float = time_in_s / 60 / 60
     minutes: float = time_in_s / 60
     seconds: float = time_in_s
+    milli_seconds: float = time_in_s * 1000
     if hours >= 1.0:
         msg = f"{hours:.2f}h"
     elif minutes >= 1.0:
         msg = f"{minutes:.2f}min"
-    else:
+    elif seconds >= 1.0:
         msg = f"{seconds:.2f}s"
+    else:
+        msg = f"{milli_seconds:.0f}ms"
     return msg
 
 CirFixTimeout = 16 * 60 * 60
@@ -361,9 +365,60 @@ def performance_statistics_table(statistics: dict) ->  list[list[str]]:
 
 
 def ablation_table(results: dict) ->  list[list[str]]:
-    header = ["Benchmark", "TODO"]
+    header = ["Benchmark", "Preprocessing", "Replace Literals", "Invert Condition", "Assign Constant", "Overall", "Basic Synthesizer"]
+    rows = []
 
-    return [header]
+    for name in all_short_names:
+        row = [name]
+        res = results[name]
+
+        stats = res[RtlRepairAllTemplates]['statistics']
+
+        preproc_changes = stats['preprocess']['changes']
+        preproc_time = stats['preprocess']['time']
+        preproc_status = NoRepair if preproc_changes == 0 else Success
+        row +=  [f"{preproc_changes} ({format_time_s(preproc_time)})"]
+
+        for template in ['replace_literals', 'assign_const', 'add_inversions']:
+            if not template in stats:
+                row += [""]
+                continue
+            num_sols = stats[template]['solutions']
+            time = stats[template]['template_time']
+            smt_time = stats[template]['solver_time']
+            if num_sols == 0:
+                changes = ""
+                status = NoRepair
+            else:
+                repairs = res[RtlRepairAllTemplates]['repairs']
+                repairs = [r for r in repairs if r['template'] == template]
+                assert len(repairs) == num_sols
+                assert len(repairs) == 1
+                repair = repairs[0]
+                changes = " " + str(repair['changes'])
+                checks = res[RtlRepairAllTemplates]['checks']
+                assert len(checks) == 1, "More than one repair (from different templates...)!"
+                check_passes = _summarize_checks(checks[0], cirfix=False)
+                if check_passes:
+                    status = Success
+                else:
+                    status = Fail
+            row += [f"{status} {changes} ({format_time_s(time)} / {format_time_s(smt_time)})"]
+
+        rtl_repair_time = get_time(res[RtlRepair])
+        rtl_repair_success = res[RtlRepair]['success']
+        row += [rtl_repair_success + " (" + format_time_s(rtl_repair_time) + ")"]
+
+        basic_success = _repair_summary_for_tool(name, RtlRepairBasicSynth, results)
+        basic_time = get_time(res[RtlRepairBasicSynth])
+        row += [basic_success + " (" + format_time_s(basic_time) + ")"]
+
+        rows.append(row)
+
+
+
+
+    return [header] + rows
 
 CirFix = 'cirfix'
 RtlRepair = 'rtlrepair'
@@ -381,21 +436,24 @@ def _summarize_checks(checks: dict, cirfix: bool) -> bool:
     return not True in fails
 
 
+def _repair_summary_for_tool(benchmark_name: str, tool: str, results: dict):
+    tool_res = results[benchmark_name][tool]
+    # i.e. does the tool think it created a correct repair?
+    tool_success = 'result' in tool_res and tool_res['result']['success']
+    if not tool_success:
+        return NoRepair
+    else:
+        checked_repairs = tool_res['checks']
+        # we are happy if any of the repairs pass (in one case a CirFix repair only passes in its minimized form)
+        check_successes = [_summarize_checks(cc, tool == CirFix) for cc in checked_repairs]
+        check_success = True in check_successes
+        return Success if check_success else Fail
+
 def create_repair_summary(results):
     """ analyzes the results of our check_repair.py script to come up with an overall assessment """
     for name in all_short_names:
         for tool in [CirFix, RtlRepair]:
-            tool_res = results[name][tool]
-            # i.e. does the tool think it created a correct repair?
-            tool_success = 'result' in tool_res and tool_res['result']['success']
-            if not tool_success:
-                results[name][tool]['success'] = NoRepair
-            else:
-                checked_repairs = results[name][tool]['checks']
-                # we are happy if any of the repairs pass (in one case a CirFix repair only passes in its minimized form)
-                check_successes = [_summarize_checks(cc, tool == CirFix) for cc in checked_repairs]
-                check_success = True in check_successes
-                results[name][tool]['success'] = Success if check_success else Fail
+            results[name][tool]['success'] = _repair_summary_for_tool(name, tool, results)
 
 
 
@@ -414,6 +472,8 @@ def _try_load_one_result(directory: Path, tool: str, results: dict) -> bool:
     results[benchmark_name][tool]['repairs'] = repairs
     results[benchmark_name][tool]['custom'] = custom
     results[benchmark_name][tool]['checks'] = checks
+    if 'statistics' in custom:
+        results[benchmark_name][tool]['statistics'] = json.loads(custom['statistics'])
 
 
 
@@ -468,6 +528,8 @@ def main():
     write_to(conf.working_dir / "performance_statistics_table.tex",
              render_latex(performance_statistics_table(performance_statistics), has_header=True))
 
+    write_to(conf.working_dir / "ablation_table.tex",
+             render_latex(ablation_table(results), has_header=True))
     pass
 
 if __name__ == '__main__':
