@@ -377,6 +377,7 @@ def ablation_table(results: dict) ->  list[list[str]]:
         preproc_changes = stats['preprocess']['changes']
         preproc_time = stats['preprocess']['time']
         preproc_status = NoRepair if preproc_changes == 0 else Success
+        replace_lit_status = stats['replace_literals']['status']
         row +=  [f"{preproc_changes} ({format_time_s(preproc_time)})"]
 
         for template in ['replace_literals', 'assign_const', 'add_inversions']:
@@ -386,6 +387,9 @@ def ablation_table(results: dict) ->  list[list[str]]:
             num_sols = stats[template]['solutions']
             time = stats[template]['template_time']
             smt_time = stats[template]['solver_time']
+            if time > 59.0 and smt_time <= 0.0001:
+                row += ["Timeout"]
+                continue
             if num_sols == 0:
                 changes = ""
                 status = NoRepair
@@ -405,13 +409,17 @@ def ablation_table(results: dict) ->  list[list[str]]:
                     status = Fail
             row += [f"{status} {changes} ({format_time_s(time)} / {format_time_s(smt_time)})"]
 
+        def outcome(tt: float, success: str):
+            if tt > 59.0: return "Timeout"
+            return success + " (" + format_time_s(tt) + ")"
+
         rtl_repair_time = get_time(res[RtlRepair])
         rtl_repair_success = res[RtlRepair]['success']
-        row += [rtl_repair_success + " (" + format_time_s(rtl_repair_time) + ")"]
+        row += [outcome(rtl_repair_time, rtl_repair_success)]
 
         basic_success = _repair_summary_for_tool(name, RtlRepairBasicSynth, results)
         basic_time = get_time(res[RtlRepairBasicSynth])
-        row += [basic_success + " (" + format_time_s(basic_time) + ")"]
+        row += [outcome(basic_time, basic_success)]
 
         rows.append(row)
 
