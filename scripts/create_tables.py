@@ -346,21 +346,37 @@ def performance_table(results: dict, statistics: dict) -> list[list[str]]:
         rows.append(row)
     return [header] + rows
 
+_stat_foo = {
+    'max': max,
+    'min': min,
+    'median': py_stats.median,
+    'avg.': py_stats.mean, 'avg': py_stats.mean, 'mean': py_stats.mean,
+}
 
-def _perf_row(title: str, success: str, statistics: dict) -> list[str]:
+def _perf_row(title: str, success: str, statistics: dict, tools: list[str], stats: list[str]) -> list[str]:
     row = [title]
-    for tool in [RtlRepair, CirFix, Combined]:
+    for tool in tools:
         st = statistics[tool][success]
-        row += [str(len(st)), format_time_s(py_stats.median(st))]
+        row += [str(len(st))]
+        for stat in stats:
+            row += [format_time_s(_stat_foo[stat](st))]
     return row
 
 def performance_statistics_table(statistics: dict) ->  list[list[str]]:
-    header1 = ["", multicol(2, "RTL-Repair"), "", multicol(2,"CirFix"), "", multicol(2, "Combined"), ""]
-    header2 = [""] + ["\\#", "median"] * 3
+    include_combined = False
+    stats = ['median', 'max']
+    pad = [""] * (len(stats))
+    header1 = ["", multicol(len(pad) + 1, "RTL-Repair")] + pad + [multicol(len(pad) + 1,"CirFix")] + pad
+    if include_combined:
+        header1 += [multicol(len(pad) + 1, "Combined")] + pad
+        tools = [RtlRepair, CirFix, Combined]
+    else:
+        tools = [RtlRepair, CirFix]
+    header2 = [""] + (["\\#"] + stats) * len(tools)
     return [header1, header2,
-        _perf_row(Success + " Correct Repairs", Success, statistics),
-        _perf_row(Fail + " Wrong Repairs", Fail, statistics),
-        _perf_row(NoRepair + " Cannot Repair", NoRepair, statistics),
+        _perf_row(Success + " Correct Repairs", Success, statistics, tools, stats),
+        _perf_row(Fail + " Wrong Repairs", Fail, statistics, tools, stats),
+        _perf_row(NoRepair + " Cannot Repair", NoRepair, statistics, tools, stats),
     ]
 
 
