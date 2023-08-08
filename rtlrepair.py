@@ -80,6 +80,7 @@ def parse_args() -> Config:
                         help='Instead of an early exit when a repair is found, this tries to run all templates available.',
                         action='store_true')
     parser.add_argument('--template-timeout', help='Applies a timeout to each individual template.')
+    parser.add_argument('--past-k-step-size', help='Step size used in the incremental repair synthesizer.')
 
     args = parser.parse_args()
 
@@ -91,7 +92,7 @@ def parse_args() -> Config:
     assert args.solver in _supported_solvers, f"unknown solver {args.solver}, try: {_supported_solvers}"
     assert args.init in {'any', 'zero', 'random'}
     synth_opts = SynthOptions(solver=args.solver, init=args.init, incremental=args.incremental,
-                              verbose=args.verbose_synthesizer)
+                              verbose=args.verbose_synthesizer, past_k_step_size=args.past_k_step_size)
     timeout = None if args.timeout is None else float(args.timeout)
     per_template_timeout = None if args.template_timeout is None else float(args.template_timeout)
     templates = []

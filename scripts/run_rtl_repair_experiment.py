@@ -31,6 +31,7 @@ class ExpConfig:
     incremental: bool
     timeout: int    # per template timeout when all_templates is true
     all_templates: bool
+    past_k_step_size: int = None
 
 @dataclass
 class Config:
@@ -43,11 +44,13 @@ class Config:
 ExpDefault = 'default'
 ExpAllTemplates = 'all-templates'
 ExpBasicSynth = 'basic-synth'
+ExpPastKOne = 'past-k-1'
 Exps = [ExpDefault, ExpAllTemplates, ExpBasicSynth]
 Configs: dict[str, ExpConfig] = {
     ExpDefault: ExpConfig(incremental=True, timeout=_timeout, all_templates=False),
     ExpAllTemplates: ExpConfig(incremental=True, timeout=_timeout, all_templates=True),
     ExpBasicSynth: ExpConfig(incremental=False, timeout=_timeout, all_templates=False),
+    ExpPastKOne: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, past_k_step_size=1),
 }
 
 def parse_args() -> Config:
@@ -74,7 +77,7 @@ def parse_args() -> Config:
 
 
 def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, bug: str, testbench: str, solver, init,
-                   incremental, timeout=None, all_templates: bool = False):
+                   incremental, timeout=None, all_templates: bool = False, past_k_step_size: int = None):
     # determine the directory name from project and bug name
     out_dir = working_dir / benchmark.name
     args = [
@@ -89,6 +92,8 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
         args += ["--testbench", testbench]
     if incremental:
         args += ["--incremental"]
+        if past_k_step_size:
+            args += ["--past-k-step-size", str(past_k_step_size)]
     if all_templates:
         args += ["--run-all-templates"]
         if timeout is not None:
@@ -150,7 +155,8 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
                                                        testbench=testbench.name, solver=_solver, init=_init,
                                                        incremental=exp_conf.incremental,
                                                        timeout=exp_conf.timeout,
-                                                       all_templates=exp_conf.all_templates)
+                                                       all_templates=exp_conf.all_templates,
+                                                       past_k_step_size=exp_conf.past_k_step_size)
             print(f" --> {status}")
 
     pass

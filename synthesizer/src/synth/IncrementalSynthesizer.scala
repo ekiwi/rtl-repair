@@ -43,7 +43,7 @@ object IncrementalSynthesizer {
     var pastK = 0
     var futureK = 0
     def k = pastK + futureK
-    val maxWindowSize = 32
+    val maxWindowSize = config.maxRepairWindowSize
     var totalCheckTime: Long = 0
     while (k <= maxWindowSize) {
       val (candidates, checkTime) =
@@ -62,7 +62,11 @@ object IncrementalSynthesizer {
             if (config.verbose) println(s"updating futureK from $futureK to $maxFailureDistance")
             futureK = maxFailureDistance
           } else {
-            val newPastK = Seq(pastK + 2, exec.failAt).min // cannot go back more than the location of the original bug
+            val newPastK =
+              Seq(
+                pastK + config.pastKStepSize,
+                exec.failAt
+              ).min // cannot go back more than the location of the original bug
             if (newPastK == pastK) {
               if (config.verbose) println(s"Cannot go back further in time => no solution found")
               return CannotRepair(RepairStats(totalCheckTime, pastK = pastK, futureK = futureK))

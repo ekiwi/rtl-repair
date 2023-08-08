@@ -14,12 +14,14 @@ case class Arguments(
   config:    Config = Config())
 
 case class Config(
-  solver:         Solver = Z3SMTLib,
-  init:           InitType = AnyInit,
-  incremental:    Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
-  angelic:        Boolean = false, // selects angelic synthesis, does not require any synthesis variables
-  seed:           Long = 0, // currently used to seed random state init if the option is selected
-  sampleUpToSize: Option[Int] = None, // None => return first solution
+  solver:              Solver = Z3SMTLib,
+  init:                InitType = AnyInit,
+  incremental:         Boolean = false, // selects incremental synthesis that does not unroll the complete testbench
+  angelic:             Boolean = false, // selects angelic synthesis, does not require any synthesis variables
+  seed:                Long = 0, // currently used to seed random state init if the option is selected
+  sampleUpToSize:      Option[Int] = None, // None => return first solution
+  pastKStepSize:       Int = 2, // for the incremental solver
+  maxRepairWindowSize: Int = 32, // for the incremental solver
   // Some(0) => return all solutions that have the minimal number of changes
   checkCorrectForAll: Boolean = false, // performs a formal check to see if there are any starting states or
   // free inputs that would make a solution fail
@@ -116,4 +118,12 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
   opt[Unit]("filter-solutions")
     .action((_, args) => args.copy(config = args.config.doFilterSolutions()))
     .text("check to see if solutions result in the same circuit and if so, discard any duplicates")
+  opt[Int]("past-k-step-size").action { (i, args) =>
+    args.copy(config = args.config.copy(pastKStepSize = i))
+  }
+    .text("the step size for incrementing the pastK value in the incremental solver")
+  opt[Int]("max-repair-window-size").action { (i, args) =>
+    args.copy(config = args.config.copy(maxRepairWindowSize = i))
+  }
+    .text("the maximum repair window size before the incremental solver gives up")
 }
