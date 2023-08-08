@@ -289,15 +289,15 @@ def format_time_s(time_in_s: float) -> str:
     hours: float = time_in_s / 60 / 60
     minutes: float = time_in_s / 60
     seconds: float = time_in_s
-    milli_seconds: float = time_in_s * 1000
     if hours >= 1.0:
         msg = f"{hours:.2f}h"
     elif minutes >= 1.0:
         msg = f"{minutes:.2f}min"
-    elif seconds >= 1.0:
-        msg = f"{seconds:.2f}s"
     else:
-        msg = f"{milli_seconds:.0f}ms"
+        if seconds > 0 and round(seconds, 2) == 0:
+            msg = "0.01s"
+        else:
+            msg = f"{seconds:.2f}s"
     return msg
 
 CirFixTimeout = 16 * 60 * 60
