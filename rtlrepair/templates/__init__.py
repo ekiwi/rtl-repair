@@ -7,4 +7,3 @@ from rtlrepair.templates.add_inversions import add_inversions
 from rtlrepair.templates.replace_literals import replace_literals
 from rtlrepair.templates.replace_variables import replace_variables
 from rtlrepair.templates.assign_const import assign_const
-from rtlrepair.templates.synthesize_condition import synthesize_condition
