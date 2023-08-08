@@ -381,7 +381,7 @@ def performance_statistics_table(statistics: dict) ->  list[list[str]]:
 
 
 def ablation_table(results: dict) ->  list[list[str]]:
-    header = ["Benchmark", "Preprocessing", "Replace Literals", "Invert Condition", "Assign Constant", "Overall", "Basic Synthesizer"]
+    header = ["Benchmark", "Preprocessing", "Replace Literals", "Assign Constant", "Invert Condition", "Overall", "Basic Synthesizer"]
     rows = []
 
     for name in all_short_names:
