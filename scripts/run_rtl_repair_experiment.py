@@ -45,13 +45,13 @@ ExpDefault = 'default'
 ExpAllTemplates = 'all-templates'
 ExpBasicSynth = 'basic-synth'
 ExpPastKOne = 'past-k-1'
-Exps = [ExpDefault, ExpAllTemplates, ExpBasicSynth]
 Configs: dict[str, ExpConfig] = {
     ExpDefault: ExpConfig(incremental=True, timeout=_timeout, all_templates=False),
     ExpAllTemplates: ExpConfig(incremental=True, timeout=_timeout, all_templates=True),
     ExpBasicSynth: ExpConfig(incremental=False, timeout=_timeout, all_templates=False),
     ExpPastKOne: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, past_k_step_size=1),
 }
+Exps = list(Configs.keys())
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description='run repairs')
