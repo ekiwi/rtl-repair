@@ -8,6 +8,8 @@ import json
 import math
 import sys
 import argparse
+from typing import Optional
+
 import tomli
 import statistics as py_stats
 from pathlib import Path
@@ -90,12 +92,43 @@ def parse_args() -> Config:
     assert_dir_exists("rtl-repair basic-synth result directory", conf.rtlrepair_basic_synth_result_dir)
     return conf
 
+_MultiColStart = '\\multicolumn{'
+def _analyze_multicol(cell: str) -> (Optional[int], str):
+    stripped = cell.strip()
+    has_multicol = stripped.startswith(_MultiColStart)
+    if has_multicol:
+        multicols = int(stripped[len(_MultiColStart):].split('}')[0])
+        content = ''.join((''.join(cell.split('{')[3:])).split('}')[:-1])
+        return multicols, content
+    else:
+        return None, None
+
+def _join_latex_cells(cells: list[str]) -> str:
+    """" Takes multicolumn cells into account and connects them with a space instead of a & """
+    out = ""
+    multicols = 0
+    last_ii = len(cells) - 1
+    for ii, cell in enumerate(cells):
+        is_last = ii == last_ii
+        out += cell
+        if not is_last:
+            multicol_param, _ = _analyze_multicol(cell)
+            if multicol_param is not None:
+                assert multicols == 0
+                multicols = multicol_param - 1
+            if multicols > 0:
+                out += "   "
+                multicols -= 1
+            else:
+                out += " & "
+    return out
+
 def _render_latex_row(column_width: list[int], row: list[str], is_last: bool, right_cols_to_comment: int, separator: str = "\\\\") -> str:
     padded = [cell.ljust(width, ' ') for width, cell in zip(column_width, row)]
     content = padded if right_cols_to_comment == 0 else padded[0:-right_cols_to_comment]
     comments = [] if right_cols_to_comment == 0 else padded[-right_cols_to_comment:]
     comment_sep = "" if len(comments) == 0 else "  % "
-    line = " & ".join(content) + " " + separator + comment_sep + " & ".join(comments)
+    line = _join_latex_cells(content) + " " + separator + comment_sep + _join_latex_cells(comments)
     return line
 
 NoRepair = "○"
@@ -118,7 +151,16 @@ def _latex_escape(cell: str) -> str:
     cell = cell.replace('_', '\\_')
     return cell
 
-def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment: int = 0) -> str:
+def _rot_centered(cell: str) -> str:
+    """ makes the cell multicolumn if it is not already """
+    if len(cell.strip()) == 0:
+        return "" # nothing to rotate
+    columns, content = _analyze_multicol(cell)
+    if columns is None:
+        columns, content = 1, cell
+    return "\\multicolumn{" + str(columns) + "}{c}{\\rot{" + content + "}}"
+
+def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment: int = 0, rot_header: bool = False) -> str:
     if len(table) == 0:
         return ""
     column_count = len(table[0])
@@ -131,12 +173,15 @@ def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment
     column_width = [0] * column_count
     for row in table:
         assert len(row) == len(column_width),\
-        f"Expected all rows to have {len(column_width)} columns, but this one has {len(row)}"
+        f"Expected all rows to have {len(column_width)} columns, but this one has {len(row)}:\n{row}"
         for ii, cell in enumerate(row):
             column_width[ii] = max(column_width[ii], len(cell))
 
     if has_header:
         header = table[0]
+        if rot_header:
+            # rotate AND center
+            header = [header[0]] + [_rot_centered(h) for h in header[1:]]
         table = table[1:]
 
     last_col_ii = column_count - 1
@@ -225,8 +270,9 @@ def sort_rows_by_benchmark_column(what: str, rows: list[list[str]]) -> list[list
 def multirow(num: int, value: str) -> str:
     return "\multirow[t]{" + str(num) + "}{*}{" + value + "}"
 
-def multicol(num: int, value: str) -> str:
-    return "\multicolumn{" + str(num) + "}{c}{" + value + "}"
+def multicol(num: int, value: str) -> list[str]:
+    assert num >= 1, str(num)
+    return ["\multicolumn{" + str(num) + "}{c}{" + value + "}"] + [""] * (num - 1)
 
 def check_to_emoji(checked_repairs: list, check_name: str) -> str:
     assert check_name in Checks
@@ -366,9 +412,9 @@ def performance_statistics_table(statistics: dict) ->  list[list[str]]:
     include_combined = False
     stats = ['median', 'max']
     pad = [""] * (len(stats))
-    header1 = ["", multicol(len(pad) + 1, "RTL-Repair")] + pad + [multicol(len(pad) + 1,"CirFix")] + pad
+    header1 = [""] + multicol(len(pad) + 1, "RTL-Repair") + multicol(len(pad) + 1,"CirFix")
     if include_combined:
-        header1 += [multicol(len(pad) + 1, "Combined")] + pad
+        header1 += multicol(len(pad) + 1, "Combined")
         tools = [RtlRepair, CirFix, Combined]
     else:
         tools = [RtlRepair, CirFix]
@@ -381,7 +427,10 @@ def performance_statistics_table(statistics: dict) ->  list[list[str]]:
 
 
 def ablation_table(results: dict) ->  list[list[str]]:
-    header = ["Benchmark", "Preprocessing", "Replace Literals", "Assign Constant", "Invert Condition", "Overall", "Basic Synthesizer"]
+    header = ["Benchmark"]
+    for e in ["Preprocessing", "Replace Literals", "Assign Constant", "Invert Condition", "Basic Synthesizer", "RTL-Repair", "CirFix"]:
+        header += multicol(2, e)
+    header += ["Speedup"]
     rows = []
 
     for name in all_short_names:
@@ -389,53 +438,70 @@ def ablation_table(results: dict) ->  list[list[str]]:
         res = results[name]
 
         stats = res[RtlRepairAllTemplates]['statistics']
+        rtl_repair_success = res[RtlRepair]['success']
 
         preproc_changes = stats['preprocess']['changes']
         preproc_time = stats['preprocess']['time']
         preproc_status = NoRepair if preproc_changes == 0 else Success
         replace_lit_status = stats['replace_literals']['status']
-        row +=  [f"{preproc_changes} ({format_time_s(preproc_time)})"]
+        row +=  [f"{preproc_changes}", f"{format_time_s(preproc_time)}"]
+        fixed_by_preproc = preproc_status == Success and replace_lit_status == 'NoRepair' and rtl_repair_success == Success
 
-        for template in ['replace_literals', 'assign_const', 'add_inversions']:
-            if not template in stats:
-                row += [""]
-                continue
-            num_sols = stats[template]['solutions']
-            time = stats[template]['template_time']
-            smt_time = stats[template]['solver_time']
-            if time > 59.0 and smt_time <= 0.0001:
-                row += ["Timeout"]
-                continue
-            if num_sols == 0:
-                changes = ""
-                status = NoRepair
-            else:
-                repairs = res[RtlRepairAllTemplates]['repairs']
-                repairs = [r for r in repairs if r['template'] == template]
-                assert len(repairs) == num_sols
-                assert len(repairs) == 1
-                repair = repairs[0]
-                changes = " " + str(repair['changes'])
-                checks = res[RtlRepairAllTemplates]['checks']
-                assert len(checks) == 1, "More than one repair (from different templates...)!"
-                check_passes = _summarize_checks(checks[0], cirfix=False)
-                if check_passes:
-                    status = Success
+        if fixed_by_preproc:
+            row += multicol(3*2, "Repaired by preprocessing")
+        else:
+
+            for template in ['replace_literals', 'assign_const', 'add_inversions']:
+                if not template in stats:
+                    row += multicol(2, "")
+                    continue
+                num_sols = stats[template]['solutions']
+                time = stats[template]['template_time']
+                smt_time = stats[template]['solver_time']
+                if time > 59.0 and smt_time <= 0.0001:
+                    row += multicol(2, "Timeout")
+                    continue
+                if num_sols == 0:
+                    changes = ""
+                    status = NoRepair
                 else:
-                    status = Fail
-            row += [f"{status} {changes} ({format_time_s(time)} / {format_time_s(smt_time)})"]
+                    repairs = res[RtlRepairAllTemplates]['repairs']
+                    repairs = [r for r in repairs if r['template'] == template]
+                    assert len(repairs) == num_sols
+                    assert len(repairs) == 1
+                    repair = repairs[0]
+                    changes = str(repair['changes']) + " "
+                    checks = res[RtlRepairAllTemplates]['checks']
+                    assert len(checks) == 1, "More than one repair (from different templates...)!"
+                    check_passes = _summarize_checks(checks[0], cirfix=False)
+                    if check_passes:
+                        status = Success
+                    else:
+                        status = Fail
+                row += [f"{changes}{status}", f"{format_time_s(time)}, {format_time_s(smt_time)}"]
 
-        def outcome(tt: float, success: str):
-            if tt > 59.0: return "Timeout"
-            return success + " (" + format_time_s(tt) + ")"
-
-        rtl_repair_time = get_time(res[RtlRepair])
-        rtl_repair_success = res[RtlRepair]['success']
-        row += [outcome(rtl_repair_time, rtl_repair_success)]
+        def outcome(tt: float, success: str, is_cirfix: bool) -> list[str]:
+            if not is_cirfix and tt > 59.0: return  multicol(2, "Timeout")
+            if tt > 15.9 * 60 * 60: return multicol(2, "Timeout")
+            return [success, format_time_s(tt)]
 
         basic_success = _repair_summary_for_tool(name, RtlRepairBasicSynth, results)
         basic_time = get_time(res[RtlRepairBasicSynth])
-        row += [outcome(basic_time, basic_success)]
+        row += outcome(basic_time, basic_success, is_cirfix=False)
+
+        rtl_repair_time = get_time(res[RtlRepair])
+        row += outcome(rtl_repair_time, rtl_repair_success, is_cirfix=False)
+
+        cirfix_time = get_time(res[CirFix])
+        cirfix_success = res[CirFix]['success']
+        row += outcome(cirfix_time, cirfix_success, is_cirfix=True)
+
+        # conservative speedup
+        speedup = f"{int(math.floor(cirfix_time / rtl_repair_time)):,}x"
+        if rtl_repair_success == Success and cirfix_success == Success:
+            speedup = "\\textbf{" + speedup + "}"
+        row += [speedup]
+
 
         rows.append(row)
 
@@ -553,7 +619,7 @@ def main():
              render_latex(performance_statistics_table(performance_statistics), has_header=True))
 
     write_to(conf.working_dir / "ablation_table.tex",
-             render_latex(ablation_table(results), has_header=True))
+             render_latex(ablation_table(results), has_header=True, rot_header=True))
     pass
 
 if __name__ == '__main__':
