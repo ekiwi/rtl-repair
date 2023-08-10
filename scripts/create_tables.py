@@ -288,6 +288,7 @@ def check_to_emoji(checked_repairs: list, check_name: str) -> str:
     return Success if at_least_once_pass else Fail
 
 def correctness_table(results: dict) -> list[list[str]]:
+    NumChanges: bool = True
     header = ["Benchmark", "Tool", "Tool Status", "Sim", "CirFix Author", "Gate-Level", "iVerilog", "Extended", "Overall"]
     rows = []
     skipped = []
@@ -300,6 +301,26 @@ def correctness_table(results: dict) -> list[list[str]]:
             continue
 
         benchmark = multirow(2, name)
+
+        # calculate the number of changes by rtl-repair
+        rtlrepair_res = results[name][RtlRepairAllTemplates]
+        preproc_changes = rtlrepair_res['statistics']['preprocess']['changes']
+        rtlrepair_repairs = rtlrepair_res['repairs']
+        assert len(rtlrepair_repairs) in {0, 1}
+        if len(rtlrepair_repairs) > 0:
+            rtlrepair_changes = rtlrepair_repairs[0]['changes'] + preproc_changes
+        else:
+            rtlrepair_changes = -1
+
+        # calculate the number of changes by cirfix
+        cirfix_res = results[name][CirFix]
+        if 'repairs' in cirfix_res and len(cirfix_res['repairs']) > 0:
+            cirfix_changes = min(len(r['patch']) for r in cirfix_res['repairs'])
+        else:
+            cirfix_changes = -1
+
+        changes = {RtlRepair: rtlrepair_changes, CirFix: cirfix_changes}
+
         for tool in [RtlRepair, CirFix]:
             tool_res = results[name][tool]
             row = [benchmark, tool]
@@ -321,7 +342,8 @@ def correctness_table(results: dict) -> list[list[str]]:
                     row += [""]
                 for check_name in ['gate-sim', 'iverilog-sim', 'extended-sim']:
                     row += [check_to_emoji(checked_repairs, check_name)]
-            row += [tool_res['success']]
+            overall = str(changes[tool]) + " " + tool_res['success'] if tool_success else tool_res['success']
+            row += [overall]
 
 
             rows.append(row)
