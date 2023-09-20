@@ -304,11 +304,14 @@ def correctness_table(results: dict) -> list[list[str]]:
 
         # calculate the number of changes by rtl-repair
         rtlrepair_res = results[name][RtlRepairAllTemplates]
+        stats = rtlrepair_res['statistics']
         preproc_changes = rtlrepair_res['statistics']['preprocess']['changes']
         rtlrepair_repairs = rtlrepair_res['repairs']
         assert len(rtlrepair_repairs) in {0, 1}
         if len(rtlrepair_repairs) > 0:
-            rtlrepair_changes = rtlrepair_repairs[0]['changes'] + preproc_changes
+            rtlrepair_changes = preproc_changes
+            if rtlrepair_repairs[0]['template'] != 'preprocess':
+                rtlrepair_changes += rtlrepair_repairs[0]['changes']
         else:
             rtlrepair_changes = -1
 
@@ -446,6 +449,16 @@ def performance_statistics_table(statistics: dict) ->  list[list[str]]:
         _perf_row(Fail + " Wrong Repairs", Fail, statistics, tools, stats),
         _perf_row(NoRepair + " Cannot Repair", NoRepair, statistics, tools, stats),
     ]
+
+def repair_statistics_table(statistics: dict) ->  list[list[str]]:
+    header = ["", "RTL-Repair", "CirFix", "Combined"]
+    tools = [RtlRepair, CirFix, Combined]
+    return [header,
+        [Success + " Correct Repairs"] + [str(len(statistics[t][Success])) for t in tools],
+        [Fail + " Wrong Repairs"] + [str(len(statistics[t][Fail])) for t in tools],
+        [NoRepair + " Cannot Repair"] + [str(len(statistics[t][NoRepair])) for t in tools],
+    ]
+
 
 
 def ablation_table(results: dict) ->  list[list[str]]:
@@ -639,6 +652,8 @@ def main():
              render_latex(performance_table(results, performance_statistics), has_header=True))
     write_to(conf.working_dir / "performance_statistics_table.tex",
              render_latex(performance_statistics_table(performance_statistics), has_header=True))
+    write_to(conf.working_dir / "repair_statistics_table.tex",
+             render_latex(repair_statistics_table(performance_statistics), has_header=True))
 
     write_to(conf.working_dir / "ablation_table.tex",
              render_latex(ablation_table(results), has_header=True, rot_header=True))
