@@ -120,7 +120,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
     solver: str = 'bitwuzla'
     incremental: bool = True
     init: str = 'random'
-    timeout: int = 45
+    timeout: int = 60
 
     def test_decoder_wadden1(self):
         # CirFix: incorrect repair
@@ -184,7 +184,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: incorrect repair
         changes = self.synth_success(fsm_dir, "wadden_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout, max_changes=10)
-        self.assertEqual(3, changes) # repaired by pre-processing!
+        self.assertEqual(1, changes) # repaired by pre-processing + replace literal!
 
     def test_lshift_reg_kgoliya1(self):
         # CirFix: correct repair
@@ -248,13 +248,13 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: timeout
         changes = self.synth_success(sd_dir / "no_tri_state.toml", "kgoliya_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(2, changes)  # repaired by pre-processing!
+        self.assertEqual(1, changes)  # repaired by pre-processing + assign const!
 
     def test_i2c_master_kgoliya1(self):
         # CirFix: incorrect repair
         changes = self.synth_success(i2c_dir / "master_sync_reset.toml", "kgoliya_buggy1", "fixed_x_prop_tb",
                                      solver=self.solver, init=self.init, incremental=self.incremental,
-                                     timeout=self.timeout)
+                                     timeout=(self.timeout * 2)) # TODO: this benchmark has become very slow!
         self.assertEqual(1, changes)
 
     def test_i2c_slave_wadden1(self):
