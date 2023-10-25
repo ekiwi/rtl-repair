@@ -16,7 +16,7 @@ object IncrementalSynthesizer {
   import synth.Synthesizer._
   import synth.BasicSynthesizer._
 
-  private def calculateUpdate(failureDistances: Seq[Int], currentFutureK: Int): UpdateK = {
+  private def calculateUpdate(failureDistances: Seq[Int], currentFutureK: Int, maxFutureK: Int): UpdateK = {
     // when no solution is found, we update the past K in order to get a more accurate starting state
     if (failureDistances.isEmpty) {
       return UpdatePastK
@@ -35,6 +35,12 @@ object IncrementalSynthesizer {
 
     // pick the smallest future failure that still increases the window size
     val newFutureK = futureFailures.filter(_ > currentFutureK).min
+
+    // if the future K would exceed the window size, try incrementing the pastK instead
+    if(newFutureK > maxFutureK) {
+      return UpdatePastK
+    }
+
     UpdateFutureK(newFutureK)
   }
 
@@ -83,7 +89,8 @@ object IncrementalSynthesizer {
           )
         case None => // otherwise, we analyze the solutions that did not work
           val failureDistance = candidates.map(c => c.failAt - exec.failAt)
-          calculateUpdate(failureDistance, futureK) match {
+          val maxFutureK = maxWindowSize - pastK
+          calculateUpdate(failureDistance, futureK, maxFutureK) match {
             case UpdateFutureK(to) =>
               if (config.verbose) println(s"updating futureK from $futureK to $to")
               futureK = to
