@@ -23,6 +23,8 @@ def assign_const(ast: vast.Source):
     return repl.blockified
 
 
+_ENABLE_NEW_CASE_STATEMENT: bool = False
+
 class ConstAssigner(RepairTemplate):
     def __init__(self, widths):
         super().__init__(name="assign")
@@ -56,6 +58,23 @@ class ConstAssigner(RepairTemplate):
     def visit_Case(self, node: vast.Case):
         if len(self.assigned_vars) > 0:
             node.statement = self.add_assignments(self.visit(node.statement))
+        return node
+
+    def visit_CaseStatement(self, node: vast.CaseStatement):
+        node: vast.CaseStatement = self.generic_visit(node)
+        if len(self.assigned_vars) == 0 or not _ENABLE_NEW_CASE_STATEMENT:
+            return node
+        # try to insert a new case before the default case
+        children = []
+        width = self.widths[node.comp]
+        for child in node.caselist:
+            if child.cond is None:
+                # insert right before the default statement
+                cond = (vast.Identifier(self.make_synth_var(width)),)
+                body = vast.Block(tuple(self.make_assignments(node.lineno)))
+                children.append(vast.Case(cond, body))
+            children.append(child)
+        node.caselist = tuple(children)
         return node
 
     def add_assignments(self, stmt):
