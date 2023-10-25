@@ -7,10 +7,36 @@ package synth
 import maltese.mc._
 import maltese.smt._
 
+sealed trait UpdateK {}
+case class UpdateFutureK(to: Int) extends UpdateK
+case object UpdatePastK extends UpdateK
+
 /** Tries to synthesize a solution without completely unrolling the system. */
 object IncrementalSynthesizer {
   import synth.Synthesizer._
   import synth.BasicSynthesizer._
+
+  private def calculateUpdate(failureDistances: Seq[Int], currentFutureK: Int): UpdateK = {
+    // when no solution is found, we update the past K in order to get a more accurate starting state
+    if (failureDistances.isEmpty) {
+      return UpdatePastK
+    }
+
+    val futureFailures = failureDistances.filter(_ > 0)
+    // if there are no solutions that lead to a later failure, we just increase the pastK
+    if (futureFailures.isEmpty) {
+      return UpdatePastK
+    }
+
+    // if all future failures are already included in our window, increase pastK
+    if (futureFailures.max <= currentFutureK) {
+      return UpdatePastK
+    }
+
+    // pick the smallest future failure that still increases the window size
+    val newFutureK = futureFailures.filter(_ > currentFutureK).min
+    UpdateFutureK(newFutureK)
+  }
 
   def doRepair(
     sys:       TransitionSystem,
@@ -57,25 +83,27 @@ object IncrementalSynthesizer {
           )
         case None => // otherwise, we analyze the solutions that did not work
           val failureDistance = candidates.map(c => c.failAt - exec.failAt)
-          val maxFailureDistance = (0 +: failureDistance).max
-          if (maxFailureDistance > futureK) {
-            if (config.verbose) println(s"updating futureK from $futureK to $maxFailureDistance")
-            futureK = maxFailureDistance
-          } else {
-            val newPastK =
-              Seq(
-                pastK + config.pastKStepSize,
-                exec.failAt
-              ).min // cannot go back more than the location of the original bug
-            if (newPastK == pastK) {
-              if (config.verbose) println(s"Cannot go back further in time => no solution found")
-              return CannotRepair(RepairStats(totalCheckTime, pastK = pastK, futureK = futureK))
-            }
-            if (config.verbose) println(s"updating pastK from $pastK to $newPastK")
-            pastK = newPastK
+          calculateUpdate(failureDistance, futureK) match {
+            case UpdateFutureK(to) =>
+              if (config.verbose) println(s"updating futureK from $futureK to $to")
+              futureK = to
+            case UpdatePastK =>
+              val newPastK =
+                Seq(
+                  pastK + config.pastKStepSize,
+                  exec.failAt
+                ).min // cannot go back more than the location of the original bug
+              if (newPastK == pastK) {
+                if (config.verbose) println(s"Cannot go back further in time => no solution found")
+                return CannotRepair(RepairStats(totalCheckTime, pastK = pastK, futureK = futureK))
+              }
+              if (config.verbose) println(s"updating pastK from $pastK to $newPastK")
+              pastK = newPastK
           }
       }
     }
+
+    if (config.verbose) println(s"Exceeded the maximum window size of $maxWindowSize with $pastK ... $futureK = $k")
 
     CannotRepair(RepairStats(totalCheckTime, pastK = pastK, futureK = futureK))
   }
