@@ -2,6 +2,7 @@
 # Copyright 2022-2023 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
+from collections import defaultdict
 
 import tomli
 import sys
@@ -134,7 +135,8 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
     return status, changes, template
 
 
-def run_all_cirfix_benchmarks(conf: Config, projects: dict):
+def run_all_cirfix_benchmarks(conf: Config, projects: dict) -> dict:
+    statistics = defaultdict(int)
     for name, project in projects.items():
         # overwrite for manual adjustments that we had to make
         if name in benchmarks.rtlrepair_replacements:
@@ -158,14 +160,16 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict):
                                                        all_templates=exp_conf.all_templates,
                                                        past_k_step_size=exp_conf.past_k_step_size)
             print(f" --> {status}")
+            statistics[status] += 1
 
-    pass
+    return statistics
 
 
 def main():
     conf = parse_args()
     projects = benchmarks.load_all_projects()
-    run_all_cirfix_benchmarks(conf, projects)
+    statistics = run_all_cirfix_benchmarks(conf, projects)
+    print(statistics)
 
 
 if __name__ == '__main__':
