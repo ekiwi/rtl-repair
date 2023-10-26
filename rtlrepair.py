@@ -27,7 +27,8 @@ _available_templates = {
     'replace_literals': replace_literals,
     'assign_const': assign_const,
     'add_inversions': add_inversions,
-    'replace_variables': replace_variables
+    'replace_variables': replace_variables,
+    'conditional_overwrite': conditional_overwrite,
 }
 _default_templates = ['replace_literals', 'assign_const', 'add_inversions', 'replace_variables']
 

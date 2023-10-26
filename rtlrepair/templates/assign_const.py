@@ -104,6 +104,8 @@ class ProcessAnalyzer(AstVisitor):
         self.assigned_vars = set()
         self.blocking_count = 0
         self.non_blocking_count = 0
+        self.conditions = []
+        self.case_inputs = []
 
     def run(self, proc: vast.Always):
         self.visit(proc)
@@ -121,3 +123,13 @@ class ProcessAnalyzer(AstVisitor):
     def visit_ForStatement(self, node: vast.ForStatement):
         # ignore the condition, pre and post of the for statement
         self.visit(node.statement)
+
+    def visit_IfStatement(self, node: vast.IfStatement):
+        self.conditions.append(node.cond)
+        self.visit(node.true_statement)
+        self.visit(node.false_statement)
+
+    def visit_CaseStatement(self, node: vast.CaseStatement):
+        self.case_inputs.append(node.comp)
+        for cc in node.caselist:
+            self.visit(cc)
