@@ -153,7 +153,7 @@ class InferWidths(AstVisitor):
         return value
 
     def determine_var_width(self, node):
-        assert isinstance(node, vast.Variable) or isinstance(node, vast.Parameter)
+        assert isinstance(node, vast.Variable) or isinstance(node, vast.Parameter) or isinstance(node, vast.Input) or isinstance(node, vast.Output)
         explicit_width = self.eval(node.width)
         if explicit_width is not None:  # if there is an explicit width annotated, take that
             self.vars[node.name] = explicit_width
@@ -163,7 +163,7 @@ class InferWidths(AstVisitor):
             self.vars[node.name] = 1
 
     def generic_visit(self, node):
-        if isinstance(node, vast.Variable):
+        if isinstance(node, vast.Variable) or isinstance(node, vast.Input)  or isinstance(node, vast.Output):
             self.determine_var_width(node)
         elif isinstance(node, vast.Parameter):
             self.determine_var_width(node)
@@ -180,6 +180,10 @@ class InferWidths(AstVisitor):
             self.expr_width(node.cond, 1)
             self.visit(node.true_statement)
             self.visit(node.false_statement)
+        elif isinstance(node, vast.CaseStatement):
+            self.expr_width(node.comp, 1)
+            for c in node.caselist:
+                self.visit(c)
         elif isinstance(node, vast.Value) or isinstance(node, vast.Operator):
             self.expr_width(node, None)
         else:

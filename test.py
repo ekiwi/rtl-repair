@@ -49,6 +49,7 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
         "--solver", solver,
         "--working-dir", str(out_dir.resolve()),
         "--init", init,
+        "--verbose-synthesizer",
     ]
     if bug: # bug is optional to allow for sanity-check "repairs" of the original design
         args += ["--bug", bug]
@@ -177,8 +178,9 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
 
     def test_fsm_full_wadden1(self):
         # CirFix: timed out
-        self.synth_cannot_repair(fsm_dir, "wadden_buggy1", solver=self.solver, init=self.init,
+        self.synth_success(fsm_dir, "wadden_buggy1", solver=self.solver, init=self.init,
                                  incremental=self.incremental, timeout=self.timeout)
+        # repaired by extended assign const
 
     def test_fsm_full_wadden2(self):
         # CirFix: incorrect repair
@@ -608,6 +610,14 @@ class TestTypeInference(unittest.TestCase):
         expected = {None: 1, 1: 69, 2: 15, 3: 11, 4: 5, 14: 4, 16: 6, 18: 19, 32: 2}
         self.assertEqual(expected, hist)
 
+    def test_mux_widths(self):
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
+        ast = parse_verilog(mux_dir / "mux_4_1.v")
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        expected = {None: 1, 2: 5, 4: 5}
+        self.assertEqual(expected, hist)
 
 class TestExposeBranches(unittest.TestCase):
     """ unittests for code in rtlrepair/expose_branches.py """
