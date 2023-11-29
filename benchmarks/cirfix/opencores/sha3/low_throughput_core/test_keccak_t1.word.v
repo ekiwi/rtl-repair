@@ -53,10 +53,10 @@ module test_keccak;
 
     initial begin
       f = $fopen("output_test_keccak_t1.txt");
-      $fwrite(f, "time,buffer_full,out,out_ready,clk,reset,in,in_ready,byte_num\n");
+      $fwrite(f, "time,buffer_full,out,out_ready,clk,reset,in,in_ready,byte_num,is_last\n");
       forever begin
         @(posedge clk);
-        $fwrite(f, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n", $time,buffer_full,out,out_ready,clk,reset,in,in_ready,byte_num);
+        $fwrite(f, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", $time,buffer_full,out,out_ready,clk,reset,in,in_ready,byte_num,is_last);
       end
     end
 
