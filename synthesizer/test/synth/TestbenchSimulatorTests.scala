@@ -50,6 +50,22 @@ class TestbenchSimulatorTests extends AnyFlatSpec {
     Testbench.save(CirFixDir / "opencores" / "i2c" / "fixed_x_prop_tb.csv", fixed)
   }
 
+  it should "correctly execute the sha3 test" in {
+    val tb = Testbench.load(CirFixDir / "opencores" / "sha3" / "low_throughput_core" / "keccak_tb.csv")
+
+    assert(tb.length == 358)
+
+    val sys = Btor2.load(BenchmarkDir / "keccak.original.btor")
+
+    // initialize everything to zero
+    val seed: Long = 1
+    val rnd = new scala.util.Random(seed)
+    val initialized = initSys(sys, ZeroInit, rnd)
+
+    val r = Testbench.run(initialized, tb, verbose = true, vcd = Some(os.pwd / "dump.vcd"))
+    assert(!r.failed)
+  }
+
 }
 
 private object XInputConversion {

@@ -5,9 +5,9 @@
 package maltese.app
 
 import java.io.File
-
 import maltese.mc._
 import maltese.smt
+import maltese.smt.BitwuzlaSMTLib
 
 /** simple interface to all supported model checkers */
 object Btor2MC extends App {
@@ -16,7 +16,8 @@ object Btor2MC extends App {
   } else {
     val filename = os.pwd / args.head
     val sys = Btor2.load(filename)
-    val checker = new BtormcModelChecker
+    //val checker = new BtormcModelChecker
+    val checker = new SMTModelChecker(BitwuzlaSMTLib)
     check(checker, sys, kMax = -1)
   }
 
