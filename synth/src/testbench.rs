@@ -22,6 +22,11 @@ pub struct RunResult {
     pub first_fail_at: Option<u64>,
 }
 
+struct Failure {
+    step: u64,
+    signal: ExprRef,
+}
+
 impl RunResult {
     pub fn is_success(&self) -> bool {
         self.first_fail_at.is_none()
@@ -62,6 +67,8 @@ impl Testbench {
     }
 
     pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig) -> RunResult {
+        let mut failures = Vec::new();
+
         // make sure we start from the starting state
         sim.init(InitKind::Zero);
 
@@ -72,7 +79,15 @@ impl Testbench {
             tokens.clear();
             pos += parse_line(&self.mmap[pos..], &mut tokens);
             assert!(!tokens.is_empty());
-            self.do_step(step_id, sim, tokens.as_slice());
+            self.do_step(step_id, sim, tokens.as_slice(), &mut failures);
+
+            // early exit
+            if !failures.is_empty() && matches!(conf.stop, StopAt::FirstFail) {
+                return RunResult {
+                    first_fail_at: Some(step_id),
+                };
+            }
+
             step_id += 1;
         }
         // success
@@ -81,7 +96,13 @@ impl Testbench {
         }
     }
 
-    fn do_step(&self, step_id: usize, sim: &mut impl Simulator, tokens: &[&[u8]]) {
+    fn do_step(
+        &self,
+        step_id: u64,
+        sim: &mut impl Simulator,
+        tokens: &[&[u8]],
+        failures: &mut Vec<Failure>,
+    ) {
         // apply inputs
         let mut input_iter = self.inputs.iter();
         if let Some(mut input) = input_iter.next() {
@@ -129,11 +150,23 @@ impl Testbench {
                             u64::from_str_radix(&String::from_utf8_lossy(cell), 10)
                         {
                             let actual = sim.get(output.1).unwrap().to_u64().unwrap();
-                            assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                            if expected != actual {
+                                failures.push(Failure {
+                                    step: step_id,
+                                    signal: output.1,
+                                })
+                                // assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                            }
                         } else {
                             let expected = BigUint::from_radix_be(cell, 10).unwrap();
                             let actual = sim.get(output.1).unwrap().to_big_uint();
-                            assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                            if expected != actual {
+                                failures.push(Failure {
+                                    step: step_id,
+                                    signal: output.1,
+                                })
+                                // assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                            }
                         }
                     }
 
