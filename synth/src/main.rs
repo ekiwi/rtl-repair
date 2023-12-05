@@ -1,7 +1,12 @@
 // Copyright 2023 The Regents of the University of California
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
+mod testbench;
+
+use crate::testbench::Testbench;
 use clap::{Parser, ValueEnum};
+use libpatron::ir::*;
+use libpatron::*;
 use serde_json::json;
 
 #[derive(Parser, Debug)]
@@ -65,6 +70,14 @@ enum Init {
 
 fn main() {
     let args = Args::parse();
+
+    // load system
+    let (ctx, sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
+
+    // load testbench
+    let tb = Testbench::load(&ctx, &sys, &args.testbench).expect("Failed to load testbench.");
+
+    // run testbench once to see if we can detect a bug
 
     let res = json!({
         "status": "cannot-repair",
