@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 use clap::{Parser, ValueEnum};
+use serde_json::json;
 
 #[derive(Parser, Debug)]
 #[command(name = "synth")]
@@ -52,14 +53,28 @@ struct Args {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Solver {
     Bitwuzla,
+    Yices2,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Init {
     Zero,
     Random,
+    Any, // not really supported
 }
 
 fn main() {
     let args = Args::parse();
+
+    let res = json!({
+        "status": "cannot-repair",
+        "solver-time": 0,
+        "past-k": 0,
+        "future-k": 0,
+        "solutions": [],
+    });
+
+    println!("== RESULT =="); // needle to find the JSON output
+    let j = serde_json::to_string(&res).unwrap();
+    println!("{}", j);
 }

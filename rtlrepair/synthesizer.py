@@ -12,10 +12,10 @@ from rtlrepair.utils import _root_dir, serialize, Status, status_name_to_enum
 import pyverilog.vparser.ast as vast
 from benchmarks.yosys import to_btor
 
-# the synthesizer is written in Scala, the source code lives in src
-_jar_rel = Path("target") / "scala-2.13" / "bug-fix-synthesizer-assembly-0.1.jar"
-_synthesizer_dir = _root_dir / "synthesizer"
-_jar = _synthesizer_dir / _jar_rel
+# the synthesizer is written in rust, the source code lives in src
+_bin_rel = Path("target") / "release" / "synth"
+_synthesizer_dir = _root_dir / "synth"
+_bin = _synthesizer_dir / _bin_rel
 
 
 @dataclass
@@ -34,14 +34,14 @@ class SynthStats:
     future_k: int
 
 
-def _check_jar():
-    assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
+def _check_bin():
+    assert _bin.exists(), f"Failed to find synth binary, did you run cargo build --release?\n{_bin}"
 
 
 def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: SynthOptions) -> dict:
     assert design.exists(), f"{design=} does not exist"
     assert testbench.exists(), f"{testbench=} does not exist"
-    _check_jar()
+    _check_bin()
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", opts.solver, "--init", opts.init]
     if opts.incremental:
         args += ["--incremental"]
@@ -51,7 +51,7 @@ def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: Syn
         args += ["--past-k-step-size", str(opts.past_k_step_size)]
     # test: multiple solutions
     # args += ["--sample-solutions", "2"]
-    cmd = ["java", "-cp", _jar, "synth.Synthesizer"] + args
+    cmd = [_bin] + args
     cmd_str = ' '.join(str(p) for p in cmd)  # for debugging
 
     # write command to file in order to be able to reproduce the failed synthesis command
