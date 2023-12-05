@@ -203,18 +203,34 @@ fn parse_line<'a>(data: &'a [u8], out: &mut Vec<&'a [u8]>) -> usize {
 
 // remove any whitespace around the edges
 fn trim(data: &[u8]) -> &[u8] {
-    let start = data
-        .iter()
-        .position(|c| !is_whitespace(*c))
-        .unwrap_or(data.len());
-    if start == data.len() {
-        return &[];
+    let first_non_whitespace = data.iter().position(|c| !is_whitespace(*c));
+    match first_non_whitespace {
+        None => &[], // the complete string consists of white space
+        Some(start) => {
+            let from_end = data.iter().rev().position(|c| !is_whitespace(*c)).unwrap();
+            let end = data.len() - from_end;
+            let out = &data[start..end];
+            out
+        }
     }
-    let end = data.iter().rev().position(|c| !is_whitespace(*c)).unwrap();
-    &data[start..end]
 }
 
 #[inline]
 fn is_whitespace(c: u8) -> bool {
     matches!(c, b' ')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trim() {
+        assert_eq!(trim(b"1234"), b"1234");
+        assert_eq!(trim(b" 1234"), b"1234");
+        assert_eq!(trim(b"1234  "), b"1234");
+        assert_eq!(trim(b"   1234   "), b"1234");
+        assert_eq!(trim(b"   12 34   "), b"12 34");
+        assert_eq!(trim(b"   12  34   "), b"12  34");
+    }
 }
