@@ -66,7 +66,7 @@ impl Testbench {
         Ok(tb)
     }
 
-    pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig) -> RunResult {
+    pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig, verbose: bool) -> RunResult {
         let mut failures = Vec::new();
 
         // make sure we start from the starting state
@@ -79,7 +79,7 @@ impl Testbench {
             tokens.clear();
             pos += parse_line(&self.mmap[pos..], &mut tokens);
             assert!(!tokens.is_empty());
-            self.do_step(step_id, sim, tokens.as_slice(), &mut failures);
+            self.do_step(step_id, sim, tokens.as_slice(), &mut failures, verbose);
 
             // early exit
             if !failures.is_empty() && matches!(conf.stop, StopAt::FirstFail) {
@@ -102,6 +102,7 @@ impl Testbench {
         sim: &mut impl Simulator,
         tokens: &[&[u8]],
         failures: &mut Vec<Failure>,
+        verbose: bool,
     ) {
         // apply inputs
         let mut input_iter = self.inputs.iter();
@@ -154,8 +155,10 @@ impl Testbench {
                                 failures.push(Failure {
                                     step: step_id,
                                     signal: output.1,
-                                })
-                                // assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                                });
+                                if verbose {
+                                    println!("{}@{step_id}: {} vs. {}", output.2, expected, actual);
+                                }
                             }
                         } else {
                             let expected = BigUint::from_radix_be(cell, 10).unwrap();
@@ -164,8 +167,10 @@ impl Testbench {
                                 failures.push(Failure {
                                     step: step_id,
                                     signal: output.1,
-                                })
-                                // assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                                });
+                                if verbose {
+                                    println!("{}@{step_id}: {} vs. {}", output.2, expected, actual);
+                                }
                             }
                         }
                     }

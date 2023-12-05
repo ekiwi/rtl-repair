@@ -1,10 +1,13 @@
 // Copyright 2023 The Regents of the University of California
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
+mod repair;
 mod testbench;
 
+use crate::repair::RepairVars;
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
+use libpatron::ir::SerializableIrNode;
 use libpatron::*;
 use serde_json::json;
 
@@ -72,6 +75,13 @@ fn main() {
 
     // load system
     let (ctx, sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
+
+    // analyze system
+    println!("Loaded: {}", sys.name);
+    println!("{}", sys.serialize_to_str(&ctx));
+
+    let synth_vars = RepairVars::from_sys(&sys);
+
     let mut sim = libpatron::sim::interpreter::Interpreter::new(&ctx, &sys);
 
     // load testbench
@@ -83,6 +93,7 @@ fn main() {
         &RunConfig {
             stop: StopAt::FirstFail,
         },
+        args.verbose,
     );
     if res.is_success() {
         print_no_repair();
