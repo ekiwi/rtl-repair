@@ -3,9 +3,8 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 mod testbench;
 
-use crate::testbench::Testbench;
+use crate::testbench::*;
 use clap::{Parser, ValueEnum};
-use libpatron::ir::*;
 use libpatron::*;
 use serde_json::json;
 
@@ -73,11 +72,22 @@ fn main() {
 
     // load system
     let (ctx, sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
+    let mut sim = libpatron::sim::interpreter::Interpreter::new(&ctx, &sys);
 
     // load testbench
     let tb = Testbench::load(&ctx, &sys, &args.testbench).expect("Failed to load testbench.");
 
     // run testbench once to see if we can detect a bug
+    let res = tb.run(
+        &mut sim,
+        &RunConfig {
+            stop: StopAt::FirstFail,
+        },
+    );
+    if res.is_success() {
+        print_no_repair();
+        return;
+    }
 
     let res = json!({
         "status": "cannot-repair",
@@ -87,6 +97,22 @@ fn main() {
         "solutions": [],
     });
 
+    print_result(&res);
+}
+
+fn print_no_repair() {
+    let res = json!({
+        "status": "no-repair",
+        "solver-time": 0,
+        "past-k": 0,
+        "future-k": 0,
+        "solutions": [],
+    });
+
+    print_result(&res);
+}
+
+fn print_result(res: &serde_json::Value) {
     println!("== RESULT =="); // needle to find the JSON output
     let j = serde_json::to_string(&res).unwrap();
     println!("{}", j);

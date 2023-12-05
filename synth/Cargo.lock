@@ -405,6 +405,7 @@ dependencies = [
  "clap",
  "libpatron",
  "memmap2",
+ "num-bigint",
  "serde_json",
 ]
 

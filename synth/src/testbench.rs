@@ -3,6 +3,9 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use libpatron::ir::*;
+use libpatron::mc::Simulator;
+use libpatron::sim::interpreter::InitKind;
+use num_bigint::BigUint;
 use std::collections::HashMap;
 
 pub type Result<T> = std::io::Result<T>;
@@ -12,6 +15,26 @@ pub struct Testbench {
     header_len: usize, // length of the first line of the CSV
     inputs: IOInfo,
     outputs: IOInfo,
+    signals_to_print: Vec<(String, ExprRef)>,
+}
+
+pub struct RunResult {
+    pub first_fail_at: Option<u64>,
+}
+
+impl RunResult {
+    pub fn is_success(&self) -> bool {
+        self.first_fail_at.is_none()
+    }
+}
+
+pub struct RunConfig {
+    pub stop: StopAt,
+}
+
+pub enum StopAt {
+    FirstFail,
+    End,
 }
 
 impl Testbench {
@@ -27,14 +50,110 @@ impl Testbench {
         let (inputs, outputs) = read_header(&header_tokens, &name_to_ref, sys)?;
 
         // assembly testbench
+        let signals_to_print = vec![];
         let tb = Self {
             mmap,
             header_len,
             inputs,
             outputs,
+            signals_to_print,
         };
         Ok(tb)
     }
+
+    pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig) -> RunResult {
+        // make sure we start from the starting state
+        sim.init(InitKind::Zero);
+
+        let mut pos = self.header_len;
+        let mut tokens = Vec::with_capacity(32);
+        let mut step_id = 0;
+        while pos < self.mmap.len() {
+            tokens.clear();
+            pos += parse_line(&self.mmap[pos..], &mut tokens);
+            assert!(!tokens.is_empty());
+            self.do_step(step_id, sim, tokens.as_slice());
+            step_id += 1;
+        }
+        // success
+        RunResult {
+            first_fail_at: None,
+        }
+    }
+
+    fn do_step(&self, step_id: usize, sim: &mut impl Simulator, tokens: &[&[u8]]) {
+        // apply inputs
+        let mut input_iter = self.inputs.iter();
+        if let Some(mut input) = input_iter.next() {
+            for (cell_id, cell) in tokens.iter().enumerate() {
+                if cell_id == input.0 {
+                    // apply input
+                    if !is_x(cell) {
+                        let value =
+                            u64::from_str_radix(&String::from_utf8_lossy(cell), 10).unwrap();
+                        sim.set(input.1, value);
+                    }
+
+                    // get next input
+                    if let Some(next_input) = input_iter.next() {
+                        input = next_input;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // calculate the output values
+        sim.update();
+
+        // print values if the option is enables
+        if !self.signals_to_print.is_empty() {
+            println!();
+            for (name, expr) in self.signals_to_print.iter() {
+                if let Some(value_ref) = sim.get(*expr) {
+                    let value = value_ref.to_bit_string();
+                    println!("{name}@{step_id} = {value}")
+                }
+            }
+        }
+
+        // check outputs
+        let mut output_iter = self.outputs.iter();
+        if let Some(mut output) = output_iter.next() {
+            for (cell_id, cell) in tokens.iter().enumerate() {
+                if cell_id == output.0 {
+                    // apply input
+                    if !is_x(cell) {
+                        if let Ok(expected) =
+                            u64::from_str_radix(&String::from_utf8_lossy(cell), 10)
+                        {
+                            let actual = sim.get(output.1).unwrap().to_u64().unwrap();
+                            assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                        } else {
+                            let expected = BigUint::from_radix_be(cell, 10).unwrap();
+                            let actual = sim.get(output.1).unwrap().to_big_uint();
+                            assert_eq!(expected, actual, "{}@{step_id}", output.2);
+                        }
+                    }
+
+                    // get next output
+                    if let Some(next_output) = output_iter.next() {
+                        output = next_output;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // advance simulation
+        sim.step();
+    }
+}
+
+fn is_x(token: &[u8]) -> bool {
+    matches!(token, b"x" | b"X")
 }
 
 type IOInfo = Vec<(usize, ExprRef, String)>;
