@@ -1,6 +1,7 @@
 // Copyright 2023 The Regents of the University of California
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
+mod basic;
 mod repair;
 mod testbench;
 
@@ -75,12 +76,17 @@ fn main() {
 
     // load system
     let (ctx, sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
+    if args.verbose {
+        println!("Loaded: {}", sys.name);
+        println!("{}", sys.serialize_to_str(&ctx));
+    }
 
     // analyze system
-    println!("Loaded: {}", sys.name);
-    println!("{}", sys.serialize_to_str(&ctx));
-
-    let synth_vars = RepairVars::from_sys(&sys);
+    let synth_vars = RepairVars::from_sys(&ctx, &sys);
+    if args.verbose {
+        println!("Number of change vars: {}", synth_vars.change.len());
+        println!("Number of free vars:   {}", synth_vars.free.len());
+    }
 
     let mut sim = libpatron::sim::interpreter::Interpreter::new(&ctx, &sys);
 
@@ -95,10 +101,15 @@ fn main() {
         },
         args.verbose,
     );
+
+    // early exit in case we do not see any bug
+    // (there could still be a bug in the original Verilog that was masked by the synthesis)
     if res.is_success() {
         print_no_repair();
         return;
     }
+
+    // call to the synthesizer
 
     let res = json!({
         "status": "cannot-repair",

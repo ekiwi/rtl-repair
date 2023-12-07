@@ -4,7 +4,7 @@
 
 use libpatron::ir::*;
 use libpatron::mc::Simulator;
-use libpatron::sim::interpreter::InitKind;
+use libpatron::sim::interpreter::{InitKind, Value};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 
@@ -113,7 +113,7 @@ impl Testbench {
                     if !is_x(cell) {
                         let value =
                             u64::from_str_radix(&String::from_utf8_lossy(cell), 10).unwrap();
-                        sim.set(input.1, value);
+                        sim.set(input.1, &Value::from_u64(value));
                     }
 
                     // get next input
