@@ -220,11 +220,18 @@ fn read_header(
 fn parse_line<'a>(data: &'a [u8], out: &mut Vec<&'a [u8]>) -> usize {
     assert!(out.is_empty());
     let mut token_start = 0usize;
+    let mut found_end = false; // this is to deal with new lines that consist of two characters
     for (offset, bb) in data.iter().enumerate() {
+        if found_end {
+            return match bb {
+                b'\r' | b'\n' => offset + 1, // two character new line => skip
+                _ => offset, // one character new line => do not include this character
+            };
+        }
         match bb {
-            b'\n' => {
+            b'\r' | b'\n' => {
                 out.push(trim(&data[token_start..offset]));
-                return offset + 1;
+                found_end = true;
             }
             b',' => {
                 out.push(trim(&data[token_start..offset]));
