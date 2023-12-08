@@ -69,7 +69,11 @@ impl Testbench {
         let mut header_tokens = Vec::new();
         let header_len = parse_line(&mmap, &mut header_tokens);
         let name_to_ref = sys.generate_name_to_ref(&ctx);
-        let ios = read_header(&header_tokens, &name_to_ref, ctx, sys, verbose)?;
+        let mut ios = read_header(&header_tokens, &name_to_ref, ctx, sys, verbose)?;
+
+        // see if we are missing any inputs from the testbench
+        let mut missing_inputs = find_missing_inputs(ctx, sys, &ios, verbose);
+        ios.append(&mut missing_inputs);
 
         // read data
         let data = read_body(header_len, mmap, &ios);
@@ -184,6 +188,33 @@ fn is_x(token: &[u8]) -> bool {
     matches!(token, b"x" | b"X")
 }
 
+fn find_missing_inputs(
+    ctx: &Context,
+    sys: &TransitionSystem,
+    ios: &[IOInfo],
+    verbose: bool,
+) -> Vec<IOInfo> {
+    let mut out = Vec::new();
+    for (input, _) in sys.get_signals(|s| s.kind == SignalKind::Input) {
+        let included = ios.iter().any(|i| i.is_input && i.expr == input);
+        if !included {
+            let width = input.get_bv_type(ctx).unwrap();
+            let name = input.get_symbol_name(ctx).unwrap();
+            if verbose {
+                println!("Input `{name}` : bv<{width}> is missing from the testbench.");
+            }
+            out.push(IOInfo {
+                expr: input,
+                cell_id: usize::MAX,
+                words: width_to_words(width),
+                is_input: true,
+                name: name.to_string(),
+            })
+        }
+    }
+    out
+}
+
 fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word> {
     let mut data = Vec::new();
     let mut pos = header_len;
@@ -193,14 +224,21 @@ fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word
         pos += parse_line(&mmap[pos..], &mut tokens);
         if !tokens.is_empty() {
             for io in ios.iter() {
-                let cell = tokens[io.cell_id];
                 // read and write words to data
                 assert_eq!(io.words, 1);
-                if is_x(cell) {
-                    data.push(Word::MAX);
+
+                let is_missing = io.cell_id == usize::MAX;
+                if is_missing {
+                    data.push(Word::MAX); // X
                 } else {
-                    let value = u64::from_str_radix(&String::from_utf8_lossy(cell), 10).unwrap();
-                    data.push(value);
+                    let cell = tokens[io.cell_id];
+                    if is_x(cell) {
+                        data.push(Word::MAX);
+                    } else {
+                        let value =
+                            u64::from_str_radix(&String::from_utf8_lossy(cell), 10).unwrap();
+                        data.push(value);
+                    }
                 }
             }
         }
@@ -222,11 +260,10 @@ fn read_header(
             let signal = sys.get_signal(*signal_ref).unwrap();
             if matches!(signal.kind, SignalKind::Input | SignalKind::Output) {
                 let width = signal_ref.get_bv_type(ctx).unwrap();
-                let words = (width + 1).div_ceil(Word::BITS);
                 out.push(IOInfo {
                     expr: *signal_ref,
-                    cell_id: cell_id,
-                    words: words as usize,
+                    cell_id,
+                    words: width_to_words(width),
                     is_input: signal.kind == SignalKind::Input,
                     name: name.to_string(),
                 })
@@ -236,6 +273,10 @@ fn read_header(
         }
     }
     Ok(out)
+}
+
+fn width_to_words(width: WidthInt) -> usize {
+    (width + 1).div_ceil(Word::BITS) as usize
 }
 
 fn parse_line<'a>(data: &'a [u8], out: &mut Vec<&'a [u8]>) -> usize {

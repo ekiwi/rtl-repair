@@ -108,13 +108,14 @@ pub struct RepairAssignment {
 }
 
 const CHANGE_COUNT_OUTPUT_NAME: &str = "__change_count";
+const CHANGE_COUNT_WIDTH: WidthInt = 16;
 
 pub fn add_change_count(
     ctx: &mut Context,
     sys: &mut TransitionSystem,
     change: &[ExprRef],
 ) -> ExprRef {
-    let width = 16;
+    let width = CHANGE_COUNT_WIDTH;
     let sum = match change.len() {
         0 => ctx.bv_lit(0, width),
         1 => ctx.zero_extend(change[0], width - 1),
