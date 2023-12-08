@@ -9,8 +9,10 @@ use crate::repair::{add_change_count, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
+use libpatron::mc::Simulator;
+use libpatron::sim::interpreter::InitKind;
 use libpatron::*;
-use serde_json::json;
+use serde_json::{json, to_string};
 
 #[derive(Parser, Debug)]
 #[command(name = "synth")]
@@ -93,11 +95,32 @@ fn main() {
         println!("{}", sys.serialize_to_str(&ctx));
     }
 
-    let mut sim = libpatron::sim::interpreter::Interpreter::new(&ctx, &sys);
+    let mut sim = sim::interpreter::Interpreter::new(&ctx, &sys);
 
     // load testbench
-    let tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose)
+    let mut tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose)
         .expect("Failed to load testbench.");
+
+    // init free variables
+    match args.init {
+        Init::Zero => {
+            sim.init(InitKind::Zero);
+            tb.define_inputs(InitKind::Zero);
+        }
+        Init::Random => {
+            sim.init(InitKind::Random(0));
+            tb.define_inputs(InitKind::Random(1));
+        }
+        Init::Any => {
+            println!(
+                "WARN: any init is not actually supported! Random init will be performed instead!"
+            );
+            sim.init(InitKind::Random(0));
+            tb.define_inputs(InitKind::Random(1));
+        }
+    }
+    // remember the starting state
+    let start_state = sim.take_snapshot();
 
     // run testbench once to see if we can detect a bug
     let res = tb.run(

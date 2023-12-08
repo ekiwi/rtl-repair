@@ -2,9 +2,10 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
+use crate::Init;
 use libpatron::ir::*;
 use libpatron::mc::Simulator;
-use libpatron::sim::interpreter::{InitKind, Value};
+use libpatron::sim::interpreter::{InitKind, InitValueGenerator, Value};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 
@@ -26,6 +27,7 @@ struct IOInfo {
     expr: ExprRef,
     cell_id: usize,
     words: usize,
+    width: WidthInt,
     is_input: bool,
     name: String,
 }
@@ -92,6 +94,30 @@ impl Testbench {
         Ok(tb)
     }
 
+    /// Replaces all X assignments to inputs with a random or zero value.
+    pub fn define_inputs(&mut self, kind: InitKind) {
+        let mut gen = InitValueGenerator::from_kind(kind);
+        for step_id in 0..self.step_count() {
+            let range = self.step_range(step_id);
+            let words = &mut self.data[range];
+            let mut offset = 0;
+            for io in self.ios.iter() {
+                if io.is_input {
+                    let io_words = &mut words[offset..(offset + io.words)];
+                    if is_x(io_words) {
+                        let data_words = &mut io_words[0..width_to_words(io.width)];
+                        gen.assign(data_words, io.width, 1);
+                    }
+                }
+                offset += io.words;
+            }
+        }
+    }
+
+    fn step_range(&self, step_id: usize) -> std::ops::Range<usize> {
+        (step_id * self.step_words)..((step_id + 1) * self.step_words)
+    }
+
     pub fn step_count(&self) -> usize {
         self.data.len() / self.step_words
     }
@@ -99,12 +125,15 @@ impl Testbench {
     pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig, verbose: bool) -> RunResult {
         let mut failures = Vec::new();
 
-        // make sure we start from the starting state
-        sim.init(InitKind::Zero);
-
         for step_id in 0..self.step_count() {
-            let words = &self.data[(step_id * self.step_words)..((step_id + 1) * self.step_words)];
-            self.do_step(step_id as u64, sim, words, &mut failures, verbose);
+            let range = self.step_range(step_id);
+            self.do_step(
+                step_id as u64,
+                sim,
+                &self.data[range],
+                &mut failures,
+                verbose,
+            );
             // early exit
             if !failures.is_empty() && matches!(conf.stop, StopAt::FirstFail) {
                 return RunResult {
@@ -131,8 +160,7 @@ impl Testbench {
         for io in self.ios.iter() {
             if io.is_input {
                 let io_words = &words[offset..(offset + io.words)];
-                let is_x = io_words.iter().all(|w| *w == Word::MAX);
-                if !is_x {
+                if !is_x(io_words) {
                     sim.set(io.expr, &Value::from_words(io_words));
                 }
             }
@@ -158,8 +186,7 @@ impl Testbench {
         for io in self.ios.iter() {
             if !io.is_input {
                 let io_words = &words[offset..(offset + io.words)];
-                let is_x = io_words.iter().all(|w| *w == Word::MAX);
-                if !is_x {
+                if !is_x(io_words) {
                     let value = sim.get(io.expr).unwrap();
                     if io.words == 1 {
                         let expected = io_words[0];
@@ -184,7 +211,11 @@ impl Testbench {
     }
 }
 
-fn is_x(token: &[u8]) -> bool {
+fn is_x(words: &[Word]) -> bool {
+    words.iter().all(|w| *w == Word::MAX)
+}
+
+fn is_cell_x(token: &[u8]) -> bool {
     matches!(token, b"x" | b"X")
 }
 
@@ -206,7 +237,8 @@ fn find_missing_inputs(
             out.push(IOInfo {
                 expr: input,
                 cell_id: usize::MAX,
-                words: width_to_words(width),
+                words: width_to_words(width + 1), // one extra bit to indicate X
+                width,
                 is_input: true,
                 name: name.to_string(),
             })
@@ -232,11 +264,10 @@ fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word
                     data.push(Word::MAX); // X
                 } else {
                     let cell = tokens[io.cell_id];
-                    if is_x(cell) {
+                    if is_cell_x(cell) {
                         data.push(Word::MAX);
                     } else {
-                        let value =
-                            u64::from_str_radix(&String::from_utf8_lossy(cell), 10).unwrap();
+                        let value = str::parse(&String::from_utf8_lossy(cell)).unwrap();
                         data.push(value);
                     }
                 }
@@ -263,7 +294,8 @@ fn read_header(
                 out.push(IOInfo {
                     expr: *signal_ref,
                     cell_id,
-                    words: width_to_words(width),
+                    words: width_to_words(width + 1), // one extra bit to indicate X
+                    width,
                     is_input: signal.kind == SignalKind::Input,
                     name: name.to_string(),
                 })
@@ -276,7 +308,7 @@ fn read_header(
 }
 
 fn width_to_words(width: WidthInt) -> usize {
-    (width + 1).div_ceil(Word::BITS) as usize
+    (width).div_ceil(Word::BITS) as usize
 }
 
 fn parse_line<'a>(data: &'a [u8], out: &mut Vec<&'a [u8]>) -> usize {
