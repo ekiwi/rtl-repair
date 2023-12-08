@@ -5,15 +5,15 @@ mod basic;
 mod repair;
 mod testbench;
 
-use crate::basic::basic_repair;
+use crate::basic::{basic_repair, BasicConfig};
 use crate::repair::{add_change_count, RepairAssignment, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
-use libpatron::mc::Simulator;
+use libpatron::mc::{Simulator, SmtSolverCmd, BITWUZLA_CMD};
 use libpatron::sim::interpreter::InitKind;
 use libpatron::*;
-use serde_json::{json, to_string};
+use serde_json::json;
 
 #[derive(Parser, Debug)]
 #[command(name = "synth")]
@@ -62,13 +62,28 @@ struct Args {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Solver {
+pub enum Solver {
     Bitwuzla,
     Yices2,
 }
 
+pub const YICES2_CMD: SmtSolverCmd = SmtSolverCmd {
+    name: "yices-smt2",
+    args: &["--incremental"],
+    supports_uf: false, // actually true, but ignoring for now
+};
+
+impl Solver {
+    pub fn cmd(&self) -> SmtSolverCmd {
+        match self {
+            Solver::Bitwuzla => BITWUZLA_CMD,
+            Solver::Yices2 => YICES2_CMD,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Init {
+pub enum Init {
     Zero,
     Random,
     Any, // not really supported
@@ -146,7 +161,13 @@ fn main() {
     let repair = if args.incremental {
         todo!("implement incremental synthesizer")
     } else {
-        basic_repair()
+        let conf = BasicConfig {
+            solver: args.solver,
+            verbose: args.verbose,
+            dump_file: Some("basic.smt".to_string()),
+        };
+        basic_repair(&ctx, &sys, &synth_vars, &sim, &tb, &conf)
+            .expect("failed to execute basic synthesizer")
     };
 
     // print status

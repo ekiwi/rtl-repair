@@ -2,11 +2,10 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::Init;
+use crate::basic::bit_string_to_smt;
 use libpatron::ir::*;
-use libpatron::mc::Simulator;
+use libpatron::mc::{Simulator, TransitionSystemEncoding};
 use libpatron::sim::interpreter::{InitKind, InitValueGenerator, Value};
-use num_bigint::BigUint;
 use std::collections::HashMap;
 
 pub type Result<T> = std::io::Result<T>;
@@ -208,6 +207,31 @@ impl Testbench {
 
         // advance the simulation
         sim.step();
+    }
+
+    pub fn apply_constraints(
+        &self,
+        smt_ctx: &mut easy_smt::Context,
+        enc: &impl TransitionSystemEncoding,
+    ) -> std::io::Result<()> {
+        for step_id in 0..(self.step_count() as u64) {
+            let range = self.step_range(step_id as usize);
+            let words = &self.data[range];
+
+            // apply all io constraints in this step
+            let mut offset = 0;
+            for io in self.ios.iter() {
+                let io_words = &words[offset..(offset + io.words)];
+                if !is_x(io_words) {
+                    let value = Value::from_words(io_words).to_bit_string(io.width);
+                    let value_expr = bit_string_to_smt(smt_ctx, &value);
+                    let io_at_step = enc.get_at(smt_ctx, io.expr, step_id);
+                    smt_ctx.assert(smt_ctx.eq(io_at_step, value_expr))?;
+                }
+                offset += io.words;
+            }
+        }
+        Ok(())
     }
 }
 

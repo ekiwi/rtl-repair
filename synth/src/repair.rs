@@ -42,6 +42,10 @@ impl RepairVars {
         RepairVars { change, free }
     }
 
+    pub fn is_repair_var(&self, other: ExprRef) -> bool {
+        self.change.contains(&other) || self.free.contains(&other)
+    }
+
     pub fn apply_to_sim(&self, sim: &mut impl Simulator, assignment: &RepairAssignment) {
         for (sym, value) in self.change.iter().zip(assignment.change.iter()) {
             let num_value = if *value { 1 } else { 0 };
