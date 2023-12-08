@@ -5,7 +5,7 @@ mod basic;
 mod repair;
 mod testbench;
 
-use crate::repair::RepairVars;
+use crate::repair::{add_change_count, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
@@ -75,17 +75,22 @@ fn main() {
     let args = Args::parse();
 
     // load system
-    let (ctx, sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
-    if args.verbose {
-        println!("Loaded: {}", sys.name);
-        println!("{}", sys.serialize_to_str(&ctx));
-    }
+    let (mut ctx, mut sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
 
     // analyze system
     let synth_vars = RepairVars::from_sys(&ctx, &sys);
     if args.verbose {
         println!("Number of change vars: {}", synth_vars.change.len());
         println!("Number of free vars:   {}", synth_vars.free.len());
+    }
+
+    // add a change count to the system
+    add_change_count(&mut ctx, &mut sys, &synth_vars.change);
+
+    // print system
+    if args.verbose {
+        println!("Loaded: {}", sys.name);
+        println!("{}", sys.serialize_to_str(&ctx));
     }
 
     let mut sim = libpatron::sim::interpreter::Interpreter::new(&ctx, &sys);

@@ -106,3 +106,27 @@ pub struct RepairAssignment {
     pub change: Vec<bool>,
     pub free: Vec<BigUint>,
 }
+
+const CHANGE_COUNT_OUTPUT_NAME: &str = "__change_count";
+
+pub fn add_change_count(
+    ctx: &mut Context,
+    sys: &mut TransitionSystem,
+    change: &[ExprRef],
+) -> ExprRef {
+    let width = 16;
+    let sum = match change.len() {
+        0 => ctx.bv_lit(0, width),
+        1 => ctx.zero_extend(change[0], width - 1),
+        _ => {
+            let extended = change
+                .iter()
+                .map(|c| ctx.zero_extend(*c, width - 1))
+                .collect::<Vec<_>>();
+            extended.into_iter().reduce(|a, b| ctx.add(a, b)).unwrap()
+        }
+    };
+    let name_ref = ctx.add_node(CHANGE_COUNT_OUTPUT_NAME);
+    sys.add_signal(sum, SignalKind::Output, Some(name_ref));
+    sum
+}
