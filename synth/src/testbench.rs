@@ -10,12 +10,24 @@ use std::collections::HashMap;
 
 pub type Result<T> = std::io::Result<T>;
 
+// TODO: make Word in libpatron public
+type Word = u64;
+
 pub struct Testbench {
-    mmap: memmap2::Mmap,
-    header_len: usize, // length of the first line of the CSV
-    inputs: IOInfo,
-    outputs: IOInfo,
+    /// contains for each time step: inputs, then outputs
+    data: Vec<Word>,
+    step_words: usize,
+    ios: Vec<IOInfo>,
+    /// signals to print for debugging
     signals_to_print: Vec<(String, ExprRef)>,
+}
+
+struct IOInfo {
+    expr: ExprRef,
+    cell_id: usize,
+    words: usize,
+    is_input: bool,
+    name: String,
 }
 
 pub struct RunResult {
@@ -43,7 +55,12 @@ pub enum StopAt {
 }
 
 impl Testbench {
-    pub fn load(ctx: &Context, sys: &TransitionSystem, filename: &str) -> Result<Self> {
+    pub fn load(
+        ctx: &Context,
+        sys: &TransitionSystem,
+        filename: &str,
+        verbose: bool,
+    ) -> Result<Self> {
         // memory map file
         let input_file = std::fs::File::open(filename)?;
         let mmap = unsafe { memmap2::Mmap::map(&input_file).expect("failed to memory map file") };
@@ -52,18 +69,27 @@ impl Testbench {
         let mut header_tokens = Vec::new();
         let header_len = parse_line(&mmap, &mut header_tokens);
         let name_to_ref = sys.generate_name_to_ref(&ctx);
-        let (inputs, outputs) = read_header(&header_tokens, &name_to_ref, sys)?;
+        let ios = read_header(&header_tokens, &name_to_ref, ctx, sys, verbose)?;
+
+        // read data
+        let data = read_body(header_len, mmap, &ios);
+
+        // derive data layout
+        let step_words = ios.iter().map(|io| io.words).sum::<usize>();
 
         // assembly testbench
         let signals_to_print = vec![];
         let tb = Self {
-            mmap,
-            header_len,
-            inputs,
-            outputs,
+            data,
+            step_words,
+            ios,
             signals_to_print,
         };
         Ok(tb)
+    }
+
+    pub fn step_count(&self) -> usize {
+        self.data.len() / self.step_words
     }
 
     pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig, verbose: bool) -> RunResult {
@@ -72,23 +98,15 @@ impl Testbench {
         // make sure we start from the starting state
         sim.init(InitKind::Zero);
 
-        let mut pos = self.header_len;
-        let mut tokens = Vec::with_capacity(32);
-        let mut step_id = 0;
-        while pos < self.mmap.len() {
-            tokens.clear();
-            pos += parse_line(&self.mmap[pos..], &mut tokens);
-            assert!(!tokens.is_empty());
-            self.do_step(step_id, sim, tokens.as_slice(), &mut failures, verbose);
-
+        for step_id in 0..self.step_count() {
+            let words = &self.data[(step_id * self.step_words)..((step_id + 1) * self.step_words)];
+            self.do_step(step_id as u64, sim, words, &mut failures, verbose);
             // early exit
             if !failures.is_empty() && matches!(conf.stop, StopAt::FirstFail) {
                 return RunResult {
-                    first_fail_at: Some(step_id),
+                    first_fail_at: Some(step_id as u64),
                 };
             }
-
-            step_id += 1;
         }
         // success
         RunResult {
@@ -100,30 +118,21 @@ impl Testbench {
         &self,
         step_id: u64,
         sim: &mut impl Simulator,
-        tokens: &[&[u8]],
+        words: &[Word],
         failures: &mut Vec<Failure>,
         verbose: bool,
     ) {
         // apply inputs
-        let mut input_iter = self.inputs.iter();
-        if let Some(mut input) = input_iter.next() {
-            for (cell_id, cell) in tokens.iter().enumerate() {
-                if cell_id == input.0 {
-                    // apply input
-                    if !is_x(cell) {
-                        let value =
-                            u64::from_str_radix(&String::from_utf8_lossy(cell), 10).unwrap();
-                        sim.set(input.1, &Value::from_u64(value));
-                    }
-
-                    // get next input
-                    if let Some(next_input) = input_iter.next() {
-                        input = next_input;
-                    } else {
-                        break;
-                    }
+        let mut offset = 0;
+        for io in self.ios.iter() {
+            if io.is_input {
+                let io_words = &words[offset..(offset + io.words)];
+                let is_x = io_words.iter().all(|w| *w == Word::MAX);
+                if !is_x {
+                    sim.set(io.expr, &Value::from_words(io_words));
                 }
             }
+            offset += io.words;
         }
 
         // calculate the output values
@@ -141,51 +150,32 @@ impl Testbench {
         }
 
         // check outputs
-        let mut output_iter = self.outputs.iter();
-        if let Some(mut output) = output_iter.next() {
-            for (cell_id, cell) in tokens.iter().enumerate() {
-                if cell_id == output.0 {
-                    // apply input
-                    if !is_x(cell) {
-                        if let Ok(expected) =
-                            u64::from_str_radix(&String::from_utf8_lossy(cell), 10)
-                        {
-                            let actual = sim.get(output.1).unwrap().to_u64().unwrap();
-                            if expected != actual {
-                                failures.push(Failure {
-                                    step: step_id,
-                                    signal: output.1,
-                                });
-                                if verbose {
-                                    println!("{}@{step_id}: {} vs. {}", output.2, expected, actual);
-                                }
-                            }
-                        } else {
-                            let expected = BigUint::from_radix_be(cell, 10).unwrap();
-                            let actual = sim.get(output.1).unwrap().to_big_uint();
-                            if expected != actual {
-                                failures.push(Failure {
-                                    step: step_id,
-                                    signal: output.1,
-                                });
-                                if verbose {
-                                    println!("{}@{step_id}: {} vs. {}", output.2, expected, actual);
-                                }
+        let mut offset = 0;
+        for io in self.ios.iter() {
+            if !io.is_input {
+                let io_words = &words[offset..(offset + io.words)];
+                let is_x = io_words.iter().all(|w| *w == Word::MAX);
+                if !is_x {
+                    let value = sim.get(io.expr).unwrap();
+                    if io.words == 1 {
+                        let expected = io_words[0];
+                        let actual = value.to_u64().unwrap();
+                        if expected != actual {
+                            failures.push(Failure {
+                                step: step_id,
+                                signal: io.expr,
+                            });
+                            if verbose {
+                                println!("{}@{step_id}: {} vs. {}", io.name, expected, actual);
                             }
                         }
                     }
-
-                    // get next output
-                    if let Some(next_output) = output_iter.next() {
-                        output = next_output;
-                    } else {
-                        break;
-                    }
                 }
             }
+            offset += io.words;
         }
 
-        // advance simulation
+        // advance the simulation
         sim.step();
     }
 }
@@ -194,27 +184,58 @@ fn is_x(token: &[u8]) -> bool {
     matches!(token, b"x" | b"X")
 }
 
-type IOInfo = Vec<(usize, ExprRef, String)>;
+fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word> {
+    let mut data = Vec::new();
+    let mut pos = header_len;
+    let mut tokens = Vec::with_capacity(32);
+    while pos < mmap.len() {
+        tokens.clear();
+        pos += parse_line(&mmap[pos..], &mut tokens);
+        if !tokens.is_empty() {
+            for io in ios.iter() {
+                let cell = tokens[io.cell_id];
+                // read and write words to data
+                assert_eq!(io.words, 1);
+                if is_x(cell) {
+                    data.push(Word::MAX);
+                } else {
+                    let value = u64::from_str_radix(&String::from_utf8_lossy(cell), 10).unwrap();
+                    data.push(value);
+                }
+            }
+        }
+    }
+    data
+}
 
 fn read_header(
     tokens: &[&[u8]],
     name_to_ref: &HashMap<String, ExprRef>,
+    ctx: &Context,
     sys: &TransitionSystem,
-) -> std::io::Result<(IOInfo, IOInfo)> {
-    let mut inputs = Vec::new();
-    let mut outputs = Vec::new();
+    verbose: bool,
+) -> std::io::Result<Vec<IOInfo>> {
+    let mut out = Vec::new();
     for (cell_id, cell) in tokens.iter().enumerate() {
         let name = String::from_utf8_lossy(cell);
         if let Some(signal_ref) = name_to_ref.get(name.as_ref()) {
             let signal = sys.get_signal(*signal_ref).unwrap();
-            match signal.kind {
-                SignalKind::Input => inputs.push((cell_id, *signal_ref, name.to_string())),
-                SignalKind::Output => outputs.push((cell_id, *signal_ref, name.to_string())),
-                _ => {} // ignore
+            if matches!(signal.kind, SignalKind::Input | SignalKind::Output) {
+                let width = signal_ref.get_bv_type(ctx).unwrap();
+                let words = (width + 1).div_ceil(Word::BITS);
+                out.push(IOInfo {
+                    expr: *signal_ref,
+                    cell_id: cell_id,
+                    words: words as usize,
+                    is_input: signal.kind == SignalKind::Input,
+                    name: name.to_string(),
+                })
+            } else if verbose {
+                println!("Ignoring column {name}.");
             }
         }
     }
-    Ok((inputs, outputs))
+    Ok(out)
 }
 
 fn parse_line<'a>(data: &'a [u8], out: &mut Vec<&'a [u8]>) -> usize {

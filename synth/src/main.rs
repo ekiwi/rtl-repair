@@ -91,7 +91,8 @@ fn main() {
     let mut sim = libpatron::sim::interpreter::Interpreter::new(&ctx, &sys);
 
     // load testbench
-    let tb = Testbench::load(&ctx, &sys, &args.testbench).expect("Failed to load testbench.");
+    let tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose)
+        .expect("Failed to load testbench.");
 
     // run testbench once to see if we can detect a bug
     let res = tb.run(
