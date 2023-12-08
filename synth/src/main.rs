@@ -5,7 +5,8 @@ mod basic;
 mod repair;
 mod testbench;
 
-use crate::repair::{add_change_count, RepairVars};
+use crate::basic::basic_repair;
+use crate::repair::{add_change_count, RepairAssignment, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
@@ -138,14 +139,34 @@ fn main() {
         return;
     }
 
+    // reset the simulator state
+    sim.restore_snapshot(start_state);
+
     // call to the synthesizer
+    let repair = if args.incremental {
+        todo!("implement incremental synthesizer")
+    } else {
+        basic_repair()
+    };
+
+    // print status
+    let (status, solutions) = match repair {
+        None => ("cannot-repair", json!([])),
+        Some(assignments) => {
+            let mut res = Vec::with_capacity(assignments.len());
+            for aa in assignments.iter() {
+                res.push(synth_vars.to_json(&ctx, aa));
+            }
+            ("success", json!(res))
+        }
+    };
 
     let res = json!({
-        "status": "cannot-repair",
+        "status": status,
         "solver-time": 0,
         "past-k": 0,
         "future-k": 0,
-        "solutions": [],
+        "solutions": solutions,
     });
 
     print_result(&res);
