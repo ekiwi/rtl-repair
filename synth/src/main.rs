@@ -103,7 +103,7 @@ fn main() {
     }
 
     // add a change count to the system
-    add_change_count(&mut ctx, &mut sys, &synth_vars.change);
+    let change_count_ref = add_change_count(&mut ctx, &mut sys, &synth_vars.change);
 
     // print system
     if args.verbose {
@@ -158,6 +158,7 @@ fn main() {
     sim.restore_snapshot(start_state);
 
     // call to the synthesizer
+    let start_synth = std::time::Instant::now();
     let repair = if args.incremental {
         todo!("implement incremental synthesizer")
     } else {
@@ -166,9 +167,13 @@ fn main() {
             verbose: args.verbose,
             dump_file: Some("basic.smt".to_string()),
         };
-        basic_repair(&ctx, &sys, &synth_vars, &sim, &tb, &conf)
+        basic_repair(&ctx, &sys, &synth_vars, &sim, &tb, &conf, change_count_ref)
             .expect("failed to execute basic synthesizer")
     };
+    let synth_duration = std::time::Instant::now() - start_synth;
+    if args.verbose {
+        println!("Synthesizer took {synth_duration:?}");
+    }
 
     // print status
     let (status, solutions) = match repair {
@@ -176,7 +181,8 @@ fn main() {
         Some(assignments) => {
             let mut res = Vec::with_capacity(assignments.len());
             for aa in assignments.iter() {
-                res.push(synth_vars.to_json(&ctx, aa));
+                let assignment_json = synth_vars.to_json(&ctx, aa);
+                res.push(json!({"assignment": assignment_json}));
             }
             ("success", json!(res))
         }

@@ -112,7 +112,7 @@ pub struct RepairAssignment {
 }
 
 const CHANGE_COUNT_OUTPUT_NAME: &str = "__change_count";
-const CHANGE_COUNT_WIDTH: WidthInt = 16;
+pub const CHANGE_COUNT_WIDTH: WidthInt = 16;
 
 pub fn add_change_count(
     ctx: &mut Context,
