@@ -2,10 +2,12 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 mod basic;
+mod incremental;
 mod repair;
 mod testbench;
 
 use crate::basic::basic_repair;
+use crate::incremental::incremental_repair;
 use crate::repair::{add_change_count, RepairConfig, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
@@ -160,7 +162,16 @@ fn main() {
         dump_file: Some("basic.smt".to_string()),
     };
     let repair = if args.incremental {
-        todo!("implement incremental synthesizer")
+        incremental_repair(
+            &mut ctx,
+            &sys,
+            &synth_vars,
+            &sim,
+            &tb,
+            &repair_conf,
+            change_count_ref,
+        )
+        .expect("failed to execute incremental synthesizer")
     } else {
         basic_repair(
             &mut ctx,
