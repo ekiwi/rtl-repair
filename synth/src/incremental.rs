@@ -24,7 +24,11 @@ pub struct IncrementalRepair<'a, S: Simulator> {
     smt_ctx: smt::Context,
 }
 
-impl<'a, S: Simulator> IncrementalRepair<'a, S> {
+impl<'a, S: Simulator> IncrementalRepair<'a, S>
+where
+    S: Simulator,
+    <S as Simulator>::SnapshotId: Clone,
+{
     pub fn new(
         ctx: &'a mut Context,
         sys: &'a TransitionSystem,
@@ -59,5 +63,30 @@ impl<'a, S: Simulator> IncrementalRepair<'a, S> {
         while past_k + future_k <= self.max_window {}
 
         todo!("implement incremental repair")
+    }
+
+    fn get_state_at(&mut self, step: StepInt) -> S::SnapshotId {
+        assert!(step < self.tb.step_count());
+        if let Some(snapshot_id) = self.snapshots.get(&step) {
+            snapshot_id.clone()
+        } else {
+            // find nearest step, _before_ the step we are going for
+            let mut nearest_step = 0;
+            let mut nearest_id = None;
+            for (other_step, snapshot_id) in self.snapshots.iter() {
+                if *other_step < step && *other_step > nearest_step {
+                    nearest_step = *other_step;
+                    nearest_id = Some(snapshot_id.clone());
+                }
+            }
+
+            // go from nearest snapshot to the point where we want to take a snapshot
+            todo!();
+
+            // take new snapshot and remember
+            let new_snapshot = self.sim.take_snapshot();
+            self.snapshots.insert(step, new_snapshot.clone());
+            new_snapshot
+        }
     }
 }

@@ -115,12 +115,13 @@ impl Testbench {
         }
     }
 
-    fn step_range(&self, step_id: usize) -> std::ops::Range<usize> {
-        (step_id * self.step_words)..((step_id + 1) * self.step_words)
+    fn step_range(&self, step_id: StepInt) -> std::ops::Range<usize> {
+        let usize_id = step_id as usize;
+        (usize_id * self.step_words)..((usize_id + 1) * self.step_words)
     }
 
-    pub fn step_count(&self) -> usize {
-        self.data.len() / self.step_words
+    pub fn step_count(&self) -> StepInt {
+        self.data.len() as StepInt / self.step_words as StepInt
     }
 
     pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig, verbose: bool) -> RunResult {
@@ -218,7 +219,7 @@ impl Testbench {
         enc: &impl TransitionSystemEncoding,
     ) -> std::io::Result<()> {
         for step_id in 0..(self.step_count() as StepInt) {
-            let range = self.step_range(step_id as usize);
+            let range = self.step_range(step_id);
             let words = &self.data[range];
 
             // apply all io constraints in this step
