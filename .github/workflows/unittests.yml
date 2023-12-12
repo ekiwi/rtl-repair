@@ -48,6 +48,10 @@ jobs:
     steps:
     - name: Update Rust to ${{ matrix.toolchain }}
       run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+    - name: Install Tabby OSS Cad Suite (from YosysHQ)
+      uses: YosysHQ/setup-oss-cad-suite@v2
+      with:
+        version: '2022-06-22'
     - uses: actions/checkout@v3
     - name: Build
       working-directory: synth
@@ -70,25 +74,18 @@ jobs:
       with:
         version: '2022-06-22'
 
-    - name: Install OptiMathSAT
-      run: |
-        wget -q https://optimathsat.disi.unitn.it/releases/optimathsat-1.7.3/optimathsat-1.7.3-linux-64-bit.tar.gz
-        tar -xf optimathsat-1.7.3-linux-64-bit.tar.gz
-        echo "${PWD}/optimathsat-1.7.3-linux-64-bit/bin" >> $GITHUB_PATH
-
     - name: Install CVC4
       run: sudo apt-get install -y cvc4
 
     - name: Print Solver Versions
       run: |
         z3 -version
-        optimathsat -version
         cvc4 --version
         verilator -version
 
-    - name: Compile Synthesizer to JAR
-      working-directory: synthesizer
-      run: sbt assembly
+    - name: Compile Synthesizer
+      working-directory: synth
+      run: cargo build --release
 
     - name: Set up Python
       uses: actions/setup-python@v4
