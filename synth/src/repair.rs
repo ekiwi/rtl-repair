@@ -4,12 +4,109 @@
 
 use easy_smt as smt;
 use libpatron::ir::*;
-use libpatron::mc::{get_smt_value, Simulator, TransitionSystemEncoding, WitnessValue};
-use libpatron::sim::interpreter::Value;
+use libpatron::mc::*;
+use libpatron::sim::interpreter::{Value, ValueRef};
 use num_bigint::BigUint;
 use num_traits::identities::Zero;
 use serde_json::json;
 use std::str::FromStr;
+
+pub type Result<T> = std::io::Result<T>;
+
+pub struct RepairConfig {
+    pub solver: SmtSolverCmd,
+    pub verbose: bool,
+    pub dump_file: Option<String>,
+}
+
+pub fn minimize_changes(
+    ctx: &Context,
+    smt_ctx: &mut smt::Context,
+    solver: &SmtSolverCmd,
+    change_count_ref: ExprRef,
+    enc: &impl TransitionSystemEncoding,
+) -> Result<u32> {
+    let mut num_changes = 1u32;
+    let change_count_expr = enc.get_at(ctx, smt_ctx, change_count_ref, 0);
+    loop {
+        let constraint = smt_ctx.eq(
+            change_count_expr,
+            smt_ctx.binary(CHANGE_COUNT_WIDTH as usize, num_changes),
+        );
+        match check_assuming(smt_ctx, constraint, solver)? {
+            smt::Response::Sat => {
+                // found a solution
+                return Ok(num_changes);
+            }
+            smt::Response::Unsat => {}
+            smt::Response::Unknown => panic!("SMT solver returned unknown!"),
+        }
+        // remove assertion for next round
+        check_assuming_end(smt_ctx, solver)?;
+        num_changes += 1;
+    }
+}
+
+pub fn constrain_starting_state(
+    ctx: &Context,
+    sys: &TransitionSystem,
+    synth_vars: &RepairVars,
+    sim: &impl Simulator,
+    enc: &impl TransitionSystemEncoding,
+    smt_ctx: &mut smt::Context,
+) -> Result<()> {
+    for state in sys
+        .states()
+        .filter(|s| s.init.is_none() && !synth_vars.is_repair_var(s.symbol))
+    {
+        let value = sim.get(state.symbol).unwrap();
+        let value_expr = value_to_smt_expr(smt_ctx, value);
+        let symbol = enc.get_at(ctx, smt_ctx, state.symbol, 0);
+        smt_ctx.assert(smt_ctx.eq(symbol, value_expr))?;
+    }
+    Ok(())
+}
+
+fn value_to_smt_expr(smt_ctx: &mut smt::Context, value: ValueRef) -> smt::SExpr {
+    // currently this will only work for scalar values
+    let bits = value.to_bit_string();
+    bit_string_to_smt(smt_ctx, &bits)
+}
+
+pub fn bit_string_to_smt(smt_ctx: &mut smt::Context, bits: &str) -> smt::SExpr {
+    match bits {
+        "0" => smt_ctx.false_(),
+        "1" => smt_ctx.true_(),
+        other => smt_ctx.atom(format!("#b{}", other)),
+    }
+}
+
+pub fn create_smt_ctx(solver: &SmtSolverCmd, dump_file: Option<&str>) -> Result<smt::Context> {
+    let replay_file = if let Some(filename) = dump_file {
+        Some(std::fs::File::create(filename)?)
+    } else {
+        None
+    };
+    let mut smt_ctx = smt::ContextBuilder::new()
+        .solver(solver.name, solver.args)
+        .replay_file(replay_file)
+        .build()?;
+    set_logic(&mut smt_ctx, &solver)?;
+    Ok(smt_ctx)
+}
+
+/// sets the correct logic depending on the solver we are using
+fn set_logic(smt_ctx: &mut smt::Context, cmd: &SmtSolverCmd) -> Result<()> {
+    // z3 only supports the non-standard as-const array syntax when the logic is set to ALL
+    let logic = if cmd.name == "z3" {
+        "ALL"
+    } else if cmd.supports_uf {
+        "QF_AUFBV"
+    } else {
+        "QF_ABV"
+    };
+    smt_ctx.set_logic(logic)
+}
 
 pub struct RepairVars {
     pub change: Vec<ExprRef>, // phi

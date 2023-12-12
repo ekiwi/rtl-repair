@@ -5,8 +5,8 @@ mod basic;
 mod repair;
 mod testbench;
 
-use crate::basic::{basic_repair, BasicConfig};
-use crate::repair::{add_change_count, RepairVars};
+use crate::basic::basic_repair;
+use crate::repair::{add_change_count, RepairConfig, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
@@ -154,21 +154,21 @@ fn main() {
 
     // call to the synthesizer
     let start_synth = std::time::Instant::now();
+    let repair_conf = RepairConfig {
+        solver: args.solver.cmd(),
+        verbose: args.verbose,
+        dump_file: Some("basic.smt".to_string()),
+    };
     let repair = if args.incremental {
         todo!("implement incremental synthesizer")
     } else {
-        let conf = BasicConfig {
-            solver: args.solver,
-            verbose: args.verbose,
-            dump_file: Some("basic.smt".to_string()),
-        };
         basic_repair(
             &mut ctx,
             &sys,
             &synth_vars,
             &sim,
             &tb,
-            &conf,
+            &repair_conf,
             change_count_ref,
         )
         .expect("failed to execute basic synthesizer")

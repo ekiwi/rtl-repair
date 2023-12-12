@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::basic::bit_string_to_smt;
+use crate::repair::bit_string_to_smt;
 use libpatron::ir::*;
 use libpatron::mc::{Simulator, TransitionSystemEncoding};
 use libpatron::sim::interpreter::{InitKind, InitValueGenerator, Value};
