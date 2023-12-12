@@ -6,11 +6,11 @@ mod repair;
 mod testbench;
 
 use crate::basic::{basic_repair, BasicConfig};
-use crate::repair::{add_change_count, RepairAssignment, RepairVars};
+use crate::repair::{add_change_count, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
-use libpatron::mc::{Simulator, SmtSolverCmd, BITWUZLA_CMD};
+use libpatron::mc::{Simulator, SmtSolverCmd, BITWUZLA_CMD, YICES2_CMD};
 use libpatron::sim::interpreter::InitKind;
 use libpatron::*;
 use serde_json::json;
@@ -67,12 +67,6 @@ pub enum Solver {
     Yices2,
 }
 
-pub const YICES2_CMD: SmtSolverCmd = SmtSolverCmd {
-    name: "yices-smt2",
-    args: &["--incremental"],
-    supports_uf: false, // actually true, but ignoring for now
-};
-
 impl Solver {
     pub fn cmd(&self) -> SmtSolverCmd {
         match self {
@@ -111,7 +105,8 @@ fn main() {
         println!("{}", sys.serialize_to_str(&ctx));
     }
 
-    let mut sim = sim::interpreter::Interpreter::new(&ctx, &sys);
+    let sim_ctx = ctx.clone();
+    let mut sim = sim::interpreter::Interpreter::new(&sim_ctx, &sys);
 
     // load testbench
     let mut tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose)

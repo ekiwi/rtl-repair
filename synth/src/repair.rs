@@ -84,7 +84,8 @@ impl RepairVars {
         for sym in self.change.iter() {
             // repair variables do not change, thus we can just always read the value at cycle 0
             let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
-            let res = get_smt_value(smt_ctx, smt_sym).expect("Failed to read change variable!");
+            let res = get_smt_value(smt_ctx, smt_sym, sym.get_type(ctx))
+                .expect("Failed to read change variable!");
             if let WitnessValue::Scalar(value, width) = res {
                 assert_eq!(width, 1);
                 change.push(!value.is_zero());
@@ -96,7 +97,8 @@ impl RepairVars {
         for sym in self.free.iter() {
             // repair variables do not change, thus we can just always read the value at cycle 0
             let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
-            let res = get_smt_value(smt_ctx, smt_sym).expect("Failed to read free variable!");
+            let res = get_smt_value(smt_ctx, smt_sym, sym.get_type(ctx))
+                .expect("Failed to read free variable!");
             if let WitnessValue::Scalar(value, _) = res {
                 free.push(value);
             } else {
