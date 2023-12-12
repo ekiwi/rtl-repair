@@ -8,7 +8,7 @@ use crate::Solver;
 use easy_smt as smt;
 use easy_smt::Response;
 use libpatron::ir::*;
-use libpatron::mc::{Simulator, SmtSolverCmd, TransitionSystemEncoding, UnrollSmtEncoding};
+use libpatron::mc::*;
 use libpatron::sim::interpreter::ValueRef;
 
 type Result<T> = std::io::Result<T>;
@@ -28,7 +28,8 @@ pub fn basic_repair(
     conf: &BasicConfig,
     change_count_ref: ExprRef,
 ) -> Result<Option<Vec<RepairAssignment>>> {
-    let mut smt_ctx = create_smt_ctx(&conf.solver, conf.dump_file.as_deref())?;
+    let solver = conf.solver.cmd();
+    let mut smt_ctx = create_smt_ctx(&solver, conf.dump_file.as_deref())?;
 
     // start encoding
     let mut enc = UnrollSmtEncoding::new(ctx, sys, true);
@@ -73,18 +74,20 @@ pub fn basic_repair(
     }
 
     // find a minimal repair
-    let min_num_changes = minimize_changes(ctx, &mut smt_ctx, change_count_ref, &enc)?;
+    let min_num_changes = minimize_changes(ctx, &mut smt_ctx, &solver, change_count_ref, &enc)?;
     if conf.verbose {
         println!("Found a minimal solution with {min_num_changes} changes.")
     }
 
     let solution = synth_vars.read_assignment(ctx, &mut smt_ctx, &enc);
+    check_assuming_end(&mut smt_ctx, &solver)?;
     Ok(Some(vec![solution]))
 }
 
 fn minimize_changes(
     ctx: &Context,
     smt_ctx: &mut smt::Context,
+    solver: &SmtSolverCmd,
     change_count_ref: ExprRef,
     enc: &impl TransitionSystemEncoding,
 ) -> Result<u32> {
@@ -95,7 +98,7 @@ fn minimize_changes(
             change_count_expr,
             smt_ctx.binary(CHANGE_COUNT_WIDTH as usize, num_changes),
         );
-        match smt_ctx.check_assuming([constraint])? {
+        match check_assuming(smt_ctx, constraint, solver)? {
             Response::Sat => {
                 // found a solution
                 return Ok(num_changes);
@@ -103,6 +106,8 @@ fn minimize_changes(
             Response::Unsat => {}
             Response::Unknown => panic!("SMT solver returned unknown!"),
         }
+        // remove assertion for next round
+        check_assuming_end(smt_ctx, solver)?;
         num_changes += 1;
     }
 }
@@ -141,18 +146,17 @@ pub fn bit_string_to_smt(smt_ctx: &mut smt::Context, bits: &str) -> smt::SExpr {
     }
 }
 
-fn create_smt_ctx(solver: &Solver, dump_file: Option<&str>) -> Result<smt::Context> {
-    let cmd = solver.cmd();
+fn create_smt_ctx(solver: &SmtSolverCmd, dump_file: Option<&str>) -> Result<smt::Context> {
     let replay_file = if let Some(filename) = dump_file {
         Some(std::fs::File::create(filename)?)
     } else {
         None
     };
     let mut smt_ctx = smt::ContextBuilder::new()
-        .solver(cmd.name, cmd.args)
+        .solver(solver.name, solver.args)
         .replay_file(replay_file)
         .build()?;
-    set_logic(&mut smt_ctx, &cmd)?;
+    set_logic(&mut smt_ctx, &solver)?;
     Ok(smt_ctx)
 }
 
