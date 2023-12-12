@@ -153,6 +153,15 @@ impl RepairVars {
         }
     }
 
+    pub fn clear_in_sim(&self, sim: &mut impl Simulator) {
+        for sym in self.change.iter() {
+            sim.set(*sym, &Value::from_u64(0));
+        }
+        for sym in self.free.iter() {
+            sim.set(*sym, &Value::from_u64(0));
+        }
+    }
+
     pub fn to_json(&self, ctx: &Context, assignment: &RepairAssignment) -> serde_json::Value {
         //let mut out = IndexMap::with_capacity(self.change.len() + self.free.len());
         let mut out = serde_json::Map::with_capacity(self.change.len() + self.free.len());

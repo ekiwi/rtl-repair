@@ -133,6 +133,9 @@ fn main() {
             tb.define_inputs(InitKind::Random(1));
         }
     }
+    // set all synthesis variables to zero
+    synth_vars.clear_in_sim(&mut sim);
+
     // remember the starting state
     let start_state = sim.take_snapshot();
 
