@@ -49,12 +49,40 @@ impl RunResult {
 }
 
 pub struct RunConfig {
+    pub start: StepInt,
     pub stop: StopAt,
 }
 
-pub enum StopAt {
-    FirstFail,
-    End,
+pub struct StopAt {
+    at_first_fail: bool,
+    at_step: Option<StepInt>,
+}
+
+impl StopAt {
+    pub fn end() -> Self {
+        Self {
+            at_first_fail: false,
+            at_step: None,
+        }
+    }
+    pub fn first_fail() -> Self {
+        Self {
+            at_first_fail: true,
+            at_step: None,
+        }
+    }
+    pub fn step(step: StepInt) -> Self {
+        Self {
+            at_first_fail: false,
+            at_step: Some(step),
+        }
+    }
+    pub fn first_fail_or_step(step: StepInt) -> Self {
+        Self {
+            at_first_fail: true,
+            at_step: Some(step),
+        }
+    }
 }
 
 impl Testbench {
@@ -126,8 +154,16 @@ impl Testbench {
 
     pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig, verbose: bool) -> RunResult {
         let mut failures = Vec::new();
+        let last_step_plus_one = match conf.stop.at_step {
+            Some(step) => {
+                assert!(step < self.step_count());
+                step + 1
+            }
+            None => self.step_count(),
+        };
+        assert!(conf.start < last_step_plus_one);
 
-        for step_id in 0..self.step_count() {
+        for step_id in conf.start..last_step_plus_one {
             let range = self.step_range(step_id);
             self.do_step(
                 step_id as StepInt,
@@ -137,15 +173,14 @@ impl Testbench {
                 verbose,
             );
             // early exit
-            if !failures.is_empty() && matches!(conf.stop, StopAt::FirstFail) {
+            if !failures.is_empty() && conf.stop.at_first_fail {
                 return RunResult {
                     first_fail_at: Some(step_id as StepInt),
                 };
             }
         }
-        // success
         RunResult {
-            first_fail_at: None,
+            first_fail_at: failures.first().map(|f| f.step),
         }
     }
 

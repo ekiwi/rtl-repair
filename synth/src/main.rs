@@ -140,7 +140,8 @@ fn main() {
     let res = tb.run(
         &mut sim,
         &RunConfig {
-            stop: StopAt::FirstFail,
+            start: 0,
+            stop: StopAt::first_fail(),
         },
         args.verbose,
     );

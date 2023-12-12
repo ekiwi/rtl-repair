@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::testbench::{StepInt, Testbench};
+use crate::testbench::{RunConfig, StepInt, StopAt, Testbench};
 use easy_smt as smt;
 use libpatron::ir::*;
 use libpatron::mc::*;
@@ -60,15 +60,30 @@ where
         let mut past_k = self.fail_at;
         let mut future_k = self.fail_at;
 
-        while past_k + future_k <= self.max_window {}
+        while past_k + future_k <= self.max_window {
+            assert!(past_k >= self.fail_at);
+            let start_step = self.fail_at - past_k;
+            let end_step = self.fail_at + future_k;
+
+            // check to see if we can reproduce the error with the simulator
+            self.update_sim_state_to_step(start_step);
+            let conf = RunConfig {
+                start: start_step,
+                stop: StopAt::first_fail_or_step(end_step),
+            };
+            let res = self.tb.run(self.sim, &conf, false);
+            assert_eq!(res.first_fail_at, Some(self.fail_at));
+
+            todo!("synthesize solutions")
+        }
 
         todo!("implement incremental repair")
     }
 
-    fn get_state_at(&mut self, step: StepInt) -> S::SnapshotId {
+    fn update_sim_state_to_step(&mut self, step: StepInt) {
         assert!(step < self.tb.step_count());
         if let Some(snapshot_id) = self.snapshots.get(&step) {
-            snapshot_id.clone()
+            self.sim.restore_snapshot(snapshot_id.clone());
         } else {
             // find nearest step, _before_ the step we are going for
             let mut nearest_step = 0;
@@ -81,12 +96,16 @@ where
             }
 
             // go from nearest snapshot to the point where we want to take a snapshot
-            todo!();
+            self.sim.restore_snapshot(nearest_id.unwrap());
+            let run_conf = RunConfig {
+                start: nearest_step,
+                stop: StopAt::step(step),
+            };
+            self.tb.run(self.sim, &run_conf, self.verbose);
 
-            // take new snapshot and remember
+            // remember the state in case we need to go back
             let new_snapshot = self.sim.take_snapshot();
             self.snapshots.insert(step, new_snapshot.clone());
-            new_snapshot
         }
     }
 }
