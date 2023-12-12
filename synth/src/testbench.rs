@@ -211,6 +211,7 @@ impl Testbench {
 
     pub fn apply_constraints(
         &self,
+        ctx: &Context,
         smt_ctx: &mut easy_smt::Context,
         enc: &impl TransitionSystemEncoding,
     ) -> std::io::Result<()> {
@@ -225,7 +226,7 @@ impl Testbench {
                 if !is_x(io_words) {
                     let value = Value::from_words(io_words).to_bit_string(io.width);
                     let value_expr = bit_string_to_smt(smt_ctx, &value);
-                    let io_at_step = enc.get_at(smt_ctx, io.expr, step_id);
+                    let io_at_step = enc.get_at(ctx, smt_ctx, io.expr, step_id);
                     smt_ctx.assert(smt_ctx.eq(io_at_step, value_expr))?;
                 }
                 offset += io.words;

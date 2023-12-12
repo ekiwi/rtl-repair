@@ -20,7 +20,7 @@ pub struct BasicConfig {
 }
 
 pub fn basic_repair(
-    ctx: &Context,
+    ctx: &mut Context,
     sys: &TransitionSystem,
     synth_vars: &RepairVars,
     sim: &impl Simulator,
@@ -33,15 +33,15 @@ pub fn basic_repair(
     // start encoding
     let mut enc = UnrollSmtEncoding::new(ctx, sys, true);
     enc.define_header(&mut smt_ctx)?;
-    enc.init(&mut smt_ctx)?;
+    enc.init(ctx, &mut smt_ctx)?;
 
     // constrain starting state to that from the simulator
-    constrain_starting_state(sys, synth_vars, sim, &enc, &mut smt_ctx)?;
+    constrain_starting_state(ctx, sys, synth_vars, sim, &enc, &mut smt_ctx)?;
 
     let start_unroll = std::time::Instant::now();
     // unroll system and constrain inputs and outputs
     for _ in 0..(tb.step_count() - 1) {
-        enc.unroll(&mut smt_ctx)?;
+        enc.unroll(ctx, &mut smt_ctx)?;
     }
     if conf.verbose {
         println!(
@@ -51,7 +51,7 @@ pub fn basic_repair(
     }
 
     let start_apply_const = std::time::Instant::now();
-    tb.apply_constraints(&mut smt_ctx, &enc)?;
+    tb.apply_constraints(ctx, &mut smt_ctx, &enc)?;
     if conf.verbose {
         println!(
             "Took {:?} to apply constraints",
@@ -73,22 +73,23 @@ pub fn basic_repair(
     }
 
     // find a minimal repair
-    let min_num_changes = minimize_changes(&mut smt_ctx, change_count_ref, &enc)?;
+    let min_num_changes = minimize_changes(ctx, &mut smt_ctx, change_count_ref, &enc)?;
     if conf.verbose {
         println!("Found a minimal solution with {min_num_changes} changes.")
     }
 
-    let solution = synth_vars.read_assignment(&mut smt_ctx, &enc);
+    let solution = synth_vars.read_assignment(ctx, &mut smt_ctx, &enc);
     Ok(Some(vec![solution]))
 }
 
 fn minimize_changes(
+    ctx: &Context,
     smt_ctx: &mut smt::Context,
     change_count_ref: ExprRef,
     enc: &impl TransitionSystemEncoding,
 ) -> Result<u32> {
     let mut num_changes = 1u32;
-    let change_count_expr = enc.get_at(smt_ctx, change_count_ref, 0);
+    let change_count_expr = enc.get_at(ctx, smt_ctx, change_count_ref, 0);
     loop {
         let constraint = smt_ctx.eq(
             change_count_expr,
@@ -107,6 +108,7 @@ fn minimize_changes(
 }
 
 fn constrain_starting_state(
+    ctx: &Context,
     sys: &TransitionSystem,
     synth_vars: &RepairVars,
     sim: &impl Simulator,
@@ -119,7 +121,7 @@ fn constrain_starting_state(
     {
         let value = sim.get(state.symbol).unwrap();
         let value_expr = value_to_smt_expr(smt_ctx, value);
-        let symbol = enc.get_at(smt_ctx, state.symbol, 0);
+        let symbol = enc.get_at(ctx, smt_ctx, state.symbol, 0);
         smt_ctx.assert(smt_ctx.eq(symbol, value_expr))?;
     }
     Ok(())

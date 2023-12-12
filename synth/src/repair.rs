@@ -76,13 +76,14 @@ impl RepairVars {
 
     pub fn read_assignment(
         &self,
+        ctx: &Context,
         smt_ctx: &mut smt::Context,
         enc: &impl TransitionSystemEncoding,
     ) -> RepairAssignment {
         let mut change = Vec::with_capacity(self.change.len());
         for sym in self.change.iter() {
             // repair variables do not change, thus we can just always read the value at cycle 0
-            let smt_sym = enc.get_at(smt_ctx, *sym, 0);
+            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
             let res = get_smt_value(smt_ctx, smt_sym).expect("Failed to read change variable!");
             if let WitnessValue::Scalar(value, width) = res {
                 assert_eq!(width, 1);
@@ -94,7 +95,7 @@ impl RepairVars {
         let mut free = Vec::with_capacity(self.free.len());
         for sym in self.free.iter() {
             // repair variables do not change, thus we can just always read the value at cycle 0
-            let smt_sym = enc.get_at(smt_ctx, *sym, 0);
+            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
             let res = get_smt_value(smt_ctx, smt_sym).expect("Failed to read free variable!");
             if let WitnessValue::Scalar(value, _) = res {
                 free.push(value);

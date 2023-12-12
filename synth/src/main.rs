@@ -167,8 +167,16 @@ fn main() {
             verbose: args.verbose,
             dump_file: Some("basic.smt".to_string()),
         };
-        basic_repair(&ctx, &sys, &synth_vars, &sim, &tb, &conf, change_count_ref)
-            .expect("failed to execute basic synthesizer")
+        basic_repair(
+            &mut ctx,
+            &sys,
+            &synth_vars,
+            &sim,
+            &tb,
+            &conf,
+            change_count_ref,
+        )
+        .expect("failed to execute basic synthesizer")
     };
     let synth_duration = std::time::Instant::now() - start_synth;
     if args.verbose {
