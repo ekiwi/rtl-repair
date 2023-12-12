@@ -11,7 +11,9 @@ use std::collections::HashMap;
 pub type Result<T> = std::io::Result<T>;
 
 // TODO: make Word in libpatron public
-type Word = u64;
+pub type Word = u64;
+
+pub type StepInt = u64;
 
 pub struct Testbench {
     /// contains for each time step: inputs, then outputs
@@ -32,11 +34,11 @@ struct IOInfo {
 }
 
 pub struct RunResult {
-    pub first_fail_at: Option<u64>,
+    pub first_fail_at: Option<StepInt>,
 }
 
 struct Failure {
-    step: u64,
+    step: StepInt,
     signal: ExprRef,
 }
 
@@ -127,7 +129,7 @@ impl Testbench {
         for step_id in 0..self.step_count() {
             let range = self.step_range(step_id);
             self.do_step(
-                step_id as u64,
+                step_id as StepInt,
                 sim,
                 &self.data[range],
                 &mut failures,
@@ -136,7 +138,7 @@ impl Testbench {
             // early exit
             if !failures.is_empty() && matches!(conf.stop, StopAt::FirstFail) {
                 return RunResult {
-                    first_fail_at: Some(step_id as u64),
+                    first_fail_at: Some(step_id as StepInt),
                 };
             }
         }
@@ -148,7 +150,7 @@ impl Testbench {
 
     fn do_step(
         &self,
-        step_id: u64,
+        step_id: StepInt,
         sim: &mut impl Simulator,
         words: &[Word],
         failures: &mut Vec<Failure>,
@@ -215,7 +217,7 @@ impl Testbench {
         smt_ctx: &mut easy_smt::Context,
         enc: &impl TransitionSystemEncoding,
     ) -> std::io::Result<()> {
-        for step_id in 0..(self.step_count() as u64) {
+        for step_id in 0..(self.step_count() as StepInt) {
             let range = self.step_range(step_id as usize);
             let words = &self.data[range];
 

@@ -7,7 +7,7 @@ mod repair;
 mod testbench;
 
 use crate::basic::basic_repair;
-use crate::incremental::incremental_repair;
+use crate::incremental::IncrementalRepair;
 use crate::repair::{add_change_count, RepairConfig, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
@@ -16,6 +16,7 @@ use libpatron::mc::{Simulator, SmtSolverCmd, BITWUZLA_CMD, YICES2_CMD};
 use libpatron::sim::interpreter::InitKind;
 use libpatron::*;
 use serde_json::json;
+use std::collections::HashMap;
 
 #[derive(Parser, Debug)]
 #[command(name = "synth")]
@@ -151,6 +152,12 @@ fn main() {
         return;
     }
 
+    let error_snapshot = if args.incremental {
+        Some(sim.take_snapshot())
+    } else {
+        None
+    };
+
     // reset the simulator state
     sim.restore_snapshot(start_state);
 
@@ -162,16 +169,23 @@ fn main() {
         dump_file: Some("basic.smt".to_string()),
     };
     let repair = if args.incremental {
-        incremental_repair(
+        let mut snapshots = HashMap::new();
+        snapshots.insert(0, start_state);
+        snapshots.insert(res.first_fail_at.unwrap(), error_snapshot.unwrap());
+        let mut rep = IncrementalRepair::new(
             &mut ctx,
             &sys,
             &synth_vars,
-            &sim,
+            &mut sim,
             &tb,
-            &repair_conf,
+            repair_conf,
             change_count_ref,
+            snapshots,
+            res.first_fail_at.unwrap(),
         )
-        .expect("failed to execute incremental synthesizer")
+        .expect("failed to create incremental solver");
+        rep.run()
+            .expect("failed to execute incremental synthesizer")
     } else {
         basic_repair(
             &mut ctx,
