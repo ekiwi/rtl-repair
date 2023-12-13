@@ -2,25 +2,26 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::testbench::{RunConfig, StepInt, StopAt, Testbench};
+use crate::basic::generate_minimal_repair;
+use crate::testbench::{RunConfig, RunResult, StepInt, StopAt};
 use easy_smt as smt;
-use libpatron::ir::*;
+use easy_smt::Response;
 use libpatron::mc::*;
 use std::collections::HashMap;
 
 use crate::repair::*;
 
+pub struct IncrementalConf {
+    pub fail_at: StepInt,
+    pub pask_k_step_size: StepInt,
+    pub max_repair_window_size: StepInt,
+    pub max_solutions: usize,
+}
+
 pub struct IncrementalRepair<'a, S: Simulator> {
-    ctx: &'a mut Context,
-    sys: &'a TransitionSystem,
-    sim: &'a mut S,
-    synth_vars: &'a RepairVars,
-    tb: &'a Testbench,
-    change_count_ref: ExprRef,
+    rctx: RepairContext<'a, S>,
+    conf: &'a IncrementalConf,
     snapshots: HashMap<StepInt, S::SnapshotId>,
-    fail_at: StepInt,
-    max_window: StepInt,
-    verbose: bool,
     smt_ctx: smt::Context,
 }
 
@@ -30,62 +31,133 @@ where
     <S as Simulator>::SnapshotId: Clone,
 {
     pub fn new(
-        ctx: &'a mut Context,
-        sys: &'a TransitionSystem,
-        synth_vars: &'a RepairVars,
-        sim: &'a mut S,
-        tb: &'a Testbench,
-        conf: RepairConfig,
-        change_count_ref: ExprRef,
+        rctx: RepairContext<'a, S>,
+        conf: &'a IncrementalConf,
         snapshots: HashMap<StepInt, S::SnapshotId>,
-        fail_at: StepInt,
     ) -> Result<Self> {
-        let smt_ctx = create_smt_ctx(&conf.solver, conf.dump_file.as_deref())?;
+        let smt_ctx = create_smt_ctx(&rctx.conf.solver, rctx.conf.dump_file.as_deref())?;
         Ok(Self {
-            ctx,
-            sys,
-            synth_vars,
-            sim,
-            tb,
-            change_count_ref,
+            rctx,
             snapshots,
-            fail_at,
-            max_window: 32,
-            verbose: conf.verbose,
+            conf,
             smt_ctx,
         })
     }
 
     pub fn run(&mut self) -> Result<Option<Vec<RepairAssignment>>> {
-        let mut past_k = self.fail_at;
-        let mut future_k = self.fail_at;
+        let mut window = RepairWindow::new();
 
-        while past_k + future_k <= self.max_window {
-            assert!(past_k >= self.fail_at);
-            let start_step = self.fail_at - past_k;
-            let end_step = self.fail_at + future_k;
+        while window.len() <= self.conf.max_repair_window_size {
+            let step_range = window.get_step_range(self.conf.fail_at);
 
             // check to see if we can reproduce the error with the simulator
-            self.update_sim_state_to_step(start_step);
+            self.update_sim_state_to_step(step_range.start);
             let conf = RunConfig {
-                start: start_step,
-                stop: StopAt::first_fail_or_step(end_step),
+                start: step_range.start,
+                stop: StopAt::first_fail_or_step(step_range.end),
             };
-            let res = self.tb.run(self.sim, &conf, false);
-            assert_eq!(res.first_fail_at, Some(self.fail_at));
+            let res = self.rctx.tb.run(self.rctx.sim, &conf, false);
+            assert_eq!(res.first_fail_at, Some(self.conf.fail_at));
 
-            // generate all possible minimal solutions
+            // start new SMT context to make it easy to later revert everything
+            self.smt_ctx.push_many(1)?;
 
-            todo!("synthesize solutions")
+            // generate one minimal repair
+            let r = generate_minimal_repair(
+                &mut self.rctx,
+                &mut self.smt_ctx,
+                step_range.start,
+                Some(step_range.end),
+            )?;
+            let mut failures_at = Vec::new();
+            let mut correct_solutions = Vec::new();
+
+            if let Some((r0, num_changes, enc)) = r {
+                // add a "permanent" change count constraint
+                self.constrain_changes(num_changes, &enc)?;
+
+                // iterate over possible solutions
+                let mut maybe_repair = Some(r0);
+                while let Some(repair) = maybe_repair {
+                    match self.test_repair(&repair).first_fail_at {
+                        None => {
+                            // success, we found a solution
+                            correct_solutions.push(repair.clone());
+                            // early exit when we reached the max number of solutions
+                            if correct_solutions.len() >= self.conf.max_solutions {
+                                return Ok(Some(correct_solutions));
+                            }
+                        }
+                        Some(fail) => {
+                            failures_at.push(fail);
+                        }
+                    }
+                    // try to find a different solution
+                    self.rctx.synth_vars.block_assignment(
+                        self.rctx.ctx,
+                        &mut self.smt_ctx,
+                        &enc,
+                        &repair,
+                    )?;
+                    maybe_repair = match self.smt_ctx.check()? {
+                        Response::Sat => Some(self.rctx.synth_vars.read_assignment(
+                            self.rctx.ctx,
+                            &mut self.smt_ctx,
+                            &enc,
+                        )),
+                        Response::Unsat | Response::Unknown => None,
+                    };
+                }
+            }
+            self.smt_ctx.pop_many(1)?;
+
+            if !correct_solutions.is_empty() {
+                return Ok(Some(correct_solutions));
+            }
+
+            // we did not find a repair and we continue on
+            window.update(&failures_at, self.conf.fail_at, self.conf.pask_k_step_size);
         }
 
-        todo!("implement incremental repair")
+        // exceeded maximum window size => no repair
+        Ok(None)
+    }
+
+    fn test_repair(&mut self, repair: &RepairAssignment) -> RunResult {
+        let start_step = 0;
+        self.update_sim_state_to_step(start_step);
+        self.rctx.synth_vars.apply_to_sim(self.rctx.sim, repair);
+        let conf = RunConfig {
+            start: start_step,
+            stop: StopAt::first_fail(),
+        };
+        self.rctx.tb.run(self.rctx.sim, &conf, false)
+    }
+
+    fn constrain_changes(
+        &mut self,
+        num_changes: u32,
+        enc: &impl TransitionSystemEncoding,
+    ) -> Result<()> {
+        let change_count_expr = enc.get_at(
+            self.rctx.ctx,
+            &mut self.smt_ctx,
+            self.rctx.change_count_ref,
+            0,
+        );
+        let constraint = self.smt_ctx.eq(
+            change_count_expr,
+            self.smt_ctx
+                .binary(CHANGE_COUNT_WIDTH as usize, num_changes),
+        );
+        self.smt_ctx.assert(constraint)?;
+        Ok(())
     }
 
     fn update_sim_state_to_step(&mut self, step: StepInt) {
-        assert!(step < self.tb.step_count());
+        assert!(step < self.rctx.tb.step_count());
         if let Some(snapshot_id) = self.snapshots.get(&step) {
-            self.sim.restore_snapshot(snapshot_id.clone());
+            self.rctx.sim.restore_snapshot(snapshot_id.clone());
         } else {
             // find nearest step, _before_ the step we are going for
             let mut nearest_step = 0;
@@ -98,16 +170,70 @@ where
             }
 
             // go from nearest snapshot to the point where we want to take a snapshot
-            self.sim.restore_snapshot(nearest_id.unwrap());
+            self.rctx.sim.restore_snapshot(nearest_id.unwrap());
             let run_conf = RunConfig {
                 start: nearest_step,
                 stop: StopAt::step(step),
             };
-            self.tb.run(self.sim, &run_conf, self.verbose);
+            self.rctx
+                .tb
+                .run(self.rctx.sim, &run_conf, self.rctx.conf.verbose);
 
             // remember the state in case we need to go back
-            let new_snapshot = self.sim.take_snapshot();
+            let new_snapshot = self.rctx.sim.take_snapshot();
             self.snapshots.insert(step, new_snapshot.clone());
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+struct RepairWindow {
+    future_k: StepInt,
+    past_k: StepInt,
+}
+
+impl RepairWindow {
+    fn new() -> Self {
+        Self {
+            future_k: 0,
+            past_k: 0,
+        }
+    }
+
+    fn len(&self) -> StepInt {
+        self.past_k + self.future_k
+    }
+
+    fn get_step_range(&self, fail_at: StepInt) -> std::ops::Range<StepInt> {
+        let start = if self.past_k < fail_at {
+            fail_at - self.past_k
+        } else {
+            0
+        };
+        let end = fail_at + self.future_k;
+        start..end
+    }
+
+    fn update(&mut self, failures: &[StepInt], original_failure: StepInt, past_step_size: StepInt) {
+        // when no solution is found, we update the past K
+        // in order to get a more accurate starting state
+        if failures.is_empty() {
+            self.past_k += past_step_size;
+            return;
+        }
+
+        let max_future_failure = failures.iter().filter(|s| **s > original_failure).max();
+        match max_future_failure {
+            None => {
+                // if there are no solutions that lead to a later failure, we just increase the pastK
+                self.past_k += past_step_size;
+                return;
+            }
+            Some(max_future_failure) => {
+                // increase the window to the largest future K
+                self.future_k = *max_future_failure - original_failure;
+                return;
+            }
         }
     }
 }

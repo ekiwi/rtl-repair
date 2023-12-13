@@ -175,7 +175,6 @@ impl RepairVars {
     }
 
     pub fn to_json(&self, ctx: &Context, assignment: &RepairAssignment) -> serde_json::Value {
-        //let mut out = IndexMap::with_capacity(self.change.len() + self.free.len());
         let mut out = serde_json::Map::with_capacity(self.change.len() + self.free.len());
 
         for (sym, value) in self.change.iter().zip(assignment.change.iter()) {
@@ -225,8 +224,36 @@ impl RepairVars {
         }
         RepairAssignment { change, free }
     }
+
+    pub fn block_assignment(
+        &self,
+        ctx: &Context,
+        smt_ctx: &mut smt::Context,
+        enc: &impl TransitionSystemEncoding,
+        assignment: &RepairAssignment,
+    ) -> std::io::Result<()> {
+        // disallow this particular combination of change variables
+        let constraints = self
+            .change
+            .iter()
+            .zip(assignment.change.iter())
+            .map(|(sym, value)| {
+                // repair variables do not change, thus we can just always read the value at cycle 0
+                let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
+                if *value {
+                    smt_sym
+                } else {
+                    smt_ctx.not(smt_sym)
+                }
+            })
+            .collect::<Vec<_>>();
+        let assignment_constraint = smt_ctx.and_many(constraints);
+        let no_assignment = smt_ctx.not(assignment_constraint);
+        smt_ctx.assert(no_assignment)
+    }
 }
 
+#[derive(Debug, Clone)]
 pub struct RepairAssignment {
     pub change: Vec<bool>,
     pub free: Vec<BigUint>,

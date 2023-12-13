@@ -7,10 +7,10 @@ mod repair;
 mod testbench;
 
 use crate::basic::basic_repair;
-use crate::incremental::IncrementalRepair;
+use crate::incremental::{IncrementalConf, IncrementalRepair};
 use crate::repair::{add_change_count, RepairConfig, RepairContext, RepairVars};
 use crate::testbench::*;
-use clap::{Parser, ValueEnum};
+use clap::{arg, Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
 use libpatron::mc::{Simulator, SmtSolverCmd, BITWUZLA_CMD, YICES2_CMD};
 use libpatron::sim::interpreter::InitKind;
@@ -182,21 +182,17 @@ fn main() {
         change_count_ref,
     };
     let repair = if args.incremental {
+        let incremental_conf = IncrementalConf {
+            fail_at: res.first_fail_at.unwrap(),
+            pask_k_step_size: args.pask_k_step_size,
+            max_repair_window_size: args.max_repair_window_size,
+            max_solutions: 1,
+        };
         let mut snapshots = HashMap::new();
         snapshots.insert(0, start_state);
         snapshots.insert(res.first_fail_at.unwrap(), error_snapshot.unwrap());
-        let mut rep = IncrementalRepair::new(
-            &mut ctx,
-            &sys,
-            &synth_vars,
-            &mut sim,
-            &tb,
-            repair_conf.clone(),
-            change_count_ref,
-            snapshots,
-            res.first_fail_at.unwrap(),
-        )
-        .expect("failed to create incremental solver");
+        let mut rep = IncrementalRepair::new(repair_ctx, &incremental_conf, snapshots)
+            .expect("failed to create incremental solver");
         rep.run()
             .expect("failed to execute incremental synthesizer")
     } else {

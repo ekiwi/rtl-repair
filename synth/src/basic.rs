@@ -6,24 +6,28 @@ use easy_smt as smt;
 use libpatron::mc::*;
 
 use crate::repair::*;
+use crate::testbench::StepInt;
 
 pub fn basic_repair<S: Simulator>(
     mut rctx: RepairContext<S>,
 ) -> Result<Option<Vec<RepairAssignment>>> {
     let mut smt_ctx = create_smt_ctx(&rctx.conf.solver, rctx.conf.dump_file.as_deref())?;
 
-    let repairs = generate_repairs(&mut rctx, &mut smt_ctx)?;
-    if repairs.is_empty() {
-        Ok(None) // no solution
-    } else {
-        Ok(Some(repairs))
+    let res = generate_minimal_repair(&mut rctx, &mut smt_ctx, 0, None)?;
+    match res {
+        None => Ok(None), // no solution
+        Some((repair, _, _)) => Ok(Some(vec![repair])),
     }
 }
 
-fn generate_repairs<S: Simulator>(
+pub fn generate_minimal_repair<S: Simulator>(
     rctx: &mut RepairContext<S>,
     smt_ctx: &mut smt::Context,
-) -> Result<Vec<RepairAssignment>> {
+    start_step: StepInt,
+    end_step_option: Option<StepInt>,
+) -> Result<Option<(RepairAssignment, u32, UnrollSmtEncoding)>> {
+    let end_step = end_step_option.unwrap_or(rctx.tb.step_count() - 1);
+
     // start encoding
     let mut enc = UnrollSmtEncoding::new(rctx.ctx, rctx.sys, true);
     enc.define_header(smt_ctx)?;
@@ -34,7 +38,7 @@ fn generate_repairs<S: Simulator>(
 
     let start_unroll = std::time::Instant::now();
     // unroll system and constrain inputs and outputs
-    for _ in 0..(rctx.tb.step_count() - 1) {
+    for _ in start_step..end_step {
         enc.unroll(rctx.ctx, smt_ctx)?;
     }
     if rctx.conf.verbose {
@@ -45,7 +49,8 @@ fn generate_repairs<S: Simulator>(
     }
 
     let start_apply_const = std::time::Instant::now();
-    rctx.tb.apply_constraints(rctx.ctx, smt_ctx, &enc)?;
+    rctx.tb
+        .apply_constraints(rctx.ctx, smt_ctx, &enc, start_step, end_step)?;
     if rctx.conf.verbose {
         println!(
             "Took {:?} to apply constraints",
@@ -62,7 +67,10 @@ fn generate_repairs<S: Simulator>(
     }
     match r {
         // cannot find a repair
-        smt::Response::Unsat | smt::Response::Unknown => return Ok(vec![]),
+        smt::Response::Unsat | smt::Response::Unknown => {
+            smt_ctx.pop_many(1)?; // reset
+            return Ok(None);
+        }
         smt::Response::Sat => {} // OK, continue
     }
 
@@ -80,5 +88,5 @@ fn generate_repairs<S: Simulator>(
 
     let solution = rctx.synth_vars.read_assignment(rctx.ctx, smt_ctx, &enc);
     check_assuming_end(smt_ctx, &rctx.conf.solver)?;
-    Ok(vec![solution])
+    Ok(Some((solution, min_num_changes, enc)))
 }

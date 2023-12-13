@@ -252,8 +252,10 @@ impl Testbench {
         ctx: &Context,
         smt_ctx: &mut easy_smt::Context,
         enc: &impl TransitionSystemEncoding,
+        start_step: StepInt,
+        end_step: StepInt,
     ) -> std::io::Result<()> {
-        for step_id in 0..(self.step_count() as StepInt) {
+        for step_id in start_step..(end_step + 1) {
             let range = self.step_range(step_id);
             let words = &self.data[range];
 
