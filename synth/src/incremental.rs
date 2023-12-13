@@ -63,9 +63,6 @@ where
                 start: step_range.start,
                 stop: StopAt::first_fail_or_step(step_range.end),
             };
-            if self.verbose() {
-                println!("Sanity check: {conf:?}");
-            }
             let res = self.rctx.tb.run(self.rctx.sim, &conf, self.verbose());
             assert_eq!(res.first_fail_at, Some(self.conf.fail_at), "{conf:?}");
 
@@ -89,6 +86,14 @@ where
                 // iterate over possible solutions
                 let mut maybe_repair = Some(r0);
                 while let Some(repair) = maybe_repair {
+                    if self.verbose() {
+                        println!(
+                            "Solution: {:?}",
+                            self.rctx
+                                .synth_vars
+                                .get_change_names(self.rctx.ctx, &repair)
+                        );
+                    }
                     match self.test_repair(&repair).first_fail_at {
                         None => {
                             // success, we found a solution
@@ -99,6 +104,9 @@ where
                             }
                         }
                         Some(fail) => {
+                            if self.verbose() {
+                                println!("New fail at: {fail}");
+                            }
                             failures_at.push(fail);
                         }
                     }
@@ -120,6 +128,8 @@ where
                         Response::Unsat | Response::Unknown => None,
                     };
                 }
+            } else {
+                println!("No repair found for current window size!");
             }
             self.smt_ctx.pop_many(1)?;
 

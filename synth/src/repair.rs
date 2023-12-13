@@ -255,6 +255,16 @@ impl RepairVars {
         let no_assignment = smt_ctx.not(assignment_constraint);
         smt_ctx.assert(no_assignment)
     }
+
+    pub fn get_change_names(&self, ctx: &Context, assignment: &RepairAssignment) -> Vec<String> {
+        let mut out = vec![];
+        for (sym, value) in self.change.iter().zip(assignment.change.iter()) {
+            if *value {
+                out.push(sym.get_symbol_name(ctx).unwrap().to_string());
+            }
+        }
+        out
+    }
 }
 
 #[derive(Debug, Clone)]
