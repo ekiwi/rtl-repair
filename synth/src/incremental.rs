@@ -74,6 +74,8 @@ where
             let res = self.tb.run(self.sim, &conf, false);
             assert_eq!(res.first_fail_at, Some(self.fail_at));
 
+            // generate all possible minimal solutions
+
             todo!("synthesize solutions")
         }
 

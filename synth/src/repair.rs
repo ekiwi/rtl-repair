@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
+use crate::testbench::Testbench;
 use easy_smt as smt;
 use libpatron::ir::*;
 use libpatron::mc::*;
@@ -13,10 +14,21 @@ use std::str::FromStr;
 
 pub type Result<T> = std::io::Result<T>;
 
+#[derive(Debug, Clone)]
 pub struct RepairConfig {
     pub solver: SmtSolverCmd,
     pub verbose: bool,
     pub dump_file: Option<String>,
+}
+
+pub struct RepairContext<'a, S: Simulator> {
+    pub ctx: &'a mut Context,
+    pub sys: &'a TransitionSystem,
+    pub sim: &'a mut S,
+    pub synth_vars: &'a RepairVars,
+    pub tb: &'a Testbench,
+    pub conf: RepairConfig,
+    pub change_count_ref: ExprRef,
 }
 
 pub fn minimize_changes(

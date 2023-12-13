@@ -8,7 +8,7 @@ mod testbench;
 
 use crate::basic::basic_repair;
 use crate::incremental::IncrementalRepair;
-use crate::repair::{add_change_count, RepairConfig, RepairVars};
+use crate::repair::{add_change_count, RepairConfig, RepairContext, RepairVars};
 use crate::testbench::*;
 use clap::{Parser, ValueEnum};
 use libpatron::ir::SerializableIrNode;
@@ -172,6 +172,15 @@ fn main() {
         verbose: args.verbose,
         dump_file: Some("basic.smt".to_string()),
     };
+    let repair_ctx = RepairContext {
+        ctx: &mut ctx,
+        sys: &sys,
+        sim: &mut sim,
+        synth_vars: &synth_vars,
+        tb: &tb,
+        conf: repair_conf.clone(),
+        change_count_ref,
+    };
     let repair = if args.incremental {
         let mut snapshots = HashMap::new();
         snapshots.insert(0, start_state);
@@ -182,7 +191,7 @@ fn main() {
             &synth_vars,
             &mut sim,
             &tb,
-            repair_conf,
+            repair_conf.clone(),
             change_count_ref,
             snapshots,
             res.first_fail_at.unwrap(),
@@ -191,16 +200,7 @@ fn main() {
         rep.run()
             .expect("failed to execute incremental synthesizer")
     } else {
-        basic_repair(
-            &mut ctx,
-            &sys,
-            &synth_vars,
-            &sim,
-            &tb,
-            &repair_conf,
-            change_count_ref,
-        )
-        .expect("failed to execute basic synthesizer")
+        basic_repair(repair_ctx).expect("failed to execute basic synthesizer")
     };
     let synth_duration = std::time::Instant::now() - start_synth;
     if args.verbose {
