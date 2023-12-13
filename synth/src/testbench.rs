@@ -180,6 +180,11 @@ impl Testbench {
         assert!(conf.start < last_step_plus_one);
 
         for step_id in conf.start..last_step_plus_one {
+            // if this is not the first step, we need to advance the simulation
+            if step_id > conf.start {
+                sim.step();
+            }
+
             let range = self.step_range(step_id);
             self.do_step(
                 step_id as StepInt,
@@ -187,7 +192,6 @@ impl Testbench {
                 &self.data[range],
                 &mut failures,
                 verbose,
-                step_id + 1 == last_step_plus_one,
             );
             // early exit
             if !failures.is_empty() && conf.stop.at_first_fail {
@@ -208,7 +212,6 @@ impl Testbench {
         words: &[Word],
         failures: &mut Vec<Failure>,
         verbose: bool,
-        is_last: bool,
     ) {
         // apply inputs
         let mut offset = 0;
@@ -262,11 +265,6 @@ impl Testbench {
                 }
             }
             offset += io.words;
-        }
-
-        if !is_last {
-            // advance the simulation
-            sim.step();
         }
     }
 
