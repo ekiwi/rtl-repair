@@ -128,10 +128,24 @@ where
             }
 
             // we did not find a repair and we continue on
-            window.update(&failures_at, self.conf.fail_at, self.conf.pask_k_step_size);
+            let progress =
+                window.update(&failures_at, self.conf.fail_at, self.conf.pask_k_step_size);
+            if !progress {
+                if self.verbose() {
+                    println!("Could not further increase the repair window.")
+                }
+                // we were not able to properly update the window
+                return Ok(None);
+            }
         }
 
         // exceeded maximum window size => no repair
+        if self.verbose() {
+            println!(
+                "Exceeded the maximum window size of {}",
+                self.conf.max_repair_window_size
+            );
+        }
         Ok(None)
     }
 
@@ -229,17 +243,23 @@ impl RepairWindow {
         start..end
     }
 
-    fn update(&mut self, failures: &[StepInt], original_failure: StepInt, past_step_size: StepInt) {
+    fn update(
+        &mut self,
+        failures: &[StepInt],
+        original_failure: StepInt,
+        past_step_size: StepInt,
+    ) -> bool {
+        let old = self.clone();
         // when no solution is found, we update the past K
         // in order to get a more accurate starting state
         if failures.is_empty() {
-            self.past_k += past_step_size;
+            self.past_k = std::cmp::min(original_failure, past_step_size + self.past_k);
         } else {
             let max_future_failure = failures.iter().filter(|s| **s > original_failure).max();
             match max_future_failure {
                 None => {
                     // if there are no solutions that lead to a later failure, we just increase the pastK
-                    self.past_k += past_step_size;
+                    self.past_k = std::cmp::min(original_failure, past_step_size + self.past_k);
                 }
                 Some(max_future_failure) => {
                     // increase the window to the largest future K
@@ -247,5 +267,6 @@ impl RepairWindow {
                 }
             }
         }
+        self.future_k != old.future_k || self.past_k != old.past_k
     }
 }
