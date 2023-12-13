@@ -154,7 +154,20 @@ fn main() {
     // early exit in case we do not see any bug
     // (there could still be a bug in the original Verilog that was masked by the synthesis)
     if res.is_success() {
+        if args.verbose {
+            println!("Design seems to work.");
+        }
         print_no_repair();
+        return;
+    }
+
+    // early exit if there is a bug, but no synthesis variables to change the design
+
+    if synth_vars.change.is_empty() {
+        if args.verbose {
+            println!("No changes possible.");
+        }
+        print_cannot_repair();
         return;
     }
 
@@ -206,24 +219,39 @@ fn main() {
     }
 
     // print status
-    let (status, solutions) = match repair {
-        None => ("cannot-repair", json!([])),
+    let solutions = match repair {
+        None => {
+            print_cannot_repair();
+            return;
+        }
         Some(assignments) => {
             let mut res = Vec::with_capacity(assignments.len());
             for aa in assignments.iter() {
                 let assignment_json = synth_vars.to_json(&ctx, aa);
                 res.push(json!({"assignment": assignment_json}));
             }
-            ("success", json!(res))
+            json!(res)
         }
     };
 
     let res = json!({
-        "status": status,
+        "status": "success",
         "solver-time": 0,
         "past-k": 0,
         "future-k": 0,
         "solutions": solutions,
+    });
+
+    print_result(&res);
+}
+
+fn print_cannot_repair() {
+    let res = json!({
+        "status": "cannot-repair",
+        "solver-time": 0,
+        "past-k": 0,
+        "future-k": 0,
+        "solutions": [],
     });
 
     print_result(&res);
