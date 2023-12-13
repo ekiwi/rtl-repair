@@ -219,20 +219,17 @@ impl RepairWindow {
         // in order to get a more accurate starting state
         if failures.is_empty() {
             self.past_k += past_step_size;
-            return;
-        }
-
-        let max_future_failure = failures.iter().filter(|s| **s > original_failure).max();
-        match max_future_failure {
-            None => {
-                // if there are no solutions that lead to a later failure, we just increase the pastK
-                self.past_k += past_step_size;
-                return;
-            }
-            Some(max_future_failure) => {
-                // increase the window to the largest future K
-                self.future_k = *max_future_failure - original_failure;
-                return;
+        } else {
+            let max_future_failure = failures.iter().filter(|s| **s > original_failure).max();
+            match max_future_failure {
+                None => {
+                    // if there are no solutions that lead to a later failure, we just increase the pastK
+                    self.past_k += past_step_size;
+                }
+                Some(max_future_failure) => {
+                    // increase the window to the largest future K
+                    self.future_k = *max_future_failure - original_failure;
+                }
             }
         }
     }

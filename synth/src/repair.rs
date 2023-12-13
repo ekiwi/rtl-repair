@@ -103,7 +103,7 @@ pub fn create_smt_ctx(solver: &SmtSolverCmd, dump_file: Option<&str>) -> Result<
         .solver(solver.name, solver.args)
         .replay_file(replay_file)
         .build()?;
-    set_logic(&mut smt_ctx, &solver)?;
+    set_logic(&mut smt_ctx, solver)?;
     Ok(smt_ctx)
 }
 

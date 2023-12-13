@@ -101,7 +101,7 @@ impl Testbench {
         // read header to find I/O mapping
         let mut header_tokens = Vec::new();
         let header_len = parse_line(&mmap, &mut header_tokens);
-        let name_to_ref = sys.generate_name_to_ref(&ctx);
+        let name_to_ref = sys.generate_name_to_ref(ctx);
         let mut ios = read_header(&header_tokens, &name_to_ref, ctx, sys, verbose)?;
 
         // see if we are missing any inputs from the testbench
@@ -415,8 +415,7 @@ fn trim(data: &[u8]) -> &[u8] {
         Some(start) => {
             let from_end = data.iter().rev().position(|c| !is_whitespace(*c)).unwrap();
             let end = data.len() - from_end;
-            let out = &data[start..end];
-            out
+            &data[start..end]
         }
     }
 }
