@@ -34,6 +34,8 @@ struct Args {
     testbench: String,
     #[arg(long, help = "output debug messages")]
     verbose: bool,
+    #[arg(long, help = "trace signals during simulation")]
+    trace_sim: bool,
     #[arg(long, help = "use the incremental instead of the basic synthesizer")]
     incremental: bool,
     #[arg(
@@ -112,7 +114,7 @@ fn main() {
     let mut sim = sim::interpreter::Interpreter::new(&sim_ctx, &sys);
 
     // load testbench
-    let mut tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose)
+    let mut tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose, args.trace_sim)
         .expect("Failed to load testbench.");
 
     // init free variables

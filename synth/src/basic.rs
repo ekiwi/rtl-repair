@@ -34,7 +34,15 @@ pub fn generate_minimal_repair<S: Simulator>(
     enc.init_at(rctx.ctx, smt_ctx, start_step)?;
 
     // constrain starting state to that from the simulator
-    constrain_starting_state(rctx.ctx, rctx.sys, rctx.synth_vars, rctx.sim, &enc, smt_ctx, start_step)?;
+    constrain_starting_state(
+        rctx.ctx,
+        rctx.sys,
+        rctx.synth_vars,
+        rctx.sim,
+        &enc,
+        smt_ctx,
+        start_step,
+    )?;
 
     let start_unroll = std::time::Instant::now();
     // unroll system and constrain inputs and outputs
@@ -86,7 +94,9 @@ pub fn generate_minimal_repair<S: Simulator>(
         println!("Found a minimal solution with {min_num_changes} changes.")
     }
 
-    let solution = rctx.synth_vars.read_assignment(rctx.ctx, smt_ctx, &enc, start_step);
+    let solution = rctx
+        .synth_vars
+        .read_assignment(rctx.ctx, smt_ctx, &enc, start_step);
     check_assuming_end(smt_ctx, &rctx.conf.solver)?;
     Ok(Some((solution, min_num_changes, enc)))
 }

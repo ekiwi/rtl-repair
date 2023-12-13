@@ -95,6 +95,7 @@ impl Testbench {
         sys: &TransitionSystem,
         filename: &str,
         verbose: bool,
+        trace_sim: bool,
     ) -> Result<Self> {
         // memory map file
         let input_file = std::fs::File::open(filename)?;
@@ -116,8 +117,19 @@ impl Testbench {
         // derive data layout
         let step_words = ios.iter().map(|io| io.words).sum::<usize>();
 
-        // assembly testbench
-        let signals_to_print = vec![];
+        // generate signals to print if we are instructed to do so
+        let mut signals_to_print = vec![];
+        if verbose && trace_sim {
+            for (name, expr) in name_to_ref.iter() {
+                // TODO: maybe filter
+                if expr.get_type(ctx).is_bit_vector() {
+                    // we do not print arrays
+                    signals_to_print.push((name.clone(), *expr));
+                }
+            }
+            signals_to_print.sort_by_key(|(name, _)| name.clone());
+        }
+
         let tb = Self {
             data,
             step_words,
@@ -175,6 +187,7 @@ impl Testbench {
                 &self.data[range],
                 &mut failures,
                 verbose,
+                step_id + 1 == last_step_plus_one,
             );
             // early exit
             if !failures.is_empty() && conf.stop.at_first_fail {
@@ -195,6 +208,7 @@ impl Testbench {
         words: &[Word],
         failures: &mut Vec<Failure>,
         verbose: bool,
+        is_last: bool,
     ) {
         // apply inputs
         let mut offset = 0;
@@ -238,7 +252,10 @@ impl Testbench {
                                 signal: io.expr,
                             });
                             if verbose {
-                                println!("{}@{step_id}: {} vs. {}", io.name, expected, actual);
+                                println!(
+                                    "{}@{step_id}: {} vs. {} (E/A)",
+                                    io.name, expected, actual
+                                );
                             }
                         }
                     }
@@ -247,8 +264,10 @@ impl Testbench {
             offset += io.words;
         }
 
-        // advance the simulation
-        sim.step();
+        if !is_last {
+            // advance the simulation
+            sim.step();
+        }
     }
 
     pub fn apply_constraints(
@@ -418,6 +437,19 @@ fn trim(data: &[u8]) -> &[u8] {
             let from_end = data.iter().rev().position(|c| !is_whitespace(*c)).unwrap();
             let end = data.len() - from_end;
             &data[start..end]
+        }
+    }
+}
+
+// debug function
+#[allow(dead_code)]
+pub fn print_states(ctx: &Context, sys: &TransitionSystem, sim: &impl Simulator) {
+    for state in sys.states() {
+        if state.symbol.get_type(ctx).is_bit_vector() {
+            let value_ref = sim.get(state.symbol).unwrap();
+            let value = value_ref.to_bit_string();
+            let name = state.symbol.get_symbol_name(ctx).unwrap();
+            println!("{name} = {value}")
         }
     }
 }

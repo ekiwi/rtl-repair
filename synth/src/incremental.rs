@@ -51,7 +51,10 @@ where
         while window.len() <= self.conf.max_repair_window_size {
             let step_range = window.get_step_range(self.conf.fail_at);
             if self.verbose() {
-                println!("Incremental: {} .. {} .. {}", step_range.start, self.conf.fail_at, step_range.end);
+                println!(
+                    "Incremental: {} .. {} .. {}",
+                    step_range.start, self.conf.fail_at, step_range.end
+                );
             }
 
             // check to see if we can reproduce the error with the simulator
@@ -132,7 +135,9 @@ where
         Ok(None)
     }
 
-    fn verbose(&self) -> bool { self.rctx.conf.verbose }
+    fn verbose(&self) -> bool {
+        self.rctx.conf.verbose
+    }
 
     fn test_repair(&mut self, repair: &RepairAssignment) -> RunResult {
         let start_step = 0;
@@ -187,10 +192,7 @@ where
                 start: nearest_step,
                 stop: StopAt::step(step),
             };
-            println!("Running sim: {run_conf:?}");
-            self.rctx
-                .tb
-                .run(self.rctx.sim, &run_conf, self.verbose());
+            self.rctx.tb.run(self.rctx.sim, &run_conf, self.verbose());
 
             // remember the state in case we need to go back
             let new_snapshot = self.rctx.sim.take_snapshot();
