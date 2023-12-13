@@ -31,10 +31,10 @@ pub fn generate_minimal_repair<S: Simulator>(
     // start encoding
     let mut enc = UnrollSmtEncoding::new(rctx.ctx, rctx.sys, true);
     enc.define_header(smt_ctx)?;
-    enc.init(rctx.ctx, smt_ctx)?;
+    enc.init_at(rctx.ctx, smt_ctx, start_step)?;
 
     // constrain starting state to that from the simulator
-    constrain_starting_state(rctx.ctx, rctx.sys, rctx.synth_vars, rctx.sim, &enc, smt_ctx)?;
+    constrain_starting_state(rctx.ctx, rctx.sys, rctx.synth_vars, rctx.sim, &enc, smt_ctx, start_step)?;
 
     let start_unroll = std::time::Instant::now();
     // unroll system and constrain inputs and outputs
@@ -68,7 +68,6 @@ pub fn generate_minimal_repair<S: Simulator>(
     match r {
         // cannot find a repair
         smt::Response::Unsat | smt::Response::Unknown => {
-            smt_ctx.pop_many(1)?; // reset
             return Ok(None);
         }
         smt::Response::Sat => {} // OK, continue
@@ -81,12 +80,13 @@ pub fn generate_minimal_repair<S: Simulator>(
         &rctx.conf.solver,
         rctx.change_count_ref,
         &enc,
+        start_step,
     )?;
     if rctx.conf.verbose {
         println!("Found a minimal solution with {min_num_changes} changes.")
     }
 
-    let solution = rctx.synth_vars.read_assignment(rctx.ctx, smt_ctx, &enc);
+    let solution = rctx.synth_vars.read_assignment(rctx.ctx, smt_ctx, &enc, start_step);
     check_assuming_end(smt_ctx, &rctx.conf.solver)?;
     Ok(Some((solution, min_num_changes, enc)))
 }

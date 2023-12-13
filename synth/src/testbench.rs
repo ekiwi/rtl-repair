@@ -49,11 +49,13 @@ impl RunResult {
     }
 }
 
+#[derive(Debug)]
 pub struct RunConfig {
     pub start: StepInt,
     pub stop: StopAt,
 }
 
+#[derive(Debug)]
 pub struct StopAt {
     at_first_fail: bool,
     at_step: Option<StepInt>,

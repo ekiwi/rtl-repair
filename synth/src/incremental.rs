@@ -8,6 +8,7 @@ use easy_smt as smt;
 use easy_smt::Response;
 use libpatron::mc::*;
 use std::collections::HashMap;
+use std::fmt::Debug;
 
 use crate::repair::*;
 
@@ -28,7 +29,7 @@ pub struct IncrementalRepair<'a, S: Simulator> {
 impl<'a, S: Simulator> IncrementalRepair<'a, S>
 where
     S: Simulator,
-    <S as Simulator>::SnapshotId: Clone,
+    <S as Simulator>::SnapshotId: Clone + Debug,
 {
     pub fn new(
         rctx: RepairContext<'a, S>,
@@ -49,6 +50,9 @@ where
 
         while window.len() <= self.conf.max_repair_window_size {
             let step_range = window.get_step_range(self.conf.fail_at);
+            if self.verbose() {
+                println!("Incremental: {} .. {} .. {}", step_range.start, self.conf.fail_at, step_range.end);
+            }
 
             // check to see if we can reproduce the error with the simulator
             self.update_sim_state_to_step(step_range.start);
@@ -56,8 +60,11 @@ where
                 start: step_range.start,
                 stop: StopAt::first_fail_or_step(step_range.end),
             };
-            let res = self.rctx.tb.run(self.rctx.sim, &conf, false);
-            assert_eq!(res.first_fail_at, Some(self.conf.fail_at));
+            if self.verbose() {
+                println!("Sanity check: {conf:?}");
+            }
+            let res = self.rctx.tb.run(self.rctx.sim, &conf, self.verbose());
+            assert_eq!(res.first_fail_at, Some(self.conf.fail_at), "{conf:?}");
 
             // start new SMT context to make it easy to later revert everything
             self.smt_ctx.push_many(1)?;
@@ -74,7 +81,7 @@ where
 
             if let Some((r0, num_changes, enc)) = r {
                 // add a "permanent" change count constraint
-                self.constrain_changes(num_changes, &enc)?;
+                self.constrain_changes(num_changes, &enc, step_range.start)?;
 
                 // iterate over possible solutions
                 let mut maybe_repair = Some(r0);
@@ -98,12 +105,14 @@ where
                         &mut self.smt_ctx,
                         &enc,
                         &repair,
+                        step_range.start,
                     )?;
                     maybe_repair = match self.smt_ctx.check()? {
                         Response::Sat => Some(self.rctx.synth_vars.read_assignment(
                             self.rctx.ctx,
                             &mut self.smt_ctx,
                             &enc,
+                            step_range.start,
                         )),
                         Response::Unsat | Response::Unknown => None,
                     };
@@ -123,6 +132,8 @@ where
         Ok(None)
     }
 
+    fn verbose(&self) -> bool { self.rctx.conf.verbose }
+
     fn test_repair(&mut self, repair: &RepairAssignment) -> RunResult {
         let start_step = 0;
         self.update_sim_state_to_step(start_step);
@@ -138,12 +149,13 @@ where
         &mut self,
         num_changes: u32,
         enc: &impl TransitionSystemEncoding,
+        start_step: StepInt,
     ) -> Result<()> {
         let change_count_expr = enc.get_at(
             self.rctx.ctx,
             &mut self.smt_ctx,
             self.rctx.change_count_ref,
-            0,
+            start_step,
         );
         let constraint = self.smt_ctx.eq(
             change_count_expr,
@@ -161,23 +173,24 @@ where
         } else {
             // find nearest step, _before_ the step we are going for
             let mut nearest_step = 0;
-            let mut nearest_id = None;
+            let mut nearest_id = self.snapshots[&0].clone();
             for (other_step, snapshot_id) in self.snapshots.iter() {
                 if *other_step < step && *other_step > nearest_step {
                     nearest_step = *other_step;
-                    nearest_id = Some(snapshot_id.clone());
+                    nearest_id = snapshot_id.clone();
                 }
             }
 
             // go from nearest snapshot to the point where we want to take a snapshot
-            self.rctx.sim.restore_snapshot(nearest_id.unwrap());
+            self.rctx.sim.restore_snapshot(nearest_id);
             let run_conf = RunConfig {
                 start: nearest_step,
                 stop: StopAt::step(step),
             };
+            println!("Running sim: {run_conf:?}");
             self.rctx
                 .tb
-                .run(self.rctx.sim, &run_conf, self.rctx.conf.verbose);
+                .run(self.rctx.sim, &run_conf, self.verbose());
 
             // remember the state in case we need to go back
             let new_snapshot = self.rctx.sim.take_snapshot();

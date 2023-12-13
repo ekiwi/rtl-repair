@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::testbench::Testbench;
+use crate::testbench::{StepInt, Testbench};
 use easy_smt as smt;
 use libpatron::ir::*;
 use libpatron::mc::*;
@@ -37,9 +37,10 @@ pub fn minimize_changes(
     solver: &SmtSolverCmd,
     change_count_ref: ExprRef,
     enc: &impl TransitionSystemEncoding,
+    start_step: StepInt,
 ) -> Result<u32> {
     let mut num_changes = 1u32;
-    let change_count_expr = enc.get_at(ctx, smt_ctx, change_count_ref, 0);
+    let change_count_expr = enc.get_at(ctx, smt_ctx, change_count_ref, start_step);
     loop {
         let constraint = smt_ctx.eq(
             change_count_expr,
@@ -66,6 +67,7 @@ pub fn constrain_starting_state(
     sim: &impl Simulator,
     enc: &impl TransitionSystemEncoding,
     smt_ctx: &mut smt::Context,
+    start_step: StepInt,
 ) -> Result<()> {
     for state in sys
         .states()
@@ -73,7 +75,7 @@ pub fn constrain_starting_state(
     {
         let value = sim.get(state.symbol).unwrap();
         let value_expr = value_to_smt_expr(smt_ctx, value);
-        let symbol = enc.get_at(ctx, smt_ctx, state.symbol, 0);
+        let symbol = enc.get_at(ctx, smt_ctx, state.symbol, start_step);
         smt_ctx.assert(smt_ctx.eq(symbol, value_expr))?;
     }
     Ok(())
@@ -196,11 +198,12 @@ impl RepairVars {
         ctx: &Context,
         smt_ctx: &mut smt::Context,
         enc: &impl TransitionSystemEncoding,
+        start_step: StepInt,
     ) -> RepairAssignment {
         let mut change = Vec::with_capacity(self.change.len());
         for sym in self.change.iter() {
-            // repair variables do not change, thus we can just always read the value at cycle 0
-            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
+            // repair variables do not change, we can just always read the value at the first cycle
+            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, start_step);
             let res = get_smt_value(smt_ctx, smt_sym, sym.get_type(ctx))
                 .expect("Failed to read change variable!");
             if let WitnessValue::Scalar(value, width) = res {
@@ -212,8 +215,8 @@ impl RepairVars {
         }
         let mut free = Vec::with_capacity(self.free.len());
         for sym in self.free.iter() {
-            // repair variables do not change, thus we can just always read the value at cycle 0
-            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
+            // repair variables do not change, we can just always read the value at the first cycle
+            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, start_step);
             let res = get_smt_value(smt_ctx, smt_sym, sym.get_type(ctx))
                 .expect("Failed to read free variable!");
             if let WitnessValue::Scalar(value, _) = res {
@@ -231,6 +234,7 @@ impl RepairVars {
         smt_ctx: &mut smt::Context,
         enc: &impl TransitionSystemEncoding,
         assignment: &RepairAssignment,
+        start_step: StepInt,
     ) -> std::io::Result<()> {
         // disallow this particular combination of change variables
         let constraints = self
@@ -238,8 +242,8 @@ impl RepairVars {
             .iter()
             .zip(assignment.change.iter())
             .map(|(sym, value)| {
-                // repair variables do not change, thus we can just always read the value at cycle 0
-                let smt_sym = enc.get_at(ctx, smt_ctx, *sym, 0);
+                // repair variables do not change, we can just always read the value at the first cycle
+                let smt_sym = enc.get_at(ctx, smt_ctx, *sym, start_step);
                 if *value {
                     smt_sym
                 } else {
