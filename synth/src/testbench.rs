@@ -39,6 +39,7 @@ pub struct RunResult {
 
 struct Failure {
     step: StepInt,
+    #[allow(dead_code)]
     signal: ExprRef,
 }
 
@@ -59,6 +60,7 @@ pub struct StopAt {
 }
 
 impl StopAt {
+    #[allow(dead_code)]
     pub fn end() -> Self {
         Self {
             at_first_fail: false,
