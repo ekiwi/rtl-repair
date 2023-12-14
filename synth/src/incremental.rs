@@ -69,6 +69,9 @@ where
             // start new SMT context to make it easy to later revert everything
             self.smt_ctx.push_many(1)?;
 
+            // restore correct starting state for SMT encoding
+            self.update_sim_state_to_step(step_range.start);
+
             // generate one minimal repair
             let r = generate_minimal_repair(
                 &mut self.rctx,
