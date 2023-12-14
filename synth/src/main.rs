@@ -146,6 +146,7 @@ fn main() {
     let start_state = sim.take_snapshot();
 
     // run testbench once to see if we can detect a bug
+    let start_first_test = std::time::Instant::now();
     let res = tb.run(
         &mut sim,
         &RunConfig {
@@ -154,6 +155,13 @@ fn main() {
         },
         args.verbose,
     );
+    if args.verbose {
+        let steps = res.first_fail_at.unwrap_or(tb.step_count());
+        println!(
+            "Executed {steps} steps in {:?}",
+            std::time::Instant::now() - start_first_test
+        )
+    }
 
     // early exit in case we do not see any bug
     // (there could still be a bug in the original Verilog that was masked by the synthesis)
