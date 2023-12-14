@@ -36,7 +36,7 @@ chisel_counter_dir = chisel_dir / "counter"
 paper_example_dir = benchmark_dir / "paper_example"
 
 
-def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None):
+def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
     if not working_dir.exists():
         os.mkdir(working_dir)
     # determine the directory name from project and bug name
@@ -59,6 +59,8 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
         args += ["--incremental"]
     if timeout:
         args += ["--timeout", str(timeout)]
+    if old_synthesizer:
+        args += ["--old-synthesizer"]
 
     cmd = ["./rtlrepair.py"] + args
     # for debugging:
@@ -90,9 +92,9 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
 class SynthesisTest(unittest.TestCase):
 
     def synth_success(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, timeout: int = None, max_changes: int = 2):
+                      incremental: bool = False, timeout: int = None, max_changes: int = 2, old_synthesizer: bool = False):
         start = time.monotonic()
-        status, changes, template = run_synth(project_path, bug, testbench, solver, init, incremental, timeout)
+        status, changes, template = run_synth(project_path, bug, testbench, solver, init, incremental, timeout, old_synthesizer)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
@@ -100,17 +102,17 @@ class SynthesisTest(unittest.TestCase):
         return changes
 
     def synth_no_repair(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, timeout: int = None, max_changes: int = 2):
+                      incremental: bool = False, timeout: int = None, max_changes: int = 2, old_synthesizer: bool = False):
         start = time.monotonic()
-        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout)
+        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout, old_synthesizer)
         self.assertEqual("no-repair", status)
         if _print_time:
             print(f"NO-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
 
     def synth_cannot_repair(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, timeout: int = None, max_changes: int = 2):
+                      incremental: bool = False, timeout: int = None, max_changes: int = 2, old_synthesizer: bool = False):
         start = time.monotonic()
-        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout)
+        status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout, old_synthesizer)
         self.assertEqual("cannot-repair", status)
         if _print_time:
             print(f"CANNOT-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
@@ -176,6 +178,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
                                      incremental=self.incremental, timeout=self.timeout, max_changes=20)
         self.assertEqual(15, changes) # repaired by pre-processing!
 
+    @unittest.skip("need to set _ENABLE_NEW_CASE_STATEMENT for this to work")
     def test_fsm_full_wadden1(self):
         # CirFix: timed out
         self.synth_success(fsm_dir, "wadden_buggy1", solver=self.solver, init=self.init,

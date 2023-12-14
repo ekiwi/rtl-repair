@@ -18,6 +18,11 @@ _synthesizer_dir = _root_dir / "synth"
 _bin = _synthesizer_dir / _bin_rel
 
 
+# old Scala synthesizer, the source code lives in src
+_jar_rel = Path("target") / "scala-2.13" / "bug-fix-synthesizer-assembly-0.1.jar"
+_jar = _root_dir / "synthesizer" / _jar_rel
+
+
 @dataclass
 class SynthOptions:
     solver: str
@@ -25,6 +30,7 @@ class SynthOptions:
     incremental: bool
     verbose: bool
     past_k_step_size: int = None
+    old_synthesizer: bool = False
 
 
 @dataclass
@@ -37,11 +43,17 @@ class SynthStats:
 def _check_bin():
     assert _bin.exists(), f"Failed to find synth binary, did you run cargo build --release?\n{_bin}"
 
+def _check_jar():
+    assert _jar.exists(), f"Failed to find JAR, did you run sbt assembly?\n{_jar}"
+
 
 def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: SynthOptions) -> dict:
     assert design.exists(), f"{design=} does not exist"
     assert testbench.exists(), f"{testbench=} does not exist"
-    _check_bin()
+    if opts.old_synthesizer:
+        _check_jar()
+    else:
+        _check_bin()
     args = ["--design", str(design), "--testbench", str(testbench), "--solver", opts.solver, "--init", opts.init]
     if opts.incremental:
         args += ["--incremental"]
@@ -51,7 +63,11 @@ def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: Syn
         args += ["--past-k-step-size", str(opts.past_k_step_size)]
     # test: multiple solutions
     # args += ["--sample-solutions", "2"]
-    cmd = [_bin] + args
+    if opts.old_synthesizer:
+        cmd = ["java", "-cp", _jar, "synth.Synthesizer"]
+    else:
+        cmd = [_bin]
+    cmd += args
     cmd_str = ' '.join(str(p) for p in cmd)  # for debugging
 
     # write command to file in order to be able to reproduce the failed synthesis command
