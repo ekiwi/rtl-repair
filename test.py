@@ -189,7 +189,9 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: incorrect repair
         changes = self.synth_success(fsm_dir, "wadden_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout, max_changes=10)
-        self.assertEqual(1, changes) # repaired by pre-processing + replace literal!
+        # "repaired" by pre-processing
+        # however, the repair is not actually correct because of the simulation-synthesis-mismatch nature of the bug
+        self.assertEqual(3, changes)
 
     def test_lshift_reg_kgoliya1(self):
         # CirFix: correct repair
