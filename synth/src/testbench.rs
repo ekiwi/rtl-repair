@@ -120,11 +120,11 @@ impl Testbench {
         // generate signals to print if we are instructed to do so
         let mut signals_to_print = vec![];
         if verbose && trace_sim {
-            for (name, expr) in name_to_ref.iter() {
-                // TODO: maybe filter
-                if expr.get_type(ctx).is_bit_vector() {
-                    // we do not print arrays
-                    signals_to_print.push((name.clone(), *expr));
+            for state in sys.states() {
+                let expr = state.symbol;
+                let name = expr.get_symbol_name(ctx).unwrap();
+                if !classify_state(name).is_synth_var() && expr.get_type(ctx).is_bit_vector() {
+                    signals_to_print.push((name.to_string(), expr));
                 }
             }
             signals_to_print.sort_by_key(|(name, _)| name.clone());
