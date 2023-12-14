@@ -137,7 +137,8 @@ impl RepairVars {
         let mut free = Vec::new();
 
         for state in sys.states() {
-            match classify_state(ctx, state) {
+            let name = state.symbol.get_symbol_name(ctx).unwrap();
+            match classify_state(name) {
                 StateType::ChangeVar => {
                     assert_eq!(
                         state.symbol.get_bv_type(ctx).unwrap(),
@@ -270,15 +271,20 @@ impl RepairVars {
     }
 }
 
-enum StateType {
+pub enum StateType {
     ChangeVar,
     FreeVar,
     Other,
 }
 
+impl StateType {
+    pub fn is_synth_var(&self) -> bool {
+        !matches!(&self, StateType::Other)
+    }
+}
+
 /// Determines whether a state is a synthesis variable and what kind by looking at the name.
-fn classify_state(ctx: &Context, state: &State) -> StateType {
-    let name = state.symbol.get_symbol_name(ctx).unwrap();
+pub fn classify_state(name: &str) -> StateType {
     let suffix = name.split('.').last().unwrap();
     // important to check the change prefix first
     // (since the var prefix is a prefix of the change prefix)

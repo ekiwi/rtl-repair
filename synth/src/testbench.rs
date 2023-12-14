@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::repair::bit_string_to_smt;
+use crate::repair::{bit_string_to_smt, classify_state};
 use libpatron::ir::*;
 use libpatron::mc::{Simulator, TransitionSystemEncoding};
 use libpatron::sim::interpreter::{InitKind, InitValueGenerator, Value};
@@ -447,7 +447,9 @@ pub fn print_states(ctx: &Context, sys: &TransitionSystem, sim: &impl Simulator)
             let value_ref = sim.get(state.symbol).unwrap();
             let value = value_ref.to_bit_string();
             let name = state.symbol.get_symbol_name(ctx).unwrap();
-            println!("{name} = {value}")
+            if !classify_state(name).is_synth_var() {
+                println!("{name} = {value}")
+            }
         }
     }
 }
