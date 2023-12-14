@@ -2,3 +2,4 @@ basic.smt
 flamegraph.svg
 perf.data
 perf.data.old
+/*.smt

@@ -216,9 +216,9 @@ checksum = "302d7ab3130588088d277783b1e2d2e10c9e9e4a16dd9050e6ec93fb3e7048f4"
 
 [[package]]
 name = "libpatron"
-version = "0.9.2"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22a5aa33a61d463de3a102149fe7bd1544f367ecb1d2081c967ff3e4334ca626"
+checksum = "bfe146fc31a876e1ce97b1d579d29b49104b5beb8e2506aa209bd36e86934bbf"
 dependencies = [
  "codespan-reporting",
  "easy-smt",

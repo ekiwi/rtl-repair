@@ -11,7 +11,7 @@ use crate::incremental::{IncrementalConf, IncrementalRepair};
 use crate::repair::{add_change_count, RepairConfig, RepairContext, RepairVars};
 use crate::testbench::*;
 use clap::{arg, Parser, ValueEnum};
-use libpatron::ir::SerializableIrNode;
+use libpatron::ir::{replace_anonymous_inputs_with_zero, simplify_expressions, SerializableIrNode};
 use libpatron::mc::{Simulator, SmtSolverCmd, BITWUZLA_CMD, YICES2_CMD};
 use libpatron::sim::interpreter::InitKind;
 use libpatron::*;
@@ -93,6 +93,10 @@ fn main() {
 
     // load system
     let (mut ctx, mut sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
+
+    // simplify system
+    replace_anonymous_inputs_with_zero(&mut ctx, &mut sys);
+    simplify_expressions(&mut ctx, &mut sys);
 
     // analyze system
     let synth_vars = RepairVars::from_sys(&ctx, &sys);
