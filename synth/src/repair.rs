@@ -137,16 +137,19 @@ impl RepairVars {
         let mut free = Vec::new();
 
         for state in sys.states() {
-            let name = state.symbol.get_symbol_name(ctx).unwrap();
-            if name.starts_with(SYNTH_CHANGE_PREFIX) {
-                assert_eq!(
-                    state.symbol.get_bv_type(ctx).unwrap(),
-                    1,
-                    "all change variables need to be boolean"
-                );
-                change.push(state.symbol);
-            } else if name.starts_with(SYNTH_VAR_PREFIX) {
-                free.push(state.symbol);
+            match classify_state(ctx, state) {
+                StateType::ChangeVar => {
+                    assert_eq!(
+                        state.symbol.get_bv_type(ctx).unwrap(),
+                        1,
+                        "all change variables need to be boolean"
+                    );
+                    change.push(state.symbol);
+                }
+                StateType::FreeVar => {
+                    free.push(state.symbol);
+                }
+                StateType::Other => {} // nothing to do
             }
         }
 
@@ -264,6 +267,27 @@ impl RepairVars {
             }
         }
         out
+    }
+}
+
+enum StateType {
+    ChangeVar,
+    FreeVar,
+    Other,
+}
+
+/// Determines whether a state is a synthesis variable and what kind by looking at the name.
+fn classify_state(ctx: &Context, state: &State) -> StateType {
+    let name = state.symbol.get_symbol_name(ctx).unwrap();
+    let suffix = name.split('.').last().unwrap();
+    // important to check the change prefix first
+    // (since the var prefix is a prefix of the change prefix)
+    if suffix.starts_with(SYNTH_CHANGE_PREFIX) {
+        StateType::ChangeVar
+    } else if suffix.starts_with(SYNTH_VAR_PREFIX) {
+        StateType::FreeVar
+    } else {
+        StateType::Other
     }
 }
 
