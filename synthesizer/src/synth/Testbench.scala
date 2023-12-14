@@ -5,6 +5,7 @@
 package synth
 
 import maltese.mc.{IsOutput, TransitionSystem, TransitionSystemSim, TransitionSystemSimulator}
+import maltese.smt.BVType
 
 import java.io.PrintWriter
 import scala.collection.mutable
@@ -132,10 +133,14 @@ object Testbench {
     tb:             Testbench,
     verbose:        Boolean,
     vcd:            Option[os.Path] = None,
-    earlyExitAfter: Int = -1
+    earlyExitAfter: Int = -1,
+    traceState:     Boolean = false
   ): TestbenchResult = {
     // we need all starting states to be concrete
     sys.states.foreach(s => assert(s.init.isDefined, s"uninitialized state $s"))
+    val traceStates = if (traceState) {
+      sys.states.filter(s => !Synthesizer.isSynthName(s.name) && s.sym.tpe.isInstanceOf[BVType]).sortBy(_.name)
+    } else { Seq() }
     val inputs = filterInputs(sys, tb)
     val outputs = filterOutputs(sys, tb)
     val sim = new TransitionSystemSim(sys, vcd)
@@ -151,6 +156,15 @@ object Testbench {
       // apply input and evaluate signals
       sim.poke(getValueMap(inputs, values))
       sim.update()
+      // print state
+      traceStates.foreach { state =>
+        val value = sim.peek(state.name).toString(2)
+        val width = state.sym.tpe.asInstanceOf[BVType].width
+        println(s"${state.name}@$step = ${value.padTo(width, '0')}")
+      }
+      if (traceStates.nonEmpty) {
+        println()
+      }
       // check outputs
       val outVals = outputs.map { case (name, ii) =>
         val actual = sim.peek(name)

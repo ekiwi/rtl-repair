@@ -27,6 +27,7 @@ case class Config(
   // free inputs that would make a solution fail
   // set debugSolver to true to see commands sent to SMT solver
   filterSolutions: Boolean = false, // filters out solutions that result in the exact same circuit
+  traceSim:        Boolean = false, // prints out state value for every simulation step
   debugSolver:     Boolean = false,
   unroll:          Boolean = false,
   verbose:         Boolean = false) {
@@ -52,6 +53,7 @@ case class Config(
   def doSampleSolutionsUpTo(ii: Int): Config = copy(sampleUpToSize = Some(ii))
   def doCheckCorrectForAll(): Config = copy(checkCorrectForAll = true)
   def doFilterSolutions():    Config = copy(filterSolutions = true)
+  def doTraceSim():           Config = copy(traceSim = true)
 }
 
 sealed trait InitType
@@ -126,4 +128,7 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
     args.copy(config = args.config.copy(maxRepairWindowSize = i))
   }
     .text("the maximum repair window size before the incremental solver gives up")
+  opt[Unit]("trace-sim")
+    .action((_, args) => args.copy(config = args.config.doTraceSim()))
+    .text("prints out state value in every simulation step")
 }

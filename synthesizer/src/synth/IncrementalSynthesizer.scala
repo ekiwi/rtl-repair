@@ -82,7 +82,8 @@ object IncrementalSynthesizer {
       noChange,
       randInputTb,
       verbose = config.verbose,
-      earlyExitAfter = 4
+      earlyExitAfter = 4,
+      traceState = config.traceSim
       // vcd = Some(os.pwd / "fail.vcd")
     )
     if (!exec.failed) {
