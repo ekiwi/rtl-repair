@@ -149,6 +149,7 @@ impl Testbench {
         Ok(tb)
     }
 
+    #[allow(dead_code)]
     pub fn has_missing_outputs(&self) -> bool {
         !self.missing_outputs.is_empty()
     }
