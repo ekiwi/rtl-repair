@@ -64,6 +64,8 @@ struct Args {
         help = "the maximum repair window size before the incremental solver gives up"
     )]
     max_repair_window_size: u64,
+    #[arg(long, help = "file to write all SMT commands to")]
+    smt_dump: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -197,7 +199,7 @@ fn main() {
     let repair_conf = RepairConfig {
         solver: args.solver.cmd(),
         verbose: args.verbose,
-        dump_file: Some("basic.smt".to_string()),
+        dump_file: args.smt_dump.clone(),
     };
     let repair_ctx = RepairContext {
         ctx: &mut ctx,
