@@ -16,7 +16,7 @@ fn do_test(design: &str, tb: &str, init: &str, solver: &str, incremental: bool) 
     assert!(tb_path.exists(), "{tb_path:?} not found!");
 
     // check to see that binary exists
-    let bin_path = Path::new("target/release/synth");
+    let bin_path = Path::new("target/debug/synth");
     assert!(bin_path.exists(), "Binary {bin_path:?} missing.");
 
     // call binary
