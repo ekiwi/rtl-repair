@@ -6,6 +6,7 @@ use crate::repair::{bit_string_to_smt, classify_state};
 use libpatron::ir::*;
 use libpatron::mc::{Simulator, TransitionSystemEncoding};
 use libpatron::sim::interpreter::{InitKind, InitValueGenerator, Value};
+use num_bigint::BigUint;
 use std::collections::HashMap;
 
 pub type Result<T> = std::io::Result<T>;
@@ -343,24 +344,46 @@ fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word
         if !tokens.is_empty() {
             for io in ios.iter() {
                 // read and write words to data
-                assert_eq!(io.words, 1);
-
                 let is_missing = io.cell_id == usize::MAX;
                 if is_missing {
-                    data.push(Word::MAX); // X
+                    push_x(io, &mut data);
                 } else {
                     let cell = tokens[io.cell_id];
                     if is_cell_x(cell) {
-                        data.push(Word::MAX);
+                        push_x(io, &mut data);
                     } else {
-                        let value = str::parse(&String::from_utf8_lossy(cell)).unwrap();
-                        data.push(value);
+                        push_from_dec(io, &mut data, cell);
                     }
                 }
             }
         }
     }
     data
+}
+
+fn push_x(io: &IOInfo, data: &mut Vec<Word>) {
+    for _ in 0..io.words {
+        data.push(Word::MAX);
+    }
+}
+
+fn dec_cell_to_big_uint(cell: &[u8]) -> Option<BigUint> {
+    let digits = cell.iter().map(|d| d - b'0').collect::<Vec<_>>();
+    BigUint::from_radix_be(&digits, 10)
+}
+
+fn push_from_dec(io: &IOInfo, data: &mut Vec<Word>, dec_ascii: &[u8]) {
+    let big = dec_cell_to_big_uint(dec_ascii).expect("Failed to parse cell data!");
+    let mut word_count = 0;
+    for digit in big.iter_u64_digits() {
+        data.push(digit);
+        word_count += 1;
+    }
+    debug_assert!(word_count <= io.words);
+    // msb zeros
+    for _ in word_count..io.words {
+        data.push(0);
+    }
 }
 
 fn read_header(
@@ -462,6 +485,7 @@ fn is_whitespace(c: u8) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use num_traits::ToPrimitive;
 
     #[test]
     fn test_trim() {
@@ -471,5 +495,12 @@ mod tests {
         assert_eq!(trim(b"   1234   "), b"1234");
         assert_eq!(trim(b"   12 34   "), b"12 34");
         assert_eq!(trim(b"   12  34   "), b"12  34");
+    }
+
+    #[test]
+    fn test_big_uint_parse() {
+        let inp = b"13476";
+        let big = dec_cell_to_big_uint(inp).unwrap();
+        assert_eq!(big.to_u64().unwrap(), 13476);
     }
 }
