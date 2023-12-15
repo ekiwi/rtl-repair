@@ -123,8 +123,8 @@ fn set_logic(smt_ctx: &mut smt::Context, cmd: &SmtSolverCmd) -> Result<()> {
 }
 
 pub struct RepairVars {
-    pub change: Vec<ExprRef>, // phi
-    pub free: Vec<ExprRef>,   // alpha
+    pub change: Vec<ExprRef>,           // phi
+    pub free: Vec<(ExprRef, WidthInt)>, // alpha
 }
 
 // synchronized to the naming conventions used in the python frontend
@@ -148,7 +148,8 @@ impl RepairVars {
                     change.push(state.symbol);
                 }
                 StateType::FreeVar => {
-                    free.push(state.symbol);
+                    let width = state.symbol.get_bv_type(ctx).unwrap();
+                    free.push((state.symbol, width));
                 }
                 StateType::Other => {} // nothing to do
             }
@@ -158,25 +159,28 @@ impl RepairVars {
     }
 
     pub fn is_repair_var(&self, other: ExprRef) -> bool {
-        self.change.contains(&other) || self.free.contains(&other)
+        self.change.contains(&other) || self.free.iter().find(|(e, _)| *e == other).is_some()
     }
 
     pub fn apply_to_sim(&self, sim: &mut impl Simulator, assignment: &RepairAssignment) {
         for (sym, value) in self.change.iter().zip(assignment.change.iter()) {
             let num_value = if *value { 1 } else { 0 };
-            sim.set(*sym, &Value::from_u64(num_value));
+            sim.set(*sym, ValueRef::new(&[num_value], 1));
         }
-        for (sym, value) in self.free.iter().zip(assignment.free.iter()) {
-            sim.set(*sym, &Value::from_big_uint(value));
+        for ((sym, width), value) in self.free.iter().zip(assignment.free.iter()) {
+            sim.set(*sym, (&Value::from_big_uint(value, *width)).into());
         }
     }
 
     pub fn clear_in_sim(&self, sim: &mut impl Simulator) {
         for sym in self.change.iter() {
-            sim.set(*sym, &Value::from_u64(0));
+            sim.set(*sym, ValueRef::new(&[0], 1));
         }
-        for sym in self.free.iter() {
-            sim.set(*sym, &Value::from_u64(0));
+        for (sym, width) in self.free.iter() {
+            sim.set(
+                *sym,
+                (&Value::from_big_uint(&BigUint::zero(), *width)).into(),
+            );
         }
     }
 
@@ -188,7 +192,7 @@ impl RepairVars {
             let sym_name = sym.get_symbol_name(ctx).unwrap().to_string();
             out.insert(sym_name, json!(num_value));
         }
-        for (sym, value) in self.free.iter().zip(assignment.free.iter()) {
+        for ((sym, _width), value) in self.free.iter().zip(assignment.free.iter()) {
             let num_value = serde_json::Number::from_str(&value.to_string()).unwrap();
             let sym_name = sym.get_symbol_name(ctx).unwrap().to_string();
             out.insert(sym_name, json!(num_value));
@@ -218,7 +222,7 @@ impl RepairVars {
             }
         }
         let mut free = Vec::with_capacity(self.free.len());
-        for sym in self.free.iter() {
+        for (sym, _width) in self.free.iter() {
             // repair variables do not change, we can just always read the value at the first cycle
             let smt_sym = enc.get_at(ctx, smt_ctx, *sym, start_step);
             let res = get_smt_value(smt_ctx, smt_sym, sym.get_type(ctx))

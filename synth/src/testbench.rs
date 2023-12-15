@@ -5,7 +5,7 @@
 use crate::repair::{bit_string_to_smt, classify_state};
 use libpatron::ir::*;
 use libpatron::mc::{Simulator, TransitionSystemEncoding};
-use libpatron::sim::interpreter::{InitKind, InitValueGenerator, Value};
+use libpatron::sim::interpreter::{InitKind, InitValueGenerator, ValueRef};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 
@@ -220,7 +220,9 @@ impl Testbench {
             if io.is_input {
                 let io_words = &words[offset..(offset + io.words)];
                 if !is_x(io_words) {
-                    sim.set(io.expr, &Value::from_words(io_words));
+                    let non_x_num_words = width_to_words(io.width);
+                    let non_x_words = &io_words[0..non_x_num_words];
+                    sim.set(io.expr, ValueRef::new(non_x_words, io.width));
                 }
             }
             offset += io.words;
@@ -246,21 +248,22 @@ impl Testbench {
             if !io.is_input {
                 let io_words = &words[offset..(offset + io.words)];
                 if !is_x(io_words) {
-                    let value = sim.get(io.expr).unwrap();
-                    if io.words == 1 {
-                        let expected = io_words[0];
-                        let actual = value.to_u64().unwrap();
-                        if expected != actual {
-                            failures.push(Failure {
-                                step: step_id,
-                                signal: io.expr,
-                            });
-                            if verbose {
-                                println!(
-                                    "{}@{step_id}: {} vs. {} (E/A)",
-                                    io.name, expected, actual
-                                );
-                            }
+                    let actual_value = sim.get(io.expr).unwrap();
+                    let non_x_num_words = width_to_words(io.width);
+                    let non_x_words = &io_words[0..non_x_num_words];
+                    let expected_value = ValueRef::new(non_x_words, io.width);
+                    if expected_value != actual_value {
+                        failures.push(Failure {
+                            step: step_id,
+                            signal: io.expr,
+                        });
+                        if verbose {
+                            println!(
+                                "{}@{step_id}: {} vs. {} (E/A)",
+                                io.name,
+                                expected_value.to_bit_string(),
+                                actual_value.to_bit_string()
+                            );
                         }
                     }
                 }
@@ -288,7 +291,7 @@ impl Testbench {
                 if !is_x(io_words) {
                     let non_x_num_words = width_to_words(io.width);
                     let non_x_words = &io_words[0..non_x_num_words];
-                    let value = Value::from_words(non_x_words).to_bit_string(io.width);
+                    let value = ValueRef::new(non_x_words, io.width).to_bit_string();
                     let value_expr = bit_string_to_smt(smt_ctx, &value);
                     let io_at_step = enc.get_at(ctx, smt_ctx, io.expr, step_id);
                     smt_ctx.assert(smt_ctx.eq(io_at_step, value_expr))?;
