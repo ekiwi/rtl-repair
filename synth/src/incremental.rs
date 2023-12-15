@@ -141,8 +141,12 @@ where
             }
 
             // we did not find a repair and we continue on
-            let progress =
-                window.update(&failures_at, self.conf.fail_at, self.conf.pask_k_step_size);
+            let progress = window.update(
+                &failures_at,
+                self.conf.fail_at,
+                self.conf.pask_k_step_size,
+                self.conf.max_repair_window_size,
+            );
             if !progress {
                 if self.verbose() {
                     println!("Could not further increase the repair window.")
@@ -261,6 +265,7 @@ impl RepairWindow {
         failures: &[StepInt],
         original_failure: StepInt,
         past_step_size: StepInt,
+        max_window_size: StepInt,
     ) -> bool {
         let old = self.clone();
         // when no solution is found, we update the past K
@@ -275,8 +280,16 @@ impl RepairWindow {
                     self.past_k = std::cmp::min(original_failure, past_step_size + self.past_k);
                 }
                 Some(max_future_failure) => {
-                    // increase the window to the largest future K
-                    self.future_k = *max_future_failure - original_failure;
+                    let do_limit = false;
+                    if do_limit {
+                        // limit future_k to not exceed the window size
+                        let max_future_k = max_window_size - self.past_k;
+                        // increase the window to the largest future K
+                        self.future_k =
+                            std::cmp::min(*max_future_failure - original_failure, max_future_k);
+                    } else {
+                        self.future_k = *max_future_failure - original_failure;
+                    }
                 }
             }
         }
