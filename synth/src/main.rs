@@ -123,6 +123,14 @@ fn main() {
     let mut tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose, args.trace_sim)
         .expect("Failed to load testbench.");
 
+    if tb.has_missing_outputs() {
+        println!(
+            "WARN: testbench is missing output! We do not have a way to check for correctness."
+        );
+        print_cannot_repair();
+        return;
+    }
+
     // init free variables
     match args.init {
         Init::Zero => {

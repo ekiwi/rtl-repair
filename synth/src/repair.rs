@@ -307,7 +307,7 @@ pub struct RepairAssignment {
     pub free: Vec<BigUint>,
 }
 
-const CHANGE_COUNT_OUTPUT_NAME: &str = "__change_count";
+pub const CHANGE_COUNT_OUTPUT_NAME: &str = "__change_count";
 pub const CHANGE_COUNT_WIDTH: WidthInt = 16;
 
 pub fn add_change_count(

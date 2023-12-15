@@ -2,7 +2,9 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::repair::{bit_string_to_smt, classify_state};
+use crate::repair::{
+    bit_string_to_smt, classify_state, CHANGE_COUNT_OUTPUT_NAME, CHANGE_COUNT_WIDTH,
+};
 use libpatron::ir::*;
 use libpatron::mc::{Simulator, TransitionSystemEncoding};
 use libpatron::sim::interpreter::{InitKind, InitValueGenerator, ValueRef};
@@ -23,8 +25,10 @@ pub struct Testbench {
     ios: Vec<IOInfo>,
     /// signals to print for debugging
     signals_to_print: Vec<(String, ExprRef)>,
+    missing_outputs: Vec<IOInfo>,
 }
 
+#[derive(Debug, Clone)]
 struct IOInfo {
     expr: ExprRef,
     cell_id: usize,
@@ -109,8 +113,14 @@ impl Testbench {
         let mut ios = read_header(&header_tokens, &name_to_ref, ctx, sys, verbose)?;
 
         // see if we are missing any inputs from the testbench
-        let mut missing_inputs = find_missing_inputs(ctx, sys, &ios, verbose);
-        ios.append(&mut missing_inputs);
+        let missing_ios = find_missing_ios(ctx, sys, &ios, verbose);
+        let missing_inputs = missing_ios.iter().filter(|io| io.is_input).cloned();
+        ios.extend(missing_inputs);
+        let missing_outputs = missing_ios
+            .iter()
+            .filter(|io| !io.is_input)
+            .cloned()
+            .collect::<Vec<_>>();
 
         // read data
         let data = read_body(header_len, mmap, &ios);
@@ -136,8 +146,13 @@ impl Testbench {
             step_words,
             ios,
             signals_to_print,
+            missing_outputs,
         };
         Ok(tb)
+    }
+
+    pub fn has_missing_outputs(&self) -> bool {
+        !self.missing_outputs.is_empty()
     }
 
     /// Replaces all X assignments to inputs with a random or zero value.
@@ -266,6 +281,7 @@ impl Testbench {
                             );
                         }
                     }
+                    println!("{}", actual_value.to_bit_string());
                 }
             }
             offset += io.words;
@@ -311,29 +327,39 @@ fn is_cell_x(token: &[u8]) -> bool {
     matches!(token, b"x" | b"X")
 }
 
-fn find_missing_inputs(
+fn find_missing_ios(
     ctx: &Context,
     sys: &TransitionSystem,
     ios: &[IOInfo],
     verbose: bool,
 ) -> Vec<IOInfo> {
     let mut out = Vec::new();
-    for (input, _) in sys.get_signals(|s| s.kind == SignalKind::Input) {
-        let included = ios.iter().any(|i| i.is_input && i.expr == input);
+    for (sys_io, sys_io_info) in sys.get_signals(|s| s.is_input() || s.is_output()) {
+        let included = ios.iter().any(|i| i.expr == sys_io);
         if !included {
-            let width = input.get_bv_type(ctx).unwrap();
-            let name = input.get_symbol_name(ctx).unwrap();
-            if verbose {
-                println!("Input `{name}` : bv<{width}> is missing from the testbench.");
+            let name = sys_io
+                .get_symbol_name(ctx)
+                .unwrap_or_else(|| ctx.get(sys_io_info.name.unwrap()));
+            if name != CHANGE_COUNT_OUTPUT_NAME {
+                let width = sys_io.get_bv_type(ctx).unwrap();
+
+                if verbose {
+                    let tpe = if sys_io_info.is_input() {
+                        "Input"
+                    } else {
+                        "Output"
+                    };
+                    println!("{tpe} `{name}` : bv<{width}> is missing from the testbench.");
+                }
+                out.push(IOInfo {
+                    expr: sys_io,
+                    cell_id: usize::MAX,
+                    words: width_to_words(width + 1), // one extra bit to indicate X
+                    width,
+                    is_input: sys_io_info.is_input(),
+                    name: name.to_string(),
+                })
             }
-            out.push(IOInfo {
-                expr: input,
-                cell_id: usize::MAX,
-                words: width_to_words(width + 1), // one extra bit to indicate X
-                width,
-                is_input: true,
-                name: name.to_string(),
-            })
         }
     }
     out
