@@ -48,3 +48,14 @@ fn test_decoder_original() {
         false,
     );
 }
+
+#[test]
+fn test_sha3_w2() {
+    do_test(
+        "sha3_w2.replace_literals.btor",
+        "sha3.keccak_tb.csv",
+        "any",
+        "bitwuzla",
+        true,
+    );
+}

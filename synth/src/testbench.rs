@@ -286,7 +286,9 @@ impl Testbench {
             for io in self.ios.iter() {
                 let io_words = &words[offset..(offset + io.words)];
                 if !is_x(io_words) {
-                    let value = Value::from_words(io_words).to_bit_string(io.width);
+                    let non_x_num_words = width_to_words(io.width);
+                    let non_x_words = &io_words[0..non_x_num_words];
+                    let value = Value::from_words(non_x_words).to_bit_string(io.width);
                     let value_expr = bit_string_to_smt(smt_ctx, &value);
                     let io_at_step = enc.get_at(ctx, smt_ctx, io.expr, step_id);
                     smt_ctx.assert(smt_ctx.eq(io_at_step, value_expr))?;
