@@ -281,7 +281,6 @@ impl Testbench {
                             );
                         }
                     }
-                    println!("{}", actual_value.to_bit_string());
                 }
             }
             offset += io.words;
