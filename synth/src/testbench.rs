@@ -2,9 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::repair::{
-    bit_string_to_smt, classify_state, CHANGE_COUNT_OUTPUT_NAME, CHANGE_COUNT_WIDTH,
-};
+use crate::repair::{bit_string_to_smt, classify_state, CHANGE_COUNT_OUTPUT_NAME};
 use libpatron::ir::*;
 use libpatron::mc::{Simulator, TransitionSystemEncoding};
 use libpatron::sim::interpreter::{InitKind, InitValueGenerator, ValueRef};
