@@ -400,7 +400,11 @@ fn read_header(
         let name = String::from_utf8_lossy(cell);
         if let Some(signal_ref) = name_to_ref.get(name.as_ref()) {
             let signal = sys.get_signal(*signal_ref).unwrap();
-            if matches!(signal.kind, SignalKind::Input | SignalKind::Output) {
+            let is_io = signal.is_input() || signal.is_output();
+            if signal.is_input() && signal.is_output() {
+                todo!("deal correctly with signals that are both, input and output");
+            }
+            if is_io {
                 let width = signal_ref.get_bv_type(ctx).unwrap();
                 out.push(IOInfo {
                     expr: *signal_ref,

@@ -324,6 +324,11 @@ pub fn add_change_count(
         }
     };
     let name_ref = ctx.add_node(CHANGE_COUNT_OUTPUT_NAME);
-    sys.add_signal(sum, SignalKind::Output, Some(name_ref));
+    sys.add_signal(
+        sum,
+        SignalKind::Node,
+        SignalLabels::output(),
+        Some(name_ref),
+    );
     sum
 }
