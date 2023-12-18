@@ -15,7 +15,7 @@ trait Solver {
   def supportsSoftAssert:             Boolean
   def supportsUninterpretedSorts:     Boolean
 
-  def createContext(debugOn: Boolean = false): SolverContext
+  def createContext(debugOn: Boolean = false, dumpFile: Option[os.Path] = None): SolverContext
 }
 
 trait SolverContext {

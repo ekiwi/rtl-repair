@@ -28,6 +28,7 @@ case class Config(
   // set debugSolver to true to see commands sent to SMT solver
   filterSolutions: Boolean = false, // filters out solutions that result in the exact same circuit
   traceSim:        Boolean = false, // prints out state value for every simulation step
+  smtDump:         Option[os.Path] = None, // file to write all SMT commands to
   debugSolver:     Boolean = false,
   unroll:          Boolean = false,
   verbose:         Boolean = false) {
@@ -131,4 +132,8 @@ class ArgumentParser extends OptionParser[Arguments]("synthesizer") {
   opt[Unit]("trace-sim")
     .action((_, args) => args.copy(config = args.config.doTraceSim()))
     .text("prints out state value in every simulation step")
+  opt[String]("smt-dump").action { (a, args) =>
+    args.copy(config = args.config.copy(smtDump = Some(os.Path(a, os.pwd))))
+  }
+    .text("file to write all SMT commands to")
 }

@@ -4,6 +4,7 @@
 
 package maltese.smt
 
+import java.io.PrintWriter
 import scala.collection.mutable
 
 object Yices2SMTLib extends Solver {
@@ -14,7 +15,8 @@ object Yices2SMTLib extends Solver {
   override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = false
   override def supportsSoftAssert = false
-  override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
+  override def createContext(debugOn: Boolean = false, dumpFile: Option[os.Path] = None): SolverContext =
+    new SMTLibSolverContext(cmd, this, debugOn, dumpFile)
 }
 
 object BoolectorSMTLib extends Solver {
@@ -25,8 +27,8 @@ object BoolectorSMTLib extends Solver {
   override def supportsUninterpretedSorts = false
   override def supportsQuantifiers = false
   override def supportsSoftAssert = false
-  override def createContext(debugOn: Boolean = false): SolverContext = {
-    val ctx = new SMTLibSolverContext(cmd, this, debugOn)
+  override def createContext(debugOn: Boolean = false, dumpFile: Option[os.Path] = None): SolverContext = {
+    val ctx = new SMTLibSolverContext(cmd, this, debugOn, dumpFile)
     // wa always want to produce models
     ctx.runCommand(SetOption("produce-models", "true"))
     ctx
@@ -41,8 +43,8 @@ object BitwuzlaSMTLib extends Solver {
   override def supportsUninterpretedSorts = false
   override def supportsQuantifiers = false
   override def supportsSoftAssert = false
-  override def createContext(debugOn: Boolean = false): SolverContext = {
-    val ctx = new SMTLibSolverContext(cmd, this, debugOn)
+  override def createContext(debugOn: Boolean = false, dumpFile: Option[os.Path] = None): SolverContext = {
+    val ctx = new SMTLibSolverContext(cmd, this, debugOn, dumpFile)
     // wa always want to produce models
     ctx.runCommand(SetOption("produce-models", "true"))
     ctx
@@ -57,7 +59,8 @@ object CVC4SMTLib extends Solver {
   override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = true
   override def supportsSoftAssert = false
-  override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
+  override def createContext(debugOn: Boolean = false, dumpFile: Option[os.Path] = None): SolverContext =
+    new SMTLibSolverContext(cmd, this, debugOn, dumpFile)
 }
 
 object Z3SMTLib extends Solver {
@@ -68,7 +71,8 @@ object Z3SMTLib extends Solver {
   override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = true
   override def supportsSoftAssert = true
-  override def createContext(debugOn: Boolean = false): SolverContext = new SMTLibSolverContext(cmd, this, debugOn)
+  override def createContext(debugOn: Boolean = false, dumpFile: Option[os.Path] = None): SolverContext =
+    new SMTLibSolverContext(cmd, this, debugOn, dumpFile)
 }
 
 object OptiMathSatSMTLib extends Solver {
@@ -79,11 +83,12 @@ object OptiMathSatSMTLib extends Solver {
   override def supportsUninterpretedSorts = true
   override def supportsQuantifiers = true
   override def supportsSoftAssert = true
-  override def createContext(debugOn: Boolean = false): SolverContext = new OptiMathSatContext(cmd, debugOn)
+  override def createContext(debugOn: Boolean = false, dumpFile: Option[os.Path] = None): SolverContext =
+    new OptiMathSatContext(cmd, debugOn, dumpFile)
 }
 
-private class OptiMathSatContext(cmd: List[String], debug: Boolean)
-    extends SMTLibSolverContext(cmd, OptiMathSatSMTLib, debug) {
+private class OptiMathSatContext(cmd: List[String], debug: Boolean, dumpFile: Option[os.Path])
+    extends SMTLibSolverContext(cmd, OptiMathSatSMTLib, debug, dumpFile) {
 
   // tracks if we currently have any soft asserts
   private val hasSoftAssert = mutable.Stack[Boolean]()
@@ -120,7 +125,9 @@ private class OptiMathSatContext(cmd: List[String], debug: Boolean)
 }
 
 /** provides basic facilities to interact with any SMT solver that supports a SMTLib base textual interface */
-private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: Boolean) extends SolverContext {
+private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: Boolean, dumpFile: Option[os.Path])
+    extends SolverContext {
+  private val dumpStream = dumpFile.map(f => new PrintWriter(os.write.outputStream(f)))
   private var _stackDepth: Int = 0
   override def stackDepth: Int = _stackDepth
   override def push(): Unit = {
@@ -173,6 +180,10 @@ private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: 
     try {
       proc.stdin.flush()
     } catch { case _: java.io.IOException => /* ignore any IO exceptions */ }
+    dumpStream.foreach { s =>
+      s.flush()
+      s.close()
+    }
     if (proc.isAlive()) {
       Thread.sleep(5)
       proc.destroyForcibly()
@@ -208,6 +219,7 @@ private class SMTLibSolverContext(cmd: List[String], val solver: Solver, debug: 
   private val proc = os.proc(cmd).spawn()
   protected def writeCommand(str: String): Unit = {
     if (debug) println(s"$str")
+    dumpStream.foreach(s => s.write(str + "\n"))
     proc.stdin.write(str + "\n")
   }
   private def readResponse(): Option[String] = {

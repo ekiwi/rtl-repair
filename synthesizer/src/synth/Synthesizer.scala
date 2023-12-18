@@ -211,7 +211,7 @@ object Synthesizer {
   def startSolver(config: Config): SolverContext = {
     // create solver context
     val solver = config.solver
-    val ctx = solver.createContext(debugOn = config.debugSolver)
+    val ctx = solver.createContext(debugOn = config.debugSolver, dumpFile = config.smtDump)
     if (solver.name.contains("z3")) {
       ctx.setLogic("ALL")
     } else if (solver.supportsUninterpretedSorts) {
