@@ -8,6 +8,7 @@ mod repair;
 mod testbench;
 
 use crate::basic::basic_repair;
+use crate::filters::can_be_repaired_from_arbitrary_state;
 use crate::incremental::{IncrementalConf, IncrementalRepair};
 use crate::repair::{add_change_count, create_smt_ctx, RepairContext, RepairVars};
 use crate::testbench::*;
@@ -204,11 +205,13 @@ fn main() {
     // call to the synthesizer
     let start_synth = std::time::Instant::now();
 
+    let fail_at = res.first_fail_at.unwrap();
+
     // start solver
     let (mut smt_ctx, mut enc) =
         start_solver(&args, &mut ctx, &sys).expect("Failed to start SMT solver!");
 
-    let repair_ctx = RepairContext {
+    let mut repair_ctx = RepairContext {
         ctx: &mut ctx,
         sys: &sys,
         sim: &mut sim,
@@ -220,9 +223,21 @@ fn main() {
         solver: args.solver.cmd(),
         verbose: args.verbose,
     };
+
+    // quick conservative filter check before going to the real synthesizer
+    if !can_be_repaired_from_arbitrary_state(&mut repair_ctx, fail_at)
+        .expect("failed to run filter")
+    {
+        if args.verbose {
+            println!("Cannot be repaired, even when we start from an arbitrary state!");
+        }
+        print_cannot_repair();
+        return;
+    }
+
     let repair = if args.incremental {
         let incremental_conf = IncrementalConf {
-            fail_at: res.first_fail_at.unwrap(),
+            fail_at,
             pask_k_step_size: args.pask_k_step_size,
             max_repair_window_size: args.max_repair_window_size,
             max_solutions: 1,
