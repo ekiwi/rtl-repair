@@ -29,7 +29,9 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
     rctx.enc.init_at(rctx.ctx, rctx.smt_ctx, start_step)?;
 
     // constrain starting state to that from the simulator
-    constrain_starting_state(rctx, start_step)?;
+    // constrain_starting_state(rctx, start_step)?;
+
+    apply_state_to_sys(rctx);
 
     let start_unroll = std::time::Instant::now();
     // unroll system and constrain inputs and outputs

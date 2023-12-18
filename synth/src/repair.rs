@@ -16,7 +16,7 @@ pub type Result<T> = std::io::Result<T>;
 
 pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding> {
     pub ctx: &'a mut Context,
-    pub sys: &'a TransitionSystem,
+    pub sys: &'a mut TransitionSystem,
     pub sim: &'a mut S,
     pub synth_vars: &'a RepairVars,
     pub tb: &'a Testbench,
@@ -69,10 +69,10 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
     rctx: &mut RepairContext<S, E>,
     start_step: StepInt,
 ) -> Result<()> {
-    for state in rctx
+    for (_, state) in rctx
         .sys
         .states()
-        .filter(|s| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
+        .filter(|(_, s)| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
     {
         let value = rctx.sim.get(state.symbol).unwrap();
         let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
@@ -80,6 +80,33 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
             .enc
             .get_at(rctx.ctx, rctx.smt_ctx, state.symbol, start_step);
         rctx.smt_ctx.assert(rctx.smt_ctx.eq(symbol, value_expr))?;
+    }
+    Ok(())
+}
+
+pub fn apply_state_to_sys<S: Simulator, E: TransitionSystemEncoding>(
+    rctx: &mut RepairContext<S, E>,
+) -> Result<()> {
+    let mut updates = Vec::new();
+    for (state_ref, state) in rctx
+        .sys
+        .states()
+        .filter(|(_, s)| !rctx.synth_vars.is_repair_var(s.symbol))
+    {
+        let width = state.symbol.get_bv_type(rctx.ctx).unwrap();
+        let value = rctx.sim.get(state.symbol).unwrap();
+        println!(
+            "{} = {}",
+            state.symbol.get_symbol_name(rctx.ctx).unwrap(),
+            value.to_bit_string()
+        );
+        let lit = rctx
+            .ctx
+            .bv_lit(value.to_u64().expect("does not fit"), width);
+        updates.push((state_ref, lit));
+    }
+    for (state_ref, lit) in updates {
+        rctx.sys.modify_state(state_ref, |s| s.init = Some(lit));
     }
     Ok(())
 }
@@ -139,7 +166,7 @@ impl RepairVars {
         let mut change = Vec::new();
         let mut free = Vec::new();
 
-        for state in sys.states() {
+        for (_, state) in sys.states() {
             let name = state.symbol.get_symbol_name(ctx).unwrap();
             match classify_state(name) {
                 StateType::ChangeVar => {

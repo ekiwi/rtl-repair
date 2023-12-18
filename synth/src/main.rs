@@ -213,7 +213,7 @@ fn main() {
 
     let mut repair_ctx = RepairContext {
         ctx: &mut ctx,
-        sys: &sys,
+        sys: &mut sys,
         sim: &mut sim,
         synth_vars: &synth_vars,
         tb: &tb,
