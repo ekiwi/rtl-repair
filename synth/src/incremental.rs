@@ -174,18 +174,7 @@ where
     }
 
     fn constrain_changes(&mut self, num_changes: u32, start_step: StepInt) -> Result<()> {
-        let change_count_expr = self.rctx.enc.get_at(
-            self.rctx.ctx,
-            &mut self.rctx.smt_ctx,
-            self.rctx.change_count_ref,
-            start_step,
-        );
-        let constraint = self.rctx.smt_ctx.eq(
-            change_count_expr,
-            self.rctx
-                .smt_ctx
-                .binary(CHANGE_COUNT_WIDTH as usize, num_changes),
-        );
+        let constraint = constrain_changes(&mut self.rctx, num_changes, start_step);
         self.rctx.smt_ctx.assert(constraint)?;
         Ok(())
     }

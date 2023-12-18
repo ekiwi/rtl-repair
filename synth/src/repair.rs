@@ -27,20 +27,30 @@ pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding> {
     pub verbose: bool,
 }
 
+pub fn constrain_changes<S: Simulator, E: TransitionSystemEncoding>(
+    rctx: &mut RepairContext<S, E>,
+    num_changes: u32,
+    start_step: StepInt,
+) -> smt::SExpr {
+    let change_count_width = rctx.change_count_ref.get_bv_type(rctx.ctx).unwrap();
+    let change_count_expr =
+        rctx.enc
+            .get_at(rctx.ctx, rctx.smt_ctx, rctx.change_count_ref, start_step);
+    let constraint = rctx.smt_ctx.eq(
+        change_count_expr,
+        rctx.smt_ctx
+            .binary(change_count_width as usize, num_changes),
+    );
+    constraint
+}
+
 pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding>(
     rctx: &mut RepairContext<S, E>,
     start_step: StepInt,
 ) -> Result<u32> {
     let mut num_changes = 1u32;
-    let change_count_expr =
-        rctx.enc
-            .get_at(rctx.ctx, rctx.smt_ctx, rctx.change_count_ref, start_step);
     loop {
-        let constraint = rctx.smt_ctx.eq(
-            change_count_expr,
-            rctx.smt_ctx
-                .binary(CHANGE_COUNT_WIDTH as usize, num_changes),
-        );
+        let constraint = constrain_changes(rctx, num_changes, start_step);
         match check_assuming(rctx.smt_ctx, constraint, &rctx.solver)? {
             smt::Response::Sat => {
                 // found a solution
@@ -301,14 +311,14 @@ pub struct RepairAssignment {
 }
 
 pub const CHANGE_COUNT_OUTPUT_NAME: &str = "__change_count";
-pub const CHANGE_COUNT_WIDTH: WidthInt = 16;
 
 pub fn add_change_count(
     ctx: &mut Context,
     sys: &mut TransitionSystem,
     change: &[ExprRef],
 ) -> ExprRef {
-    let width = CHANGE_COUNT_WIDTH;
+    let max_change_count_value = change.len() as u64;
+    let width = u64::BITS - max_change_count_value.leading_zeros();
     let sum = match change.len() {
         0 => ctx.bv_lit(0, width),
         1 => ctx.zero_extend(change[0], width - 1),
