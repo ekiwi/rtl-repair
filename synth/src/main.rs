@@ -2,17 +2,24 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 mod basic;
+mod filters;
 mod incremental;
 mod repair;
 mod testbench;
 
 use crate::basic::basic_repair;
 use crate::incremental::{IncrementalConf, IncrementalRepair};
-use crate::repair::{add_change_count, RepairConfig, RepairContext, RepairVars};
+use crate::repair::{add_change_count, create_smt_ctx, RepairContext, RepairVars};
 use crate::testbench::*;
 use clap::{arg, Parser, ValueEnum};
-use libpatron::ir::{replace_anonymous_inputs_with_zero, simplify_expressions, SerializableIrNode};
-use libpatron::mc::{Simulator, SmtSolverCmd, BITWUZLA_CMD, YICES2_CMD};
+use easy_smt as smt;
+use libpatron::ir::{
+    replace_anonymous_inputs_with_zero, simplify_expressions, Context, SerializableIrNode,
+    TransitionSystem,
+};
+use libpatron::mc::{
+    Simulator, SmtSolverCmd, TransitionSystemEncoding, UnrollSmtEncoding, BITWUZLA_CMD, YICES2_CMD,
+};
 use libpatron::sim::interpreter::InitKind;
 use libpatron::*;
 use serde_json::json;
@@ -196,19 +203,22 @@ fn main() {
 
     // call to the synthesizer
     let start_synth = std::time::Instant::now();
-    let repair_conf = RepairConfig {
-        solver: args.solver.cmd(),
-        verbose: args.verbose,
-        dump_file: args.smt_dump.clone(),
-    };
+
+    // start solver
+    let (mut smt_ctx, mut enc) =
+        start_solver(&args, &mut ctx, &sys).expect("Failed to start SMT solver!");
+
     let repair_ctx = RepairContext {
         ctx: &mut ctx,
         sys: &sys,
         sim: &mut sim,
         synth_vars: &synth_vars,
         tb: &tb,
-        conf: repair_conf.clone(),
         change_count_ref,
+        smt_ctx: &mut smt_ctx,
+        enc: &mut enc,
+        solver: args.solver.cmd(),
+        verbose: args.verbose,
     };
     let repair = if args.incremental {
         let incremental_conf = IncrementalConf {
@@ -257,6 +267,17 @@ fn main() {
     });
 
     print_result(&res);
+}
+
+fn start_solver(
+    args: &Args,
+    ctx: &mut Context,
+    sys: &TransitionSystem,
+) -> std::io::Result<(smt::Context, UnrollSmtEncoding)> {
+    let mut smt_ctx = create_smt_ctx(&args.solver.cmd(), args.smt_dump.as_deref())?;
+    let enc = UnrollSmtEncoding::new(ctx, sys, true);
+    enc.define_header(&mut smt_ctx)?;
+    Ok((smt_ctx, enc))
 }
 
 fn print_cannot_repair() {

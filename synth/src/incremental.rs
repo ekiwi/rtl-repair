@@ -4,7 +4,6 @@
 
 use crate::basic::generate_minimal_repair;
 use crate::testbench::{RunConfig, RunResult, StepInt, StopAt};
-use easy_smt as smt;
 use easy_smt::Response;
 use libpatron::mc::*;
 use std::collections::HashMap;
@@ -19,29 +18,26 @@ pub struct IncrementalConf {
     pub max_solutions: usize,
 }
 
-pub struct IncrementalRepair<'a, S: Simulator> {
-    rctx: RepairContext<'a, S>,
+pub struct IncrementalRepair<'a, S: Simulator, E: TransitionSystemEncoding> {
+    rctx: RepairContext<'a, S, E>,
     conf: &'a IncrementalConf,
     snapshots: HashMap<StepInt, S::SnapshotId>,
-    smt_ctx: smt::Context,
 }
 
-impl<'a, S: Simulator> IncrementalRepair<'a, S>
+impl<'a, S: Simulator, E: TransitionSystemEncoding> IncrementalRepair<'a, S, E>
 where
     S: Simulator,
     <S as Simulator>::SnapshotId: Clone + Debug,
 {
     pub fn new(
-        rctx: RepairContext<'a, S>,
+        rctx: RepairContext<'a, S, E>,
         conf: &'a IncrementalConf,
         snapshots: HashMap<StepInt, S::SnapshotId>,
     ) -> Result<Self> {
-        let smt_ctx = create_smt_ctx(&rctx.conf.solver, rctx.conf.dump_file.as_deref())?;
         Ok(Self {
             rctx,
             snapshots,
             conf,
-            smt_ctx,
         })
     }
 
@@ -67,24 +63,20 @@ where
             assert_eq!(res.first_fail_at, Some(self.conf.fail_at), "{conf:?}");
 
             // start new SMT context to make it easy to later revert everything
-            self.smt_ctx.push_many(1)?;
+            self.rctx.smt_ctx.push_many(1)?;
 
             // restore correct starting state for SMT encoding
             self.update_sim_state_to_step(step_range.start);
 
             // generate one minimal repair
-            let r = generate_minimal_repair(
-                &mut self.rctx,
-                &mut self.smt_ctx,
-                step_range.start,
-                Some(step_range.end),
-            )?;
+            let r =
+                generate_minimal_repair(&mut self.rctx, step_range.start, Some(step_range.end))?;
             let mut failures_at = Vec::new();
             let mut correct_solutions = Vec::new();
 
-            if let Some((r0, num_changes, enc)) = r {
+            if let Some((r0, num_changes)) = r {
                 // add a "permanent" change count constraint
-                self.constrain_changes(num_changes, &enc, step_range.start)?;
+                self.constrain_changes(num_changes, step_range.start)?;
 
                 // iterate over possible solutions
                 let mut maybe_repair = Some(r0);
@@ -116,16 +108,16 @@ where
                     // try to find a different solution
                     self.rctx.synth_vars.block_assignment(
                         self.rctx.ctx,
-                        &mut self.smt_ctx,
-                        &enc,
+                        &mut self.rctx.smt_ctx,
+                        self.rctx.enc,
                         &repair,
                         step_range.start,
                     )?;
-                    maybe_repair = match self.smt_ctx.check()? {
+                    maybe_repair = match self.rctx.smt_ctx.check()? {
                         Response::Sat => Some(self.rctx.synth_vars.read_assignment(
                             self.rctx.ctx,
-                            &mut self.smt_ctx,
-                            &enc,
+                            &mut self.rctx.smt_ctx,
+                            self.rctx.enc,
                             step_range.start,
                         )),
                         Response::Unsat | Response::Unknown => None,
@@ -134,7 +126,7 @@ where
             } else {
                 println!("No repair found for current window size!");
             }
-            self.smt_ctx.pop_many(1)?;
+            self.rctx.smt_ctx.pop_many(1)?;
 
             if !correct_solutions.is_empty() {
                 return Ok(Some(correct_solutions));
@@ -167,7 +159,7 @@ where
     }
 
     fn verbose(&self) -> bool {
-        self.rctx.conf.verbose
+        self.rctx.verbose
     }
 
     fn test_repair(&mut self, repair: &RepairAssignment) -> RunResult {
@@ -181,24 +173,20 @@ where
         self.rctx.tb.run(self.rctx.sim, &conf, false)
     }
 
-    fn constrain_changes(
-        &mut self,
-        num_changes: u32,
-        enc: &impl TransitionSystemEncoding,
-        start_step: StepInt,
-    ) -> Result<()> {
-        let change_count_expr = enc.get_at(
+    fn constrain_changes(&mut self, num_changes: u32, start_step: StepInt) -> Result<()> {
+        let change_count_expr = self.rctx.enc.get_at(
             self.rctx.ctx,
-            &mut self.smt_ctx,
+            &mut self.rctx.smt_ctx,
             self.rctx.change_count_ref,
             start_step,
         );
-        let constraint = self.smt_ctx.eq(
+        let constraint = self.rctx.smt_ctx.eq(
             change_count_expr,
-            self.smt_ctx
+            self.rctx
+                .smt_ctx
                 .binary(CHANGE_COUNT_WIDTH as usize, num_changes),
         );
-        self.smt_ctx.assert(constraint)?;
+        self.rctx.smt_ctx.assert(constraint)?;
         Ok(())
     }
 

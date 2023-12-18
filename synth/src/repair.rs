@@ -14,39 +14,34 @@ use std::str::FromStr;
 
 pub type Result<T> = std::io::Result<T>;
 
-#[derive(Debug, Clone)]
-pub struct RepairConfig {
-    pub solver: SmtSolverCmd,
-    pub verbose: bool,
-    pub dump_file: Option<String>,
-}
-
-pub struct RepairContext<'a, S: Simulator> {
+pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding> {
     pub ctx: &'a mut Context,
     pub sys: &'a TransitionSystem,
     pub sim: &'a mut S,
     pub synth_vars: &'a RepairVars,
     pub tb: &'a Testbench,
-    pub conf: RepairConfig,
     pub change_count_ref: ExprRef,
+    pub smt_ctx: &'a mut smt::Context,
+    pub enc: &'a mut E,
+    pub solver: SmtSolverCmd,
+    pub verbose: bool,
 }
 
-pub fn minimize_changes(
-    ctx: &Context,
-    smt_ctx: &mut smt::Context,
-    solver: &SmtSolverCmd,
-    change_count_ref: ExprRef,
-    enc: &impl TransitionSystemEncoding,
+pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding>(
+    rctx: &mut RepairContext<S, E>,
     start_step: StepInt,
 ) -> Result<u32> {
     let mut num_changes = 1u32;
-    let change_count_expr = enc.get_at(ctx, smt_ctx, change_count_ref, start_step);
+    let change_count_expr =
+        rctx.enc
+            .get_at(rctx.ctx, rctx.smt_ctx, rctx.change_count_ref, start_step);
     loop {
-        let constraint = smt_ctx.eq(
+        let constraint = rctx.smt_ctx.eq(
             change_count_expr,
-            smt_ctx.binary(CHANGE_COUNT_WIDTH as usize, num_changes),
+            rctx.smt_ctx
+                .binary(CHANGE_COUNT_WIDTH as usize, num_changes),
         );
-        match check_assuming(smt_ctx, constraint, solver)? {
+        match check_assuming(rctx.smt_ctx, constraint, &rctx.solver)? {
             smt::Response::Sat => {
                 // found a solution
                 return Ok(num_changes);
@@ -55,28 +50,26 @@ pub fn minimize_changes(
             smt::Response::Unknown => panic!("SMT solver returned unknown!"),
         }
         // remove assertion for next round
-        check_assuming_end(smt_ctx, solver)?;
+        check_assuming_end(rctx.smt_ctx, &rctx.solver)?;
         num_changes += 1;
     }
 }
 
-pub fn constrain_starting_state(
-    ctx: &Context,
-    sys: &TransitionSystem,
-    synth_vars: &RepairVars,
-    sim: &impl Simulator,
-    enc: &impl TransitionSystemEncoding,
-    smt_ctx: &mut smt::Context,
+pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
+    rctx: &mut RepairContext<S, E>,
     start_step: StepInt,
 ) -> Result<()> {
-    for state in sys
+    for state in rctx
+        .sys
         .states()
-        .filter(|s| s.init.is_none() && !synth_vars.is_repair_var(s.symbol))
+        .filter(|s| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
     {
-        let value = sim.get(state.symbol).unwrap();
-        let value_expr = value_to_smt_expr(smt_ctx, value);
-        let symbol = enc.get_at(ctx, smt_ctx, state.symbol, start_step);
-        smt_ctx.assert(smt_ctx.eq(symbol, value_expr))?;
+        let value = rctx.sim.get(state.symbol).unwrap();
+        let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
+        let symbol = rctx
+            .enc
+            .get_at(rctx.ctx, rctx.smt_ctx, state.symbol, start_step);
+        rctx.smt_ctx.assert(rctx.smt_ctx.eq(symbol, value_expr))?;
     }
     Ok(())
 }

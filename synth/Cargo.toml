@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 clap =  { version = "4.4.11", features = ["derive"] }
 easy-smt = "0.2.1"
-libpatron = "0.11.2"
+libpatron = "0.13.0"
 memmap2 = "0.9.0"
 num-bigint = "0.4.4"
 num-traits = "0.2.17"
