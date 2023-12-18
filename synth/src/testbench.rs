@@ -298,8 +298,12 @@ impl Testbench {
             let range = self.step_range(step_id);
             let words = &self.data[range];
 
+            // we can encode everything into a single assert or into multiple asserts
+            let single_assert = false;
+
             // apply all io constraints in this step
             let mut offset = 0;
+            let mut constraints = Vec::with_capacity(self.ios.len());
             for io in self.ios.iter() {
                 let io_words = &words[offset..(offset + io.words)];
                 if !is_x(io_words) {
@@ -308,9 +312,17 @@ impl Testbench {
                     let value = ValueRef::new(non_x_words, io.width).to_bit_string();
                     let value_expr = bit_string_to_smt(smt_ctx, &value);
                     let io_at_step = enc.get_at(ctx, smt_ctx, io.expr, step_id);
-                    smt_ctx.assert(smt_ctx.eq(io_at_step, value_expr))?;
+                    let constraint = smt_ctx.eq(io_at_step, value_expr);
+                    if single_assert {
+                        constraints.push(constraint);
+                    } else {
+                        smt_ctx.assert(constraint)?;
+                    }
                 }
                 offset += io.words;
+            }
+            if !constraints.is_empty() {
+                smt_ctx.assert(smt_ctx.and_many(constraints))?;
             }
         }
         Ok(())
