@@ -718,7 +718,7 @@ module	sdspi(i_clk,
 			fifo_a_wr <= 1'b1;
 			fifo_a_wr_mask <= 4'b1111;
 			fifo_a_wr_addr <= fifo_wb_addr;
-            fifo_a_wr_data <= wb_data;
+            fifo_a_wr_data <= {wb_data[7:0],wb_data[15:8],wb_data[23:16],wb_data[31:24]};
 		end else if (pre_fifo_a_wr)
 		begin
 			fifo_a_wr <= 1'b1;
@@ -747,7 +747,7 @@ module	sdspi(i_clk,
 			fifo_b_wr <= 1'b1;
 			fifo_b_wr_mask <= 4'b1111;
 			fifo_b_wr_addr <= fifo_wb_addr;
-			fifo_b_wr_data <= wb_data;
+			fifo_b_wr_data <= {wb_data[7:0],wb_data[15:8],wb_data[23:16],wb_data[31:24]};
 		end else if (pre_fifo_b_wr)
 		begin
 			fifo_b_wr <= 1'b1;

@@ -573,27 +573,19 @@ module	sdspi(i_clk,
 			o_wb_data <= fifo_b_reg;
 		endcase
 
-/*
+	reg dly_stb;
+	initial dly_stb = 0;
 	always @(posedge i_clk)
-		o_wb_ack <= wb_stb;
-*/
-/* fix begin */
-    reg dly_stb;
-    initial dly_stb = 0;
-    always @(posedge i_clk) begin
-        if (!i_wb_cyc)
-            dly_stb <= 0;
-        else
-            dly_stb <= wb_stb;
-    end
-    initial o_wb_ack = 0;
-    always @(posedge i_clk) begin
-        if (!i_wb_cyc)
-            o_wb_ack <= 1'b0;
-        else
-            o_wb_ack <= dly_stb;
-    end
-/* fix end */
+		if (!i_wb_cyc)
+			dly_stb <= 0;
+		else
+			dly_stb <= wb_stb;
+	initial o_wb_ack = 0;
+	always @(posedge i_clk)
+		if (!i_wb_cyc)
+			o_wb_ack <= 1'b0;
+		else
+			o_wb_ack <= dly_stb;
 
 	initial	q_busy = 1'b1;
 	always @(posedge i_clk)
@@ -737,7 +729,7 @@ module	sdspi(i_clk,
 			fifo_a_wr <= 1'b1;
 			fifo_a_wr_mask <= 4'b1111;
 			fifo_a_wr_addr <= fifo_wb_addr;
-            fifo_a_wr_data <= wb_data;
+            fifo_a_wr_data <= {wb_data[7:0],wb_data[15:8],wb_data[23:16],wb_data[31:24]};
 		end else if (pre_fifo_a_wr)
 		begin
 			fifo_a_wr <= 1'b1;
@@ -766,7 +758,7 @@ module	sdspi(i_clk,
 			fifo_b_wr <= 1'b1;
 			fifo_b_wr_mask <= 4'b1111;
 			fifo_b_wr_addr <= fifo_wb_addr;
-			fifo_b_wr_data <= wb_data;
+			fifo_b_wr_data <= {wb_data[7:0],wb_data[15:8],wb_data[23:16],wb_data[31:24]};
 		end else if (pre_fifo_b_wr)
 		begin
 			fifo_b_wr <= 1'b1;
