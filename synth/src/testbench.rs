@@ -5,7 +5,7 @@
 use crate::repair::{bit_string_to_smt, classify_state, CHANGE_COUNT_OUTPUT_NAME};
 use libpatron::ir::*;
 use libpatron::mc::{Simulator, TransitionSystemEncoding};
-use libpatron::sim::interpreter::{InitKind, InitValueGenerator, ValueRef};
+use libpatron::sim::interpreter::{InitKind, InitValueGenerator};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 
@@ -129,7 +129,7 @@ impl Testbench {
         // generate signals to print if we are instructed to do so
         let mut signals_to_print = vec![];
         if verbose && trace_sim {
-            for state in sys.states() {
+            for (_, state) in sys.states() {
                 let expr = state.symbol;
                 let name = expr.get_symbol_name(ctx).unwrap();
                 if !classify_state(name).is_synth_var() && expr.get_type(ctx).is_bit_vector() {
@@ -510,7 +510,7 @@ fn trim(data: &[u8]) -> &[u8] {
 // debug function
 #[allow(dead_code)]
 pub fn print_states(ctx: &Context, sys: &TransitionSystem, sim: &impl Simulator) {
-    for state in sys.states() {
+    for (_, state) in sys.states() {
         if state.symbol.get_type(ctx).is_bit_vector() {
             let value_ref = sim.get(state.symbol).unwrap();
             let value = value_ref.to_bit_string();

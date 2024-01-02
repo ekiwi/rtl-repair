@@ -6,7 +6,6 @@ use crate::testbench::{StepInt, Testbench};
 use easy_smt as smt;
 use libpatron::ir::*;
 use libpatron::mc::*;
-use libpatron::sim::interpreter::{Value, ValueRef};
 use num_bigint::BigUint;
 use num_traits::identities::Zero;
 use serde_json::json;
@@ -69,10 +68,10 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
     rctx: &mut RepairContext<S, E>,
     start_step: StepInt,
 ) -> Result<()> {
-    for state in rctx
+    for (_, state) in rctx
         .sys
         .states()
-        .filter(|s| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
+        .filter(|(_, s)| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
     {
         let value = rctx.sim.get(state.symbol).unwrap();
         let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
@@ -139,7 +138,7 @@ impl RepairVars {
         let mut change = Vec::new();
         let mut free = Vec::new();
 
-        for state in sys.states() {
+        for (_, state) in sys.states() {
             let name = state.symbol.get_symbol_name(ctx).unwrap();
             match classify_state(name) {
                 StateType::ChangeVar => {
