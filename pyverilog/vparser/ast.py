@@ -440,6 +440,26 @@ class Partselect(Node):
             nodelist.append(self.lsb)
         return tuple(nodelist)
 
+class IndexedPartselect(Node):
+    """ [base +: stride] and [base -: stride] """
+    attr_names = ('is_plus',)
+
+    def __init__(self, var, base, stride, is_plus: bool, lineno=0):
+        self.lineno = lineno
+        self.var = var
+        self.base = base
+        self.stride = stride
+        self.is_plus = is_plus
+
+    def children(self):
+        nodelist = []
+        if self.var:
+            nodelist.append(self.var)
+        if self.base:
+            nodelist.append(self.base)
+        if self.stride:
+            nodelist.append(self.stride)
+        return tuple(nodelist)
 
 class Pointer(Node):
     attr_names = ()

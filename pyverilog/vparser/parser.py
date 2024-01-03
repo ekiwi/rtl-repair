@@ -933,13 +933,13 @@ def p_lpartselect_lpointer(p):
 
 def p_lpartselect_lpointer_plus(p):
     'lpartselect : pointer LBRACKET expression PLUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Plus(p[3], p[5]), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=True, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
 def p_lpartselect_lpointer_minus(p):
     'lpartselect : pointer LBRACKET expression MINUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Minus(p[3], p[5]), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=False, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
@@ -951,13 +951,13 @@ def p_lpartselect(p):
 
 def p_lpartselect_plus(p):
     'lpartselect : identifier LBRACKET expression PLUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Plus(p[3], p[5]), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=True, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
 def p_lpartselect_minus(p):
     'lpartselect : identifier LBRACKET expression MINUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Minus(p[3], p[5]), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=False, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
@@ -1361,15 +1361,13 @@ def p_partselect(p):
 
 def p_partselect_plus(p):
     'partselect : identifier LBRACKET expression PLUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Plus(
-        p[3], p[5], lineno=p.lineno(1)), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=True, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
 def p_partselect_minus(p):
     'partselect : identifier LBRACKET expression MINUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Minus(
-        p[3], p[5], lineno=p.lineno(1)), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=False, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
@@ -1381,15 +1379,13 @@ def p_partselect_pointer(p):
 
 def p_partselect_pointer_plus(p):
     'partselect : pointer LBRACKET expression PLUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Plus(
-        p[3], p[5], lineno=p.lineno(1)), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=True, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
 def p_partselect_pointer_minus(p):
     'partselect : pointer LBRACKET expression MINUSCOLON expression RBRACKET'
-    p[0] = Partselect(p[1], p[3], Minus(
-        p[3], p[5], lineno=p.lineno(1)), lineno=p.lineno(1))
+    p[0] = IndexedPartselect(p[1], p[3], p[5], is_plus=False, lineno=p.lineno(1))
     p.set_lineno(0, p.lineno(1))
 
 
