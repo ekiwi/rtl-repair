@@ -1,0 +1,17 @@
+# read_sources
+read_verilog axis_adapter.v
+
+hierarchy -top axis_adapter
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x axis_adapter.btor

@@ -3,33 +3,33 @@ module axis_fifo_wrapper #(
     parameter USER_WIDTH = 1
 )
 (
-    input logic clk,
-    input logic rst,
+    input clk,
+    input rst,
 
     /*
      * AXI input
      */
-    input  logic [DATA_WIDTH-1:0]  s_axis_tdata,
-    input  logic                   s_axis_tvalid,
-    output logic                   s_axis_tready,
-    input  logic                   s_axis_tlast,
-    input  logic [USER_WIDTH-1:0]  s_axis_tuser,
+    input  [DATA_WIDTH-1:0]  s_axis_tdata,
+    input                    s_axis_tvalid,
+    output                   s_axis_tready,
+    input                    s_axis_tlast,
+    input  [USER_WIDTH-1:0]  s_axis_tuser,
 
     /*
      * AXI output
      */
-    output logic [DATA_WIDTH-1:0]  m_axis_tdata,
-    output logic                   m_axis_tvalid,
-    input  logic                   m_axis_tready,
-    output logic                   m_axis_tlast,
-    output logic [USER_WIDTH-1:0]  m_axis_tuser,
+    output [DATA_WIDTH-1:0]  m_axis_tdata,
+    output                   m_axis_tvalid,
+    input                    m_axis_tready,
+    output                   m_axis_tlast,
+    output [USER_WIDTH-1:0]  m_axis_tuser,
 
     /*
      * Status
      */
-    output logic                   status_overflow,
-    output logic                   status_bad_frame,
-    output logic                   status_good_frame
+    output                   status_overflow,
+    output                   status_bad_frame,
+    output                   status_good_frame
 );
 
     axis_fifo #(

@@ -1,0 +1,18 @@
+# read_sources
+read_verilog llsdspi_bug_c1.v
+read_verilog sdspi.v
+
+hierarchy -top sdspi
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x sdspi_c1.btor
