@@ -121,10 +121,8 @@ class SynthesisTest(unittest.TestCase):
 
 class TestFpgaDebugBenchmarks(SynthesisTest):
 
-    @unittest.skip("TODO: support indexed part selector!")
     def test_s3(self):
-        changes = self.synth_success(s3_dir, "s3", solver="yices2", init="zero",
-                                     incremental=True, timeout=60)
+        self.synth_cannot_repair(s3_dir, "s3", solver="yices2", init="zero", incremental=True, timeout=60)
 
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):

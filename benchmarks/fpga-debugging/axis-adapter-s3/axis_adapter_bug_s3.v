@@ -75,6 +75,7 @@ localparam CYCLE_COUNT = EXPAND_BUS ? (OUTPUT_KEEP_WIDTH / INPUT_KEEP_WIDTH) : (
 localparam CYCLE_DATA_WIDTH = DATA_WIDTH / CYCLE_COUNT;
 localparam CYCLE_KEEP_WIDTH = KEEP_WIDTH / CYCLE_COUNT;
 
+/* DISABLED Simulation Only Construct
 // bus width assertions
 initial begin
     if (INPUT_DATA_WORD_WIDTH * INPUT_KEEP_WIDTH != INPUT_DATA_WIDTH) begin
@@ -92,6 +93,7 @@ initial begin
         $finish;
     end
 end
+*/
 
 // state register
 localparam [2:0]
