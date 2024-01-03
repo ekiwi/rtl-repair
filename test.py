@@ -633,6 +633,16 @@ class TestTypeInference(unittest.TestCase):
         expected = {None: 1, 2: 5, 4: 5}
         self.assertEqual(expected, hist)
 
+    def test_axis_adapter_widths(self):
+        """ This file contains the `indexed part selector`: [... +: ... ] """
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
+        ast = parse_verilog(s3_dir / "axis_adapter.v")
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        expected = {None: 4, 1: 69, 3: 5, 8: 11, 32: 27}
+        self.assertEqual(expected, hist)
+
 class TestExposeBranches(unittest.TestCase):
     """ unittests for code in rtlrepair/expose_branches.py """
 

@@ -98,6 +98,9 @@ class InferWidths(AstVisitor):
             lsb = self.eval(node.lsb)
             assert msb >= lsb >= 0, f"{msb}:{lsb}"
             width = msb - lsb + 1
+        elif isinstance(node, vast.IndexedPartselect):
+            stride = self.eval(node.stride)
+            width = stride
         elif isinstance(node, vast.Repeat):
             value_width = self.expr_width(node.value, None)
             times = self.eval(node.times)
@@ -120,7 +123,9 @@ class InferWidths(AstVisitor):
             else:
                 value, _ = parse_verilog_int_literal(node.value)
         elif isinstance(node, vast.Identifier):
-            assert node.name in self.params, f"Value of {node.name} not known at compile time. Not a constant?"
+            if not node.name in self.params:
+                print()
+            # assert node.name in self.params, f"Value of {node.name} not known at compile time. Not a constant?"
             value = self.params[node.name]
         elif isinstance(node, vast.Rvalue):
             value = self.eval(node.var)
