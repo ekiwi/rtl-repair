@@ -99,14 +99,20 @@ localparam [2:0]
     STATE_TRANSFER_IN = 3'd1,
     STATE_TRANSFER_OUT = 3'd2;
 
-reg [2:0] state_reg = STATE_IDLE, state_next;
+reg [2:0] state_reg = STATE_IDLE;
+reg [2:0] state_next;
 
-reg [7:0] cycle_count_reg = 0, cycle_count_next;
+reg [7:0] cycle_count_reg = 0;
+reg [7:0] cycle_count_next;
 
-reg [DATA_WIDTH-1:0] temp_tdata_reg = 0, temp_tdata_next;
-reg [KEEP_WIDTH-1:0] temp_tkeep_reg = 0, temp_tkeep_next;
-reg                  temp_tlast_reg = 0, temp_tlast_next;
-reg                  temp_tuser_reg = 0, temp_tuser_next;
+reg [DATA_WIDTH-1:0] temp_tdata_reg = 0;
+reg [DATA_WIDTH-1:0] temp_tdata_next;
+reg [KEEP_WIDTH-1:0] temp_tkeep_reg = 0;
+reg [KEEP_WIDTH-1:0] temp_tkeep_next;
+reg                  temp_tlast_reg = 0;
+reg                  temp_tlast_next;
+reg                  temp_tuser_reg = 0;
+reg                  temp_tuser_next;
 
 // internal datapath
 reg [OUTPUT_DATA_WIDTH-1:0] output_axis_tdata_int;
@@ -117,7 +123,8 @@ reg                         output_axis_tlast_int;
 reg                         output_axis_tuser_int;
 wire                        output_axis_tready_int_early;
 
-reg input_axis_tready_reg = 0, input_axis_tready_next;
+reg input_axis_tready_reg = 0;
+reg input_axis_tready_next;
 assign input_axis_tready = input_axis_tready_reg;
 
 always @* begin

@@ -1,0 +1,20 @@
+[project]
+directory = "."
+sources = ["axis_adapter.v"]
+toplevel = "axis_adapter"
+
+[[bugs]]
+name = "s3"
+original = "axis_adapter.v"
+buggy = "axis_adapter_bug_s3.v"
+
+[[testbenches]]
+name = "csv"
+table = "tb.csv"
+
+[[testbenches]]
+name = "verilog"
+sources = ["tb.v"]
+output = "output.txt"
+oracle = "tb.csv"
+timeout = 60.0
