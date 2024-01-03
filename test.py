@@ -34,6 +34,8 @@ i2c_dir = opencores_dir / "i2c"
 chisel_dir = benchmark_dir / "chisel"
 chisel_counter_dir = chisel_dir / "counter"
 paper_example_dir = benchmark_dir / "paper_example"
+fpga_debug_dir = benchmark_dir / "fpga-debugging"
+s3_dir = fpga_debug_dir / "axis-adapter-s3"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -116,6 +118,13 @@ class SynthesisTest(unittest.TestCase):
         self.assertEqual("cannot-repair", status)
         if _print_time:
             print(f"CANNOT-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
+
+class TestFpgaDebugBenchmarks(SynthesisTest):
+
+    @unittest.skip("TODO: support indexed part selector!")
+    def test_s3(self):
+        changes = self.synth_success(s3_dir, "s3", solver="yices2", init="zero",
+                                     incremental=True, timeout=60)
 
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
