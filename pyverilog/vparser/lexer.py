@@ -249,7 +249,7 @@ def t_error(t):
     t._error_foo(msg, t)
 
 # create one prototypical lexer instance
-_lexer = lex(optimize=1, lextab="verilog_lexer")
+_lexer = lex(optimize=1, lextab="ply_lexer")
 
 
 #################################################
@@ -276,9 +276,6 @@ class VerilogLexer(object):
 
     def get_directives(self):
         return tuple(self.lexer.directives)
-
-    def get_default_nettype(self):
-        return self.lexer.default_nettype
 
     def token(self):
         return self.lexer.token()

@@ -29,9 +29,7 @@ def parse_verilog(filename: Path, include: Path = None) -> vast.Source:
     include = [] if include is None else [str(include.resolve())]
     ast, directives = parse([filename],
                             preprocess_include=include,
-                            preprocess_define=[],
-                            outputdir=".",
-                            debug=True)
+                            preprocess_define=[])
     return ast
 
 
