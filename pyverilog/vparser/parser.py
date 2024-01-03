@@ -51,7 +51,6 @@ class VerilogParser(object):
 
     def __init__(self, outputdir=".", debug=True):
         self.lexer = VerilogLexer(error_func=self._lexer_error_func)
-        self.lexer.build()
 
         self.tokens = self.lexer.tokens
         pathlib.Path(outputdir).mkdir(parents=True, exist_ok=True)
