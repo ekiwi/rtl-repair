@@ -455,6 +455,18 @@ class ASTCodeGenerator(ConvertVisitor):
         rslt = template.render(template_dict)
         return rslt
 
+    def visit_IndexedPartselect(self, node):
+        filename = getfilename(node)
+        template = self.get_template(filename)
+        template_dict = {
+            'var': self.visit(node.var),
+            'base': del_space(del_paren(self.visit(node.base))),
+            'stride': del_space(del_paren(self.visit(node.stride))),
+            'sign': '+' if node.is_plus else '-',
+        }
+        rslt = template.render(template_dict)
+        return rslt
+
     def visit_Pointer(self, node):
         filename = getfilename(node)
         template = self.get_template(filename)

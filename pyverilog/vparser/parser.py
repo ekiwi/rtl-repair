@@ -2631,7 +2631,7 @@ class VerilogParser(object):
         raise ParseError("%s: %s" % (coord, msg))
 
     def _coord(self, lineno, column=None):
-        ret = [self.lexer.lexer.filename, 'line:%s' % lineno]
+        ret = [self.lexer.filename, 'line:%s' % lineno]
         if column is not None:
             ret.append('column:%s' % column)
         return ' '.join(ret)
