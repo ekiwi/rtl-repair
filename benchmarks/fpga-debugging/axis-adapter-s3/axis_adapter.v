@@ -31,7 +31,7 @@ THE SOFTWARE.
  */
 module axis_adapter #
 (
-    parameter INPUT_DATA_WIDTH = 8,
+    parameter INPUT_DATA_WIDTH = 64,
     parameter INPUT_KEEP_WIDTH = (INPUT_DATA_WIDTH/8),
     parameter OUTPUT_DATA_WIDTH = 8,
     parameter OUTPUT_KEEP_WIDTH = (OUTPUT_DATA_WIDTH/8)
