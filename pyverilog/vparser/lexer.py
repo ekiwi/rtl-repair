@@ -262,10 +262,10 @@ class VerilogLexer(object):
     def __init__(self, error_func):
         self.filename = ''
         self.error_func = error_func
-        self.directives = []
-        self.default_nettype = 'wire'
         self.lexer = _lexer.clone()
         self.lexer._error_foo = self._error
+        self.lexer.directives = []
+        self.lexer.default_nettype = 'wire'
         self.tokens = tokens
 
     def input(self, data):
@@ -275,10 +275,10 @@ class VerilogLexer(object):
         self.lexer.lineno = 1
 
     def get_directives(self):
-        return tuple(self.directives)
+        return tuple(self.lexer.directives)
 
     def get_default_nettype(self):
-        return self.default_nettype
+        return self.lexer.default_nettype
 
     def token(self):
         return self.lexer.token()
