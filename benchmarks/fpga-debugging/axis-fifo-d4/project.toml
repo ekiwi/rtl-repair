@@ -1,0 +1,14 @@
+[project]
+directory = "."
+sources = ["axis_fifo.v", "axis_fifo_wrapper.v"]
+toplevel = "axis_fifo_wrapper"
+
+[[bugs]]
+name = "d4"
+original = "axis_fifo.v"
+buggy = "axis_fifo_bug_d4.v"
+
+[[testbenches]]
+name = "csv"
+table = "tb.csv"
+
