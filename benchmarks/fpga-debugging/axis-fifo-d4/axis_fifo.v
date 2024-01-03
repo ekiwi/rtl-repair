@@ -86,6 +86,8 @@ module axis_fifo #
     output wire                   status_good_frame
 );
 
+
+/* DISABLED Simulation Only Construct
 // check configuration
 initial begin
     if (FRAME_FIFO && !LAST_ENABLE) begin
@@ -108,6 +110,7 @@ initial begin
         $finish;
     end
 end
+*/
 
 localparam KEEP_OFFSET = DATA_WIDTH;
 localparam LAST_OFFSET = KEEP_OFFSET + (KEEP_ENABLE ? KEEP_WIDTH : 0);
@@ -116,20 +119,25 @@ localparam DEST_OFFSET = ID_OFFSET   + (ID_ENABLE   ? ID_WIDTH   : 0);
 localparam USER_OFFSET = DEST_OFFSET + (DEST_ENABLE ? DEST_WIDTH : 0);
 localparam WIDTH       = USER_OFFSET + (USER_ENABLE ? USER_WIDTH : 0);
 
-reg [ADDR_WIDTH:0] wr_ptr_reg = {ADDR_WIDTH+1{1'b0}}, wr_ptr_next;
-reg [ADDR_WIDTH:0] wr_ptr_cur_reg = {ADDR_WIDTH+1{1'b0}}, wr_ptr_cur_next;
+reg [ADDR_WIDTH:0] wr_ptr_reg = {ADDR_WIDTH+1{1'b0}};
+reg [ADDR_WIDTH:0] wr_ptr_next;
+reg [ADDR_WIDTH:0] wr_ptr_cur_reg = {ADDR_WIDTH+1{1'b0}};
+reg [ADDR_WIDTH:0] wr_ptr_cur_next;
 reg [ADDR_WIDTH:0] wr_addr_reg = {ADDR_WIDTH+1{1'b0}};
-reg [ADDR_WIDTH:0] rd_ptr_reg = {ADDR_WIDTH+1{1'b0}}, rd_ptr_next;
+reg [ADDR_WIDTH:0] rd_ptr_reg = {ADDR_WIDTH+1{1'b0}};
+reg [ADDR_WIDTH:0] rd_ptr_next;
 reg [ADDR_WIDTH:0] rd_addr_reg = {ADDR_WIDTH+1{1'b0}};
 
 reg [WIDTH-1:0] mem[(2**ADDR_WIDTH)-1:0];
 reg [WIDTH-1:0] mem_read_data_reg;
-reg mem_read_data_valid_reg = 1'b0, mem_read_data_valid_next;
+reg mem_read_data_valid_reg = 1'b0;
+reg mem_read_data_valid_next;
 
 wire [WIDTH-1:0] s_axis;
 
 reg [WIDTH-1:0] m_axis_reg;
-reg m_axis_tvalid_reg = 1'b0, m_axis_tvalid_next;
+reg m_axis_tvalid_reg = 1'b0;
+reg m_axis_tvalid_next;
 
 // full when first MSB different but rest same
 wire full = ((wr_ptr_reg[ADDR_WIDTH] != rd_ptr_reg[ADDR_WIDTH]) &&
@@ -147,10 +155,14 @@ reg write;
 reg read;
 reg store_output;
 
-reg drop_frame_reg = 1'b0, drop_frame_next;
-reg overflow_reg = 1'b0, overflow_next;
-reg bad_frame_reg = 1'b0, bad_frame_next;
-reg good_frame_reg = 1'b0, good_frame_next;
+reg drop_frame_reg = 1'b0;
+reg drop_frame_next;
+reg overflow_reg = 1'b0;
+reg overflow_next;
+reg bad_frame_reg = 1'b0;
+reg bad_frame_next;
+reg good_frame_reg = 1'b0;
+reg good_frame_next;
 
 assign s_axis_tready = FRAME_FIFO ? (!full_cur || full_wr || DROP_WHEN_FULL) : !full;
 
@@ -176,12 +188,15 @@ assign status_overflow = overflow_reg;
 assign status_bad_frame = bad_frame_reg;
 assign status_good_frame = good_frame_reg;
 
+
+/* DISABLED Simulation Only Construct
 always @(posedge clk) begin
     if (!rst) begin
         if ((s_axis_tvalid && s_axis_tready) && !(m_axis_tvalid && m_axis_tready) && wr_ptr_cur_reg[ADDR_WIDTH] != rd_ptr_reg[ADDR_WIDTH] && wr_ptr_cur_reg[ADDR_WIDTH-1:0] == rd_ptr_reg[ADDR_WIDTH-1:0])
             $error("buffer overflow");
     end
 end
+*/
 
 // Write logic
 always @* begin

@@ -36,6 +36,7 @@ chisel_counter_dir = chisel_dir / "counter"
 paper_example_dir = benchmark_dir / "paper_example"
 fpga_debug_dir = benchmark_dir / "fpga-debugging"
 s3_dir = fpga_debug_dir / "axis-adapter-s3"
+d4_dir = fpga_debug_dir / "axis-fifo-d4"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -122,7 +123,12 @@ class SynthesisTest(unittest.TestCase):
 class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_s3(self):
+        """ AXIS Adapter with incorrect last cycle detection """
         self.synth_cannot_repair(s3_dir, "s3", solver="yices2", init="zero", incremental=True, timeout=60)
+
+    def test_d4(self):
+        """ AXIS Fifo with overflow bug """
+        self.synth_cannot_repair(d4_dir, "d4", solver="yices2", init="zero", incremental=True, timeout=60)
 
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
