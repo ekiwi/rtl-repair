@@ -421,6 +421,7 @@ class TestLeftShiftReg(SynthesisTest):
         # q[2] <= q[1]
         self.synth_cannot_repair(left_shift_dir, "buggy_num")
 
+    @unittest.skip("We disabled the replace var template")
     def test_buggy_var(self):
         self.synth_success(left_shift_dir, "buggy_var")
 
@@ -543,6 +544,7 @@ class TestDecoder(SynthesisTest):
         # this is not mentioned in the paper result, but essentially we just need to change one constant
         self.synth_success(decoder_dir, "buggy_num", "complete_min_tb")
 
+    @unittest.skip("We disabled the replace var template")
     def test_buggy_var_complete_min_tb(self):
         # can be repaired with the replace variable template
         # note, this test takes ~17s with optimathsat, ~4.5s with btormc, ~4.2s with yices2, ~4.4s with bitwuzla
