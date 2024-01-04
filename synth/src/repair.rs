@@ -73,12 +73,34 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
         .states()
         .filter(|(_, s)| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
     {
-        let value = rctx.sim.get(state.symbol).unwrap();
-        let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
         let symbol = rctx
             .enc
             .get_at(rctx.ctx, rctx.smt_ctx, state.symbol, start_step);
-        rctx.smt_ctx.assert(rctx.smt_ctx.eq(symbol, value_expr))?;
+        match state.symbol.get_type(rctx.ctx) {
+            Type::BV(_) => {
+                let value = rctx.sim.get(state.symbol).unwrap();
+                let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
+                rctx.smt_ctx.assert(rctx.smt_ctx.eq(symbol, value_expr))?;
+            }
+            Type::Array(tpe) => {
+                let elements = 1u64 << tpe.index_width;
+                for index in 0..elements {
+                    let value = rctx.sim.get_element(state.symbol, index).unwrap();
+                    let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
+                    let index_expr = if tpe.index_width == 1 {
+                        if index == 0 {
+                            rctx.smt_ctx.false_()
+                        } else {
+                            rctx.smt_ctx.true_()
+                        }
+                    } else {
+                        rctx.smt_ctx.binary(tpe.index_width as usize, index)
+                    };
+                    let read = rctx.smt_ctx.select(symbol, index_expr);
+                    rctx.smt_ctx.assert(rctx.smt_ctx.eq(read, value_expr))?;
+                }
+            }
+        }
     }
     Ok(())
 }
