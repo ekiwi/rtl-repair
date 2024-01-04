@@ -1,0 +1,17 @@
+# read_sources
+read_verilog axis_frame_fifo.v
+
+hierarchy -top axis_frame_fifo
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x axis_frame_fifo.btor
