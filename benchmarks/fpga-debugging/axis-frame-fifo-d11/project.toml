@@ -1,16 +1,17 @@
 [project]
 directory = "."
-sources = ["axis_adapter.v"]
-toplevel = "axis_adapter"
+sources = ["axis_frame_fifo.v"]
+toplevel = "axis_frame_fifo"
 
 [[bugs]]
-name = "s3"
-original = "axis_adapter.v"
-buggy = "axis_adapter_bug_s3.v"
+name = "d11"
+original = "axis_frame_fifo.v"
+buggy = "axis_frame_fifo_bug_d11.v"
 
 [[testbenches]]
 name = "csv"
 table = "tb.csv"
+
 
 # Note: not tested with CirFix
 [[testbenches]]
@@ -19,3 +20,4 @@ sources = ["tb.v"]
 output = "output.txt"
 oracle = "tb.csv"
 timeout = 60.0
+

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 The Regents of the University of California
+# Copyright 2022-2024 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 import time
@@ -39,6 +39,7 @@ s3_dir = fpga_debug_dir / "axis-adapter-s3"
 d4_dir = fpga_debug_dir / "axis-fifo-d4"
 d13_dir = fpga_debug_dir / "axis-frame-len-d13"
 d12_dir = fpga_debug_dir / "axis-fifo-d12"
+d11_dir = fpga_debug_dir / "axis-frame-fifo-d11"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -139,6 +140,12 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
     def test_d12(self):
         """ AXIS Fifo with one-line fixable bug """
         self.synth_cannot_repair(d12_dir, "d12", solver="yices2", init="zero", incremental=True, timeout=60)
+
+    def test_d11(self):
+        """ AXIS Frame Fifo with a missing reset to zero for two registers """
+        changes = self.synth_success(d11_dir, "d11", solver="yices2", init="zero", incremental=True, timeout=60)
+        # resets `drop_frame`, but not `wr_ptr_cur` because it is not required to pass the test
+        self.assertEqual(changes, 1)
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
     """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """
@@ -665,6 +672,24 @@ class TestExposeBranches(unittest.TestCase):
         ast = parse_verilog(flip_flop_dir / "tff.v")
         expose_branches(ast)
 
+class TestPyVerilog(unittest.TestCase):
+    """ tests to iron out some pyverilog bugs that we tried to fix in our local copy """
+
+    def test_reg_initial_value(self):
+        src = """
+        module test();
+        reg test = 1'b0;
+        endmodule        
+        """
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as fp:
+            fp.write(src)
+            fp.close()
+
+            from rtlrepair import parse_verilog, serialize
+            ast = parse_verilog(Path(fp.name))
+            out = serialize(ast)
+            self.assertIn("reg test = 1'b0", out)
 
 if __name__ == '__main__':
     # ignore warnings because pyverilog is not good about closing some files it opens

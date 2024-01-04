@@ -323,7 +323,7 @@ class ASTCodeGenerator(ConvertVisitor):
         rslt = template.render(template_dict)
         return rslt
 
-    def visit_Reg(self, node):
+    def visit_Reg(self, node: Reg):
         filename = getfilename(node)
         template = self.get_template(filename)
         template_dict = {
@@ -404,13 +404,24 @@ class ASTCodeGenerator(ConvertVisitor):
         return rslt
 
     def visit_Decl(self, node):
-        filename = getfilename(node)
-        template = self.get_template(filename)
-        template_dict = {
-            'items': [self.visit(item) for item in node.list],
-        }
-        rslt = template.render(template_dict)
-        return rslt
+        """ serialize decl list with some more logic in order to correctly generate code for things like
+            `reg r = 0;`
+        """
+        if len(node.list) == 2 and isinstance(node.list[0], Variable) and isinstance(node.list[1], Assign):
+            var, assign = node.list
+            assert isinstance(var, Variable)
+            assert isinstance(assign, Assign)
+            assert var.name == assign.left.var.name
+            var_str = self.visit(var)[:-1] # drop trailing ;
+            return f"{var_str} = {self.visit(assign.right)};"
+        else:
+            filename = getfilename(node)
+            template = self.get_template(filename)
+            template_dict = {
+                'items': [self.visit(item) for item in node.list],
+            }
+            rslt = template.render(template_dict)
+            return rslt
 
     def visit_Concat(self, node):
         filename = getfilename(node)
@@ -477,7 +488,7 @@ class ASTCodeGenerator(ConvertVisitor):
         rslt = template.render(template_dict)
         return rslt
 
-    def visit_Lvalue(self, node):
+    def visit_Lvalue(self, node: Lvalue):
         filename = getfilename(node)
         template = self.get_template(filename)
         template_dict = {

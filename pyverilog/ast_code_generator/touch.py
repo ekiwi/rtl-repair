@@ -2,7 +2,8 @@ import os
 import sys
 import subprocess
 
-text = open('list_ast.txt', 'r').read()
+with open('list_ast.txt', 'r') as f:
+    text = f.read()
 lines = text.split('\n')
 for line in lines:
     if line != '':
