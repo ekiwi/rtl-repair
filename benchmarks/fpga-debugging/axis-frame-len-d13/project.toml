@@ -1,0 +1,14 @@
+[project]
+directory = "."
+sources = ["axis_frame_len.v"]
+toplevel = "axis_frame_len"
+
+[[bugs]]
+name = "d13"
+original = "axis_frame_len.v"
+buggy = "axis_frame_len_bug_d13.v"
+
+[[testbenches]]
+name = "csv"
+table = "tb.csv"
+
