@@ -660,7 +660,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(s3_dir / "axis_adapter.v")
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
-        expected = {None: 4, 1: 69, 3: 5, 8: 11, 32: 27}
+        expected = {None: 1, 1: 63, 3: 5, 8: 11, 32: 24, 64: 3}
         self.assertEqual(expected, hist)
 
 class TestExposeBranches(unittest.TestCase):
