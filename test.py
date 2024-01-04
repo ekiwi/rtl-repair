@@ -38,6 +38,7 @@ fpga_debug_dir = benchmark_dir / "fpga-debugging"
 s3_dir = fpga_debug_dir / "axis-adapter-s3"
 d4_dir = fpga_debug_dir / "axis-fifo-d4"
 d13_dir = fpga_debug_dir / "axis-frame-len-d13"
+d12_dir = fpga_debug_dir / "axis-fifo-d12"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -135,6 +136,9 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         """ simple AXIS frame len circuit with wrong calculatio / state update """
         self.synth_cannot_repair(d13_dir, "d13", solver="yices2", init="zero", incremental=True, timeout=60)
 
+    def test_d12(self):
+        """ AXIS Fifo with one-line fixable bug """
+        self.synth_cannot_repair(d12_dir, "d12", solver="yices2", init="zero", incremental=True, timeout=60)
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
     """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """
