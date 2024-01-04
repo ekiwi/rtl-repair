@@ -1,6 +1,6 @@
 [project]
 directory = "."
-sources = ["axis_fifo.v]
+sources = ["axis_fifo.v"]
 toplevel = "axis_fifo"
 
 [[bugs]]
