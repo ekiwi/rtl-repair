@@ -30,7 +30,7 @@ _available_templates = {
     'replace_variables': replace_variables,
     'conditional_overwrite': conditional_overwrite,
 }
-_default_templates = ['replace_literals', 'assign_const', 'add_inversions', 'replace_variables']
+_default_templates = ['replace_literals', 'assign_const', 'add_inversions']
 
 
 @dataclass
