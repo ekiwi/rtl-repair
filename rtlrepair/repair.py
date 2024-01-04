@@ -139,6 +139,11 @@ class RepairTemplate(AstVisitor):
         # the variable might also not be a good idea
         return node
 
+    def visit_IndexedPartselect(self, node: vast.IndexedPartselect):
+        # by default, we ignore the stride of an indexed part select
+        node.base = self.visit(node.base)
+        return node
+
     def visit_Repeat(self, node: vast.Repeat):
         # by default we ignore the times attribute of a repeat since it needs to be a constant
         node.value = self.visit(node.value)
@@ -146,6 +151,11 @@ class RepairTemplate(AstVisitor):
 
     def visit_DelayStatement(self, node: vast.DelayStatement):
         # by default, we ignore delay statement since they do not make much sense for synchronous circuit descriptions
+        return node
+
+    def visit_GenerateStatement(self, node: vast.GenerateStatement):
+        # generate blocks have their own rules which disallow many of the usual instrumentation that we do
+        # in the future, one might try to find a small set of changes that might be allowed
         return node
 
 
