@@ -131,13 +131,13 @@ always @(posedge output_clk) begin
 end
 
 // write
+assign wr_ptr_next = wr_ptr + 1;
 always @(posedge input_clk) begin
     if (input_rst_sync3) begin
         wr_ptr <= 0;
         wr_ptr_gray <= 0;
     end else if (write) begin
         mem[wr_ptr[ADDR_WIDTH-1:0]] <= data_in;
-        wr_ptr_next = wr_ptr + 1;
         wr_ptr <= wr_ptr_next;
         wr_ptr_gray <= wr_ptr_next ^ (wr_ptr_next >> 1);
     end
@@ -155,13 +155,13 @@ always @(posedge input_clk) begin
 end
 
 // read
+assign rd_ptr_next = rd_ptr + 1;
 always @(posedge output_clk) begin
     if (output_rst_sync3) begin
         rd_ptr <= 0;
         rd_ptr_gray <= 0;
     end else if (read) begin
         data_out_reg <= mem[rd_ptr[ADDR_WIDTH-1:0]];
-        rd_ptr_next = rd_ptr + 1;
         rd_ptr <= rd_ptr_next;
         rd_ptr_gray <= rd_ptr_next ^ (rd_ptr_next >> 1);
     end

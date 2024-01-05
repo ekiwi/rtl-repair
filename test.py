@@ -41,6 +41,7 @@ d13_dir = fpga_debug_dir / "axis-frame-len-d13"
 d12_dir = fpga_debug_dir / "axis-fifo-d12"
 d11_dir = fpga_debug_dir / "axis-frame-fifo-d11"
 d8_dir = fpga_debug_dir / "axis-switch-d8"
+c4_dir = fpga_debug_dir / "axis-async-fifo-c4"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -157,6 +158,12 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         """ AXIS Switch with wrong index. Should be fixable by simple literal replacement... """
         # TODO: enable some instrumentation in generate blocks
         self.synth_cannot_repair(d8_dir, "d8", solver="yices2", init="zero", incremental=True, timeout=60)
+
+    def test_c4(self):
+        """ AXIS Async Fifo (we turned the reset into a sync reset) signals ready too early, needs one guard in boolean condition """
+        changes = self.synth_success(c4_dir, "c4", solver="yices2", init="zero", incremental=True, timeout=60, max_changes=10)
+        # TODO: this solution is not correct, way too many changes
+        self.assertEqual(changes, 9)
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
     """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """
