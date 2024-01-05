@@ -339,7 +339,7 @@ pub fn add_change_count(
     change: &[ExprRef],
 ) -> ExprRef {
     let max_change_count_value = change.len() as u64;
-    let width = u64::BITS - max_change_count_value.leading_zeros();
+    let width = std::cmp::max(u64::BITS - max_change_count_value.leading_zeros(), 1);
     let sum = match change.len() {
         0 => ctx.bv_lit(0, width),
         1 => ctx.zero_extend(change[0], width - 1),
