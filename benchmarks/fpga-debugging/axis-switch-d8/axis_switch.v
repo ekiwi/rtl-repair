@@ -173,9 +173,12 @@ generate
     for (m = 0; m < S_COUNT; m = m + 1) begin : s_ifaces
 
         // decoding
-        reg [CL_M_COUNT-1:0] select_reg = 0, select_next;
-        reg drop_reg = 1'b0, drop_next;
-        reg select_valid_reg = 1'b0, select_valid_next;
+        reg [CL_M_COUNT-1:0] select_reg = 0;
+        reg [CL_M_COUNT-1:0] select_next;
+        reg drop_reg = 1'b0;
+        reg drop_next;
+        reg select_valid_reg = 1'b0;
+        reg select_valid_next;
 
         integer k;
 
