@@ -40,6 +40,7 @@ d4_dir = fpga_debug_dir / "axis-fifo-d4"
 d13_dir = fpga_debug_dir / "axis-frame-len-d13"
 d12_dir = fpga_debug_dir / "axis-fifo-d12"
 d11_dir = fpga_debug_dir / "axis-frame-fifo-d11"
+d8_dir = fpga_debug_dir / "axis-switch-d8"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -147,6 +148,11 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         """ AXIS Frame Fifo with a missing reset to zero for two registers """
         changes = self.synth_success(d11_dir, "d11", solver="yices2", init="zero", incremental=True, timeout=60)
         # resets `drop_frame`, but not `wr_ptr_cur` because it is not required to pass the test
+        self.assertEqual(changes, 1)
+
+    def test_d8(self):
+        """ AXIS Switch with wrong index. Should be fixable by simple literal replacement... """
+        changes = self.synth_success(d8_dir, "d8", solver="yices2", init="zero", incremental=True, timeout=60)
         self.assertEqual(changes, 1)
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
