@@ -1,0 +1,15 @@
+[project]
+directory = "."
+sources = ["arbiter.v", "axis_register.v", "axis_switch.v", "priority_encoder.v"]
+toplevel = "axis_switch"
+
+[[bugs]]
+name = "d8"
+original = "axis_switch.v"
+buggy = "axis_switch_bug_d8.v"
+
+[[testbenches]]
+name = "csv"
+table = "tb.csv"
+
+# note: Verilog TB (tb.v) only works with 2-state sim

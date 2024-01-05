@@ -1,0 +1,20 @@
+# read_sources
+read_verilog arbiter.v
+read_verilog axis_register.v
+read_verilog priority_encoder.v
+read_verilog axis_switch.v
+
+hierarchy -top axis_switch
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x axis_switch.btor
