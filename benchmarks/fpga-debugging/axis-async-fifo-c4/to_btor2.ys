@@ -1,0 +1,19 @@
+# read_sources
+read_verilog axis_async_fifo.v
+read_verilog axis_fifo_wrapper.v
+read_verilog axis_register.v
+
+hierarchy -top axis_fifo_wrapper
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x axis_async_fifo_wrapper.btor
