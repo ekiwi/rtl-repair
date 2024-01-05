@@ -131,6 +131,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_d4(self):
         """ AXIS Fifo with overflow bug """
+        # TODO: this currently times out, we should add a maximal number of solutions to try before moving on to a larger window size
         self.synth_cannot_repair(d4_dir, "d4", solver="yices2", init="zero", incremental=True, timeout=60)
 
     def test_d13(self):
@@ -139,6 +140,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_d12(self):
         """ AXIS Fifo with one-line fixable bug """
+        # TODO: the repair that is found here is wrong!
         self.synth_cannot_repair(d12_dir, "d12", solver="yices2", init="zero", incremental=True, timeout=60)
 
     def test_d11(self):
