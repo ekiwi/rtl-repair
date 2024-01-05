@@ -1,6 +1,7 @@
 # Copyright 2022 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
+import math
 
 from rtlrepair.visitor import AstVisitor
 from rtlrepair.utils import parse_verilog_int_literal
@@ -107,6 +108,8 @@ class InferWidths(AstVisitor):
             width = value_width * times
         elif isinstance(node, vast.StringConst):
             width = None
+        elif isinstance(node, vast.SystemCall):
+            width = 32 # HACK: default integer width (TODO)
         else:
             raise NotImplementedError(f"TODO: deal with {node} : {type(node)}")
         self.widths[node] = width
@@ -151,8 +154,36 @@ class InferWidths(AstVisitor):
             if msb is None or lsb is None:
                 value = None
             else:
-                assert msb >= lsb >= 0, f"{msb}:{lsb}"
-                value = msb - lsb + 1
+                if msb >= lsb >= 0:
+                    value = msb - lsb + 1
+                else: # little endian?
+                    value = lsb - msb + 1
+        elif isinstance(node, vast.SystemCall):
+            if node.syscall == 'clog2':
+                inp = self.eval(node.args[0])
+                assert inp >= 0
+                if inp == 0:
+                    value = 0
+                else:
+                    value = int(math.ceil(math.log2(inp)))
+            else:
+                raise NotImplementedError(f"TODO: constant prop: {node} : {type(node)}")
+        elif isinstance(node, vast.Concat):
+            value = 0
+            for expr in node.list:
+                expr_value = self.eval(expr)
+                shift_amount = self.widths[expr]
+                value = (value << shift_amount) | expr_value
+        elif isinstance(node, vast.Repeat):
+            expr_value = self.eval(node.value)
+            shift_amount = self.widths[node.value]
+            repetitions = self.eval(node.times)
+            assert repetitions >= 0
+            value = 0
+            for ii in range(repetitions):
+                value = (value << shift_amount) | expr_value
+        elif isinstance(node, vast.StringConst):
+            value = None
         else:
             raise NotImplementedError(f"TODO: constant prop: {node} : {type(node)}")
         return value
