@@ -57,6 +57,18 @@ wire output_axis_tvalid;
 wire output_axis_tlast;
 wire output_axis_tuser;
 
+integer f;
+// dump I/O
+initial begin
+  f = $fopen("output.txt");
+  $fwrite(f, "async_rst, input_axis_tdata, input_axis_tvalid, input_axis_tready, input_axis_tlast, input_axis_tuser, output_axis_tdata, output_axis_tvalid, output_axis_tready, output_axis_tlast, output_axis_tuser\n");
+  forever begin
+    @(posedge clk);
+    $fwrite(f, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",async_rst, input_axis_tdata, input_axis_tvalid, input_axis_tready, input_axis_tlast, input_axis_tuser, output_axis_tdata, output_axis_tvalid, output_axis_tready, output_axis_tlast, output_axis_tuser);
+  end
+end
+
+
 initial begin
 
     async_rst = 1'b1;
@@ -125,5 +137,14 @@ UUT (
     .output_axis_tlast(output_axis_tlast),
     .output_axis_tuser(output_axis_tuser)
 );
+
+
+`ifdef DUMP_TRACE // used for our OSDD calculations
+initial begin
+  $dumpfile("dump.vcd");
+  $dumpvars(0, UUT);
+end
+`endif // DUMP_TRACE
+
 
 endmodule

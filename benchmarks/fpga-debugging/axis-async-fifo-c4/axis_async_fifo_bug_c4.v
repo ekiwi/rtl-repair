@@ -64,7 +64,7 @@ module axis_async_fifo #
 reg [ADDR_WIDTH:0] wr_ptr = {ADDR_WIDTH+1{1'b0}};
 reg [ADDR_WIDTH:0] wr_ptr_next;
 reg [ADDR_WIDTH:0] wr_ptr_gray = {ADDR_WIDTH+1{1'b0}};
-reg [ADDR_WIDTH:0] rd_ptr = {ADDR_WIDTH+1{1'b0}}
+reg [ADDR_WIDTH:0] rd_ptr = {ADDR_WIDTH+1{1'b0}};
 reg [ADDR_WIDTH:0] rd_ptr_next;
 reg [ADDR_WIDTH:0] rd_ptr_gray = {ADDR_WIDTH+1{1'b0}};
 
@@ -102,7 +102,6 @@ wire read = (output_axis_tready | ~output_axis_tvalid_reg) & ~empty;
 
 assign {output_axis_tlast, output_axis_tuser, output_axis_tdata} = data_out_reg;
 
-// FIX: assign input_axis_tready = ~full  & ~input_rst_sync3;
 assign input_axis_tready = ~full;
 assign output_axis_tvalid = output_axis_tvalid_reg;
 

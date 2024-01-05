@@ -64,7 +64,7 @@ module axis_async_fifo #
 reg [ADDR_WIDTH:0] wr_ptr = {ADDR_WIDTH+1{1'b0}};
 reg [ADDR_WIDTH:0] wr_ptr_next;
 reg [ADDR_WIDTH:0] wr_ptr_gray = {ADDR_WIDTH+1{1'b0}};
-reg [ADDR_WIDTH:0] rd_ptr = {ADDR_WIDTH+1{1'b0}}
+reg [ADDR_WIDTH:0] rd_ptr = {ADDR_WIDTH+1{1'b0}};
 reg [ADDR_WIDTH:0] rd_ptr_next;
 reg [ADDR_WIDTH:0] rd_ptr_gray = {ADDR_WIDTH+1{1'b0}};
 
