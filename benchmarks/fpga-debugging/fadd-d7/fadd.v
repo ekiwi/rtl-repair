@@ -92,7 +92,7 @@ module fadd #(parameter N = 32, parameter E = 8, parameter S = 1) (
                 res_exp_next = tmp_exp + 1;
                 res_mant_next = tmp_mant[N-E:1];
             end else begin
-                for(int i = 0; i < N-E-1; ++i) begin
+                for(int i = 0; i < N-E-1; i = i + 1) begin
                     if(tmp_mant[N-E-1-i]) begin
                         // Check for underflow
                         if(i > tmp_exp) begin

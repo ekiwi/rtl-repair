@@ -1,0 +1,17 @@
+# read_sources
+read_verilog -sv fadd.v
+
+hierarchy -top fadd
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x fadd.btor
