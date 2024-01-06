@@ -7,14 +7,24 @@ use libpatron::mc::*;
 
 use crate::repair::*;
 use crate::testbench::StepInt;
+use crate::Stats;
 
 pub fn basic_repair<S: Simulator, E: TransitionSystemEncoding>(
     mut rctx: RepairContext<S, E>,
-) -> Result<Option<Vec<RepairAssignment>>> {
+) -> Result<RepairResult> {
     let res = generate_minimal_repair(&mut rctx, 0, None)?;
+    let stats = Stats::default();
     match res {
-        None => Ok(None), // no solution
-        Some((repair, _)) => Ok(Some(vec![repair])),
+        None => Ok(RepairResult {
+            status: RepairStatus::CannotRepair,
+            stats,
+            solutions: vec![],
+        }), // no solution
+        Some((repair, _)) => Ok(RepairResult {
+            status: RepairStatus::Success,
+            stats,
+            solutions: vec![repair],
+        }),
     }
 }
 

@@ -10,7 +10,9 @@ mod testbench;
 use crate::basic::basic_repair;
 use crate::filters::can_be_repaired_from_arbitrary_state;
 use crate::incremental::{IncrementalConf, IncrementalRepair};
-use crate::repair::{add_change_count, create_smt_ctx, RepairContext, RepairVars};
+use crate::repair::{
+    add_change_count, create_smt_ctx, RepairContext, RepairResult, RepairStatus, RepairVars,
+};
 use crate::testbench::*;
 use clap::{arg, Parser, ValueEnum};
 use easy_smt as smt;
@@ -179,7 +181,7 @@ fn main() {
         if args.verbose {
             println!("Design seems to work.");
         }
-        print_no_repair();
+        print_no_repair(&synth_vars, &ctx);
         return;
     }
 
@@ -189,7 +191,7 @@ fn main() {
         if args.verbose {
             println!("No changes possible.");
         }
-        print_cannot_repair();
+        print_cannot_repair(&synth_vars, &ctx);
         return;
     }
 
@@ -231,7 +233,7 @@ fn main() {
         if args.verbose {
             println!("Cannot be repaired, even when we start from an arbitrary state!");
         }
-        print_cannot_repair();
+        print_cannot_repair(&synth_vars, &ctx);
         return;
     }
 
@@ -258,30 +260,7 @@ fn main() {
     }
 
     // print status
-    let solutions = match repair {
-        None => {
-            print_cannot_repair();
-            return;
-        }
-        Some(assignments) => {
-            let mut res = Vec::with_capacity(assignments.len());
-            for aa in assignments.iter() {
-                let assignment_json = synth_vars.to_json(&ctx, aa);
-                res.push(json!({"assignment": assignment_json}));
-            }
-            json!(res)
-        }
-    };
-
-    let res = json!({
-        "status": "success",
-        "solver-time": 0,
-        "past-k": 0,
-        "future-k": 0,
-        "solutions": solutions,
-    });
-
-    print_result(&res);
+    print_result(&repair, &synth_vars, &ctx);
 }
 
 fn start_solver(
@@ -295,32 +274,64 @@ fn start_solver(
     Ok((smt_ctx, enc))
 }
 
-fn print_cannot_repair() {
+fn print_result(result: &RepairResult, synth_vars: &RepairVars, ctx: &Context) {
+    let mut solutions = Vec::with_capacity(result.solutions.len());
+    for aa in result.solutions.iter() {
+        let assignment_json = synth_vars.to_json(ctx, aa);
+        solutions.push(json!({"assignment": assignment_json}));
+    }
+
+    let status_name = match result.status {
+        RepairStatus::CannotRepair => "cannot-repair",
+        RepairStatus::NoRepair => "no-repair",
+        RepairStatus::Success => "success",
+    };
+
+    let solution_jsons = json!(solutions);
     let res = json!({
-        "status": "cannot-repair",
-        "solver-time": 0,
-        "past-k": 0,
-        "future-k": 0,
-        "solutions": [],
+        "status": status_name,
+        "solver-time": result.stats.solver_time,
+        "past-k": result.stats.final_past_k,
+        "future-k": result.stats.final_future_k,
+        "solutions": solution_jsons,
     });
 
-    print_result(&res);
-}
-
-fn print_no_repair() {
-    let res = json!({
-        "status": "no-repair",
-        "solver-time": 0,
-        "past-k": 0,
-        "future-k": 0,
-        "solutions": [],
-    });
-
-    print_result(&res);
-}
-
-fn print_result(res: &serde_json::Value) {
     println!("== RESULT =="); // needle to find the JSON output
     let j = serde_json::to_string(&res).unwrap();
     println!("{}", j);
+}
+
+fn print_cannot_repair(synth_vars: &RepairVars, ctx: &Context) {
+    let res = RepairResult {
+        status: RepairStatus::CannotRepair,
+        stats: Default::default(),
+        solutions: vec![],
+    };
+    print_result(&res, synth_vars, ctx);
+}
+
+fn print_no_repair(synth_vars: &RepairVars, ctx: &Context) {
+    let res = RepairResult {
+        status: RepairStatus::NoRepair,
+        stats: Default::default(),
+        solutions: vec![],
+    };
+    print_result(&res, synth_vars, ctx);
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Stats {
+    final_past_k: StepInt,
+    final_future_k: StepInt,
+    solver_time: u64,
+}
+
+impl Default for Stats {
+    fn default() -> Self {
+        Self {
+            final_past_k: 0,
+            final_future_k: 0,
+            solver_time: 0,
+        }
+    }
 }

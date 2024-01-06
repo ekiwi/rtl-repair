@@ -3,6 +3,7 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use crate::testbench::{StepInt, Testbench};
+use crate::Stats;
 use easy_smt as smt;
 use libpatron::ir::*;
 use libpatron::mc::*;
@@ -12,6 +13,18 @@ use serde_json::json;
 use std::str::FromStr;
 
 pub type Result<T> = std::io::Result<T>;
+
+pub enum RepairStatus {
+    CannotRepair,
+    NoRepair,
+    Success,
+}
+
+pub struct RepairResult {
+    pub status: RepairStatus,
+    pub stats: Stats,
+    pub solutions: Vec<RepairAssignment>,
+}
 
 pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding> {
     pub ctx: &'a mut Context,

@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use crate::repair::*;
+use crate::Stats;
 
 pub struct IncrementalConf {
     pub fail_at: StepInt,
@@ -41,7 +42,7 @@ where
         })
     }
 
-    pub fn run(&mut self) -> Result<Option<Vec<RepairAssignment>>> {
+    pub fn run(&mut self) -> Result<RepairResult> {
         let mut window = RepairWindow::new();
 
         while window.len() <= self.conf.max_repair_window_size {
@@ -95,7 +96,7 @@ where
                             correct_solutions.push(repair.clone());
                             // early exit when we reached the max number of solutions
                             if correct_solutions.len() >= self.conf.max_solutions {
-                                return Ok(Some(correct_solutions));
+                                return Ok(make_result(Some(correct_solutions), &window));
                             }
                         }
                         Some(fail) => {
@@ -129,7 +130,7 @@ where
             self.rctx.smt_ctx.pop_many(1)?;
 
             if !correct_solutions.is_empty() {
-                return Ok(Some(correct_solutions));
+                return Ok(make_result(Some(correct_solutions), &window));
             }
 
             // we did not find a repair and we continue on
@@ -144,7 +145,7 @@ where
                     println!("Could not further increase the repair window.")
                 }
                 // we were not able to properly update the window
-                return Ok(None);
+                return Ok(make_result(None, &window));
             }
         }
 
@@ -155,7 +156,7 @@ where
                 self.conf.max_repair_window_size
             );
         }
-        Ok(None)
+        Ok(make_result(None, &window))
     }
 
     fn verbose(&self) -> bool {
@@ -206,6 +207,22 @@ where
             let new_snapshot = self.rctx.sim.take_snapshot();
             self.snapshots.insert(step, new_snapshot.clone());
         }
+    }
+}
+
+fn make_result(solutions: Option<Vec<RepairAssignment>>, window: &RepairWindow) -> RepairResult {
+    RepairResult {
+        status: if solutions.is_none() {
+            RepairStatus::CannotRepair
+        } else {
+            RepairStatus::Success
+        },
+        stats: Stats {
+            final_past_k: window.past_k,
+            final_future_k: window.future_k,
+            solver_time: 0,
+        },
+        solutions: solutions.unwrap_or_default(),
     }
 }
 
