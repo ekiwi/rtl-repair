@@ -1,0 +1,23 @@
+[project]
+directory = "."
+sources = ["llsdspi.v", "sdspi.v"]
+toplevel = "sdspi"
+
+[[bugs]]
+name = "c1"
+original = "llsdspi.v"
+buggy = "llsdspi_bug_c1.v"
+
+[[bugs]]
+name = "c3"
+original = "sdspi.v"
+buggy = "sdspi_bug_c3.v"
+
+[[bugs]]
+name = "d9"
+original = "sdspi.v"
+buggy = "sdspi_bug_d9.v"
+
+[[testbenches]]
+name = "csv"
+table = "tb.csv"

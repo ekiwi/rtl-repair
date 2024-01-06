@@ -44,6 +44,7 @@ d8_dir = fpga_debug_dir / "axis-switch-d8"
 c4_dir = fpga_debug_dir / "axis-async-fifo-c4"
 s1_dir = fpga_debug_dir / "axi-lite-s1"
 s2_dir = fpga_debug_dir / "axi-stream-s2"
+zip_cpu_sdspi_dir = fpga_debug_dir / "zipcpu-spi-c1-c3-d9"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -189,6 +190,19 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         changes = self.synth_success(s2_dir, "s2", solver="yices2", init="zero", incremental=True, timeout=60)
         # finds one constant assignment which fixes the testbench, not quite the complete solution!
         self.assertEqual(changes, 1)
+
+
+    def test_c1(self):
+        """ SD-SPI driver from ZipCPU. Missing condition in `if`. Fails after 101 cycles. """
+        self.synth_cannot_repair(zip_cpu_sdspi_dir, "c1", solver="yices2", init="zero", incremental=True, timeout=60)
+
+    def test_c3(self):
+        """ SD-SPI driver from ZipCPU. Missing delay register. Fails after 6 cycles. """
+        self.synth_cannot_repair(zip_cpu_sdspi_dir, "c3", solver="yices2", init="zero", incremental=True, timeout=60)
+
+    def test_d9(self):
+        """ SD-SPI driver from ZipCPU. Endianess swapped in assignment. Fails after 483,920 cycles. """
+        self.synth_cannot_repair(zip_cpu_sdspi_dir, "d9", solver="yices2", init="zero", incremental=True, timeout=60)
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
     """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """
@@ -706,6 +720,15 @@ class TestTypeInference(unittest.TestCase):
         widths = infer_widths(ast)
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 63, 3: 5, 8: 11, 32: 24, 64: 3}
+        self.assertEqual(expected, hist)
+
+    def test_sd_spi_widths(self):
+        from rtlrepair import parse_verilog
+        from rtlrepair.types import infer_widths
+        ast = parse_verilog(zip_cpu_sdspi_dir / "sdspi.v")
+        widths = infer_widths(ast)
+        hist = _make_histogram(widths)
+        expected = {None: 1, 1: 190, 2: 25, 3: 23, 4: 37, 7: 11, 8: 79, 9: 3, 11: 2, 15: 4, 16: 8, 24: 2, 26: 6, 32: 36}
         self.assertEqual(expected, hist)
 
 class TestExposeBranches(unittest.TestCase):
