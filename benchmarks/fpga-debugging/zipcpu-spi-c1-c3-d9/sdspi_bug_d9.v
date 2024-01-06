@@ -654,6 +654,9 @@ module	sdspi(i_clk,
 			ll_fifo_addr <= ll_fifo_addr + 1;
 	end
 
+	reg	[(LGFIFOLN-1):0]	r_blklimit;
+	wire	[(LGFIFOLN+1):0]	w_blklimit;
+
 	//
 	// Look for that start token.  This will be present when reading from 
 	// the device into the FIFO.
