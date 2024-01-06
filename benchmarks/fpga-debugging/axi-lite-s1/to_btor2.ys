@@ -1,0 +1,18 @@
+# read_sources
+read_verilog faxil_slave.v
+read_verilog xlnxdemo.v
+
+hierarchy -top xlnxdemo
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x xlnxdemo_axi_lite.btor
