@@ -64,11 +64,11 @@ module xlnxstream_2018_3 #
 	localparam NUMBER_OF_OUTPUT_WORDS = 8;
 
 	// WAIT_COUNT_BITS is the width of the wait counter.
-	localparam integer WAIT_COUNT_BITS = $clog2(C_M_START_COUNT-1);
+	localparam integer WAIT_COUNT_BITS = $clog2(C_M_START_COUNT);
 
 	// bit_num gives the minimum number of bits needed to address 'depth'
 	// size of FIFO.
-	localparam bit_num  = $clog2(NUMBER_OF_OUTPUT_WORDS);
+	localparam bit_num  = $clog2(NUMBER_OF_OUTPUT_WORDS + 1);
 
 	// Define the states of state machine
 	// The control state machine oversees the writing of input streaming
