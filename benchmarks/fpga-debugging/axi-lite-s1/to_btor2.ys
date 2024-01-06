@@ -1,5 +1,4 @@
 # read_sources
-read_verilog faxil_slave.v
 read_verilog xlnxdemo.v
 
 hierarchy -top xlnxdemo
