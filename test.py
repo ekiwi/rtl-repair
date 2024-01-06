@@ -42,6 +42,7 @@ d12_dir = fpga_debug_dir / "axis-fifo-d12"
 d11_dir = fpga_debug_dir / "axis-frame-fifo-d11"
 d8_dir = fpga_debug_dir / "axis-switch-d8"
 c4_dir = fpga_debug_dir / "axis-async-fifo-c4"
+s1_dir = fpga_debug_dir / "axi-lite-s1"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -161,9 +162,26 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_c4(self):
         """ AXIS Async Fifo (we turned the reset into a sync reset) signals ready too early, needs one guard in boolean condition """
-        changes = self.synth_success(c4_dir, "c4", solver="yices2", init="zero", incremental=True, timeout=60, max_changes=10)
+        changes = self.synth_success(c4_dir, "c4", solver="yices2", init="zero", incremental=True, timeout=60,
+                                     max_changes=10)
         # TODO: this solution is not correct, way too many changes
         self.assertEqual(changes, 9)
+
+
+    def test_s1_b(self):
+        """ Xilinx generated AXI Lite peripheral with missing guard """
+        self.synth_cannot_repair(s1_dir, "s1b", testbench="s1b", solver="yices2", init="zero", incremental=True, timeout=60, max_changes=10)
+        # the other testbench does not reveal this bug
+        self.synth_no_repair(s1_dir, "s1b", testbench="s1r", solver="yices2", init="zero", incremental=True,
+                                 timeout=60, max_changes=10)
+
+    def test_s1_r(self):
+        """ Xilinx generated AXI Lite peripheral with missing guard """
+        self.synth_cannot_repair(s1_dir, "s1r", testbench="s1r", solver="yices2", init="zero", incremental=True,
+                                 timeout=60, max_changes=10)
+        # the other testbench does not reveal this bug
+        self.synth_no_repair(s1_dir, "s1r", testbench="s1b", solver="yices2", init="zero", incremental=True,
+                                 timeout=60, max_changes=10)
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
     """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """

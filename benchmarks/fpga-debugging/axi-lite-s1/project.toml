@@ -1,0 +1,26 @@
+[project]
+directory = "."
+sources = ["xlnxdemo.v"]
+toplevel = "xlnxdemo"
+
+[[bugs]]
+name = "s1b"
+original = "xlnxdemo.v"
+buggy = "xlnxdemo_bug_s1b.v"
+
+[[bugs]]
+name = "s1r"
+original = "xlnxdemo.v"
+buggy = "xlnxdemo_bug_s1r.v"
+
+# trace that leads to a property violation around the B signals when run on s1b
+[[testbenches]]
+name = "s1b"
+table = "tb0.csv"
+
+
+# trace that leads to a property violation around the R signals when run on s1r
+[[testbenches]]
+name = "s1r"
+table = "tb1.csv"
+
