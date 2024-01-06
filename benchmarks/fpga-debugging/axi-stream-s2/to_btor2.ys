@@ -1,0 +1,17 @@
+# read_sources
+read_verilog xlnxstream_2018_3.v
+
+hierarchy -top xlnxstream_2018_3
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x xlnxstream_2018_3_axi_stream.btor

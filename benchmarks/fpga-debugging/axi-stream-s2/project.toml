@@ -1,0 +1,14 @@
+[project]
+directory = "."
+sources = ["xlnxstream_2018_3.v"]
+toplevel = "xlnxstream_2018_3"
+
+[[bugs]]
+name = "s2"
+original = "xlnxstream_2018_3.v"
+buggy = "xlnxstream_2018_3_bug_s2.v"
+
+
+[[testbenches]]
+name = "csv"
+table = "tb.csv"
