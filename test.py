@@ -43,6 +43,7 @@ d11_dir = fpga_debug_dir / "axis-frame-fifo-d11"
 d8_dir = fpga_debug_dir / "axis-switch-d8"
 c4_dir = fpga_debug_dir / "axis-async-fifo-c4"
 s1_dir = fpga_debug_dir / "axi-lite-s1"
+s2_dir = fpga_debug_dir / "axi-stream-s2"
 
 
 def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
@@ -182,6 +183,12 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         # the other testbench does not reveal this bug
         self.synth_no_repair(s1_dir, "s1r", testbench="s1b", solver="yices2", init="zero", incremental=True,
                                  timeout=60, max_changes=10)
+
+    def test_s2(self):
+        """ Xilinx generated AXI Stream source, has missing guard for assignment """
+        changes = self.synth_success(s2_dir, "s2", solver="yices2", init="zero", incremental=True, timeout=60)
+        # finds one constant assignment which fixes the testbench, not quite the complete solution!
+        self.assertEqual(changes, 1)
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
     """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """
