@@ -108,6 +108,10 @@ class RepairTemplate(AstVisitor):
         # by default we ignore any parameter declarations
         return node
 
+    def visit_ParamArg(self, node: vast.ParamArg):
+        # by default we ignore any parameter assignments since they need to be constant
+        return node
+
     def visit_Integer(self, node: vast.Integer):
         # by default we ignore any integer declarations
         return node
@@ -118,6 +122,10 @@ class RepairTemplate(AstVisitor):
 
     def visit_Portlist(self, node: vast.Portlist):
         # by default we ignore the portlist since we cannot dynamically change ports
+        return node
+
+    def visit_Initial(self, node: vast.Initial):
+        # by default we ignore the initial statements since starting values of registers cannot change at circuit run time
         return node
 
     def visit_ForStatement(self, node: vast.ForStatement):
