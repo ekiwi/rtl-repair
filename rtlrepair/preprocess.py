@@ -148,13 +148,15 @@ def filter_warnings(warnings: list) -> list:
 
 _latch_re = re.compile(r"Latch inferred for signal '([^']+)'")
 
+# TODO: maybe change back to 0
+_default_value = "'d0"
 
 def assign_latch_signal(latch_warning: LintWarning):
     m = _latch_re.search(latch_warning.msg)
     assert m is not None, latch_warning.msg
     signal_parts = m.group(1).split(".")
     ident = vast.Identifier(signal_parts[-1].strip())
-    return vast.BlockingSubstitution(vast.Lvalue(ident), vast.Rvalue(vast.IntConst("'d1")))
+    return vast.BlockingSubstitution(vast.Lvalue(ident), vast.Rvalue(vast.IntConst(_default_value)))
 
 
 class LintFixer(AstVisitor):

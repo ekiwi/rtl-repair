@@ -341,7 +341,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: timeout
         changes = self.synth_success(sd_dir / "no_tri_state.toml", "kgoliya_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(1, changes)  # repaired by pre-processing + assign const!
+        self.assertEqual(2, changes)  # repaired by pre-processing alone
 
     def test_i2c_master_kgoliya1(self):
         # CirFix: incorrect repair
