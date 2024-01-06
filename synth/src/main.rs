@@ -76,6 +76,11 @@ struct Args {
     max_repair_window_size: u64,
     #[arg(long, help = "file to write all SMT commands to")]
     smt_dump: Option<String>,
+    #[arg(
+        long,
+        help = "the maximum number of incorrect solution to try before enlarging the repair window"
+    )]
+    max_incorrect_solutions_per_window_size: Option<usize>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -243,6 +248,7 @@ fn main() {
             pask_k_step_size: args.pask_k_step_size,
             max_repair_window_size: args.max_repair_window_size,
             max_solutions: 1,
+            max_incorrect_solutions_per_window_size: args.max_incorrect_solutions_per_window_size,
         };
         let mut snapshots = HashMap::new();
         snapshots.insert(0, start_state);

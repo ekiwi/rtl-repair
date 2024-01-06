@@ -13,10 +13,16 @@ use crate::repair::*;
 use crate::Stats;
 
 pub struct IncrementalConf {
+    /// Information about the first cycle in which the bug manifests.
     pub fail_at: StepInt,
+    /// Number by which the window is expanded into the past.
     pub pask_k_step_size: StepInt,
+    /// The maximum size of the repair window.
     pub max_repair_window_size: StepInt,
+    /// The maximum number of correct solutions that should be generated.
     pub max_solutions: usize,
+    /// The maximum number of incorrect solution to try before enlarging the repair window.
+    pub max_incorrect_solutions_per_window_size: Option<usize>,
 }
 
 pub struct IncrementalRepair<'a, S: Simulator, E: TransitionSystemEncoding> {
@@ -104,12 +110,19 @@ where
                                 println!("New fail at: {fail}");
                             }
                             failures_at.push(fail);
+                            if let Some(max_sol) = self.conf.max_incorrect_solutions_per_window_size
+                            {
+                                if failures_at.len() >= max_sol {
+                                    println!("Reached the maximum number of incorrect solutions. Going to increase the window.");
+                                    break;
+                                }
+                            }
                         }
                     }
                     // try to find a different solution
                     self.rctx.synth_vars.block_assignment(
                         self.rctx.ctx,
-                        &mut self.rctx.smt_ctx,
+                        self.rctx.smt_ctx,
                         self.rctx.enc,
                         &repair,
                         step_range.start,
@@ -117,7 +130,7 @@ where
                     maybe_repair = match self.rctx.smt_ctx.check()? {
                         Response::Sat => Some(self.rctx.synth_vars.read_assignment(
                             self.rctx.ctx,
-                            &mut self.rctx.smt_ctx,
+                            self.rctx.smt_ctx,
                             self.rctx.enc,
                             step_range.start,
                         )),
