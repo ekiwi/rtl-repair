@@ -63,20 +63,12 @@ module xlnxstream_2018_3 #
 	// Total number of output data
 	localparam NUMBER_OF_OUTPUT_WORDS = 8;
 
-	// function called clogb2 that returns an integer which has the
-	// value of the ceiling of the log base 2.
-	function integer clogb2 (input integer bit_depth);
-	begin
-		for(clogb2=0; bit_depth>0; clogb2=clogb2+1)
-			bit_depth = bit_depth >> 1;
-	end endfunction
-
 	// WAIT_COUNT_BITS is the width of the wait counter.
-	localparam integer WAIT_COUNT_BITS = clogb2(C_M_START_COUNT-1);
+	localparam integer WAIT_COUNT_BITS = $clog2(C_M_START_COUNT-1);
 
 	// bit_num gives the minimum number of bits needed to address 'depth'
 	// size of FIFO.
-	localparam bit_num  = clogb2(NUMBER_OF_OUTPUT_WORDS);
+	localparam bit_num  = $clog2(NUMBER_OF_OUTPUT_WORDS);
 
 	// Define the states of state machine
 	// The control state machine oversees the writing of input streaming
