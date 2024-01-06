@@ -134,6 +134,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         """ AXIS Adapter with incorrect last cycle detection """
         # TODO: the repair that is found here is wrong!
         #       try to get a better testbench
+        # Actual repair is too hard though!
         self.synth_success(s3_dir, "s3", solver="yices2", init="zero", incremental=True, timeout=60)
 
     def test_d4(self):

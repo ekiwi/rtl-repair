@@ -61,6 +61,7 @@ def _run_synthesizer(working_dir: Path, design: Path, testbench: Path, opts: Syn
         args += ["--verbose"]
     if opts.past_k_step_size:
         args += ["--past-k-step-size", str(opts.past_k_step_size)]
+    args += ["--max-incorrect-solutions-per-window-size", str(4)]
     # test: multiple solutions
     # args += ["--sample-solutions", "2"]
     if opts.old_synthesizer:
