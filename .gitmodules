@@ -1,0 +1,3 @@
+[submodule "synth/patron"]
+	path = synth/patron
+	url = git@github.com:ekiwi/patron.git
