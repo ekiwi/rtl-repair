@@ -73,6 +73,7 @@ assign frame_len_valid = frame_len_valid_reg;
 integer offset, i, bit_cnt;
 
 always @* begin
+    i = 0; // Resolve yosys issue of infering dlatches for loop variables even though value is always written before it is read.
     frame_len_next = frame_len_reg;
     frame_len_valid_next = 1'b0;
     frame_next = frame_reg;
