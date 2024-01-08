@@ -69,11 +69,11 @@ def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str = None, 
     assert btor_name.exists()
     return btor_name
 
-def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: str = None, logfile = None):
+def to_gatelevel_netlist(working_dir: Path, output: Path, sources: list, top: str = None, logfile = None, script_out: Path = None):
     _check_exists(working_dir, sources)
     _require_yosys()
     yosys_cmd = _read_sources(sources, top) + ["synth", f"write_verilog {output.resolve()}"]
-    _run_yosys(working_dir, yosys_cmd, logfile)
+    _run_yosys(working_dir, yosys_cmd, logfile=logfile, script_out=script_out)
     assert output.exists()
     return output
 
