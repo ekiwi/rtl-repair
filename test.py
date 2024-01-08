@@ -47,7 +47,8 @@ s2_dir = fpga_debug_dir / "axi-stream-s2"
 zip_cpu_sdspi_dir = fpga_debug_dir / "zipcpu-spi-c1-c3-d9"
 
 
-def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True, timeout=None, old_synthesizer=False):
+def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', init='any', incremental=True,
+              timeout=None, old_synthesizer=False):
     if not working_dir.exists():
         os.mkdir(working_dir)
     # determine the directory name from project and bug name
@@ -62,7 +63,7 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
         "--init", init,
         "--verbose-synthesizer",
     ]
-    if bug: # bug is optional to allow for sanity-check "repairs" of the original design
+    if bug:  # bug is optional to allow for sanity-check "repairs" of the original design
         args += ["--bug", bug]
     if testbench:
         args += ["--testbench", testbench]
@@ -102,31 +103,39 @@ def run_synth(project_path: Path, bug: str, testbench: str = None, solver='z3', 
 
 class SynthesisTest(unittest.TestCase):
 
-    def synth_success(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, timeout: int = None, max_changes: int = 2, old_synthesizer: bool = False):
+    def synth_success(self, project_path: Path, bug: str = None, testbench=None, solver: str = _default_solver,
+                      init='any',
+                      incremental: bool = False, timeout: int = None, max_changes: int = 2,
+                      old_synthesizer: bool = False):
         start = time.monotonic()
-        status, changes, template = run_synth(project_path, bug, testbench, solver, init, incremental, timeout, old_synthesizer)
+        status, changes, template = run_synth(project_path, bug, testbench, solver, init, incremental, timeout,
+                                              old_synthesizer)
         self.assertEqual("success", status)
         self.assertLessEqual(changes, max_changes)
         if _print_time:
             print(f"SUCCESS: {project_path} w/ {solver} in {time.monotonic() - start}s")
         return changes
 
-    def synth_no_repair(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, timeout: int = None, max_changes: int = 2, old_synthesizer: bool = False):
+    def synth_no_repair(self, project_path: Path, bug: str = None, testbench=None, solver: str = _default_solver,
+                        init='any',
+                        incremental: bool = False, timeout: int = None, max_changes: int = 2,
+                        old_synthesizer: bool = False):
         start = time.monotonic()
         status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout, old_synthesizer)
         self.assertEqual("no-repair", status)
         if _print_time:
             print(f"NO-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
 
-    def synth_cannot_repair(self, project_path: Path, bug: str=None, testbench=None, solver: str = _default_solver, init='any',
-                      incremental: bool = False, timeout: int = None, max_changes: int = 2, old_synthesizer: bool = False):
+    def synth_cannot_repair(self, project_path: Path, bug: str = None, testbench=None, solver: str = _default_solver,
+                            init='any',
+                            incremental: bool = False, timeout: int = None, max_changes: int = 2,
+                            old_synthesizer: bool = False):
         start = time.monotonic()
         status, _, _ = run_synth(project_path, bug, testbench, solver, init, incremental, timeout, old_synthesizer)
         self.assertIn(status, {"cannot-repair", "timeout"})
         if _print_time:
             print(f"CANNOT-REPAIR: {project_path} w/ {solver} in {time.monotonic() - start}s")
+
 
 class TestFpgaDebugBenchmarks(SynthesisTest):
 
@@ -170,13 +179,13 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         # TODO: this solution is not correct, way too many changes
         self.assertEqual(changes, 9)
 
-
     def test_s1_b(self):
         """ Xilinx generated AXI Lite peripheral with missing guard """
-        self.synth_cannot_repair(s1_dir, "s1b", testbench="s1b", solver="yices2", init="zero", incremental=True, timeout=60, max_changes=10)
+        self.synth_cannot_repair(s1_dir, "s1b", testbench="s1b", solver="yices2", init="zero", incremental=True,
+                                 timeout=60, max_changes=10)
         # the other testbench does not reveal this bug
         self.synth_no_repair(s1_dir, "s1b", testbench="s1r", solver="yices2", init="zero", incremental=True,
-                                 timeout=60, max_changes=10)
+                             timeout=60, max_changes=10)
 
     def test_s1_r(self):
         """ Xilinx generated AXI Lite peripheral with missing guard """
@@ -184,14 +193,13 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
                                  timeout=60, max_changes=10)
         # the other testbench does not reveal this bug
         self.synth_no_repair(s1_dir, "s1r", testbench="s1b", solver="yices2", init="zero", incremental=True,
-                                 timeout=60, max_changes=10)
+                             timeout=60, max_changes=10)
 
     def test_s2(self):
         """ Xilinx generated AXI Stream source, has missing guard for assignment """
         changes = self.synth_success(s2_dir, "s2", solver="yices2", init="zero", incremental=True, timeout=60)
         # finds one constant assignment which fixes the testbench, not quite the complete solution!
         self.assertEqual(changes, 1)
-
 
     def test_c1(self):
         """ SD-SPI driver from ZipCPU. Missing condition in `if`. Fails after 101 cycles. """
@@ -204,6 +212,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
     def test_d9(self):
         """ SD-SPI driver from ZipCPU. Endianess swapped in assignment. Fails after 483,920 cycles. """
         self.synth_cannot_repair(zip_cpu_sdspi_dir, "d9", solver="yices2", init="zero", incremental=True, timeout=60)
+
 
 class TestCirFixBenchmarksIncremental(SynthesisTest):
     """ Makes sure that we can handle all benchmarks from the cirfix paper in incremental mode. """
@@ -257,19 +266,19 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: incorrect repair
         changes = self.synth_success(fsm_dir, "ssscrazy_buggy1", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(2, changes) # repaired by pre-processing!
+        self.assertEqual(2, changes)  # repaired by pre-processing!
 
     def test_fsm_full_ssscrazy2(self):
         # CirFix: incorrect repair
         changes = self.synth_success(fsm_dir, "ssscrazy_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout, max_changes=20)
-        self.assertEqual(15, changes) # repaired by pre-processing!
+        self.assertEqual(15, changes)  # repaired by pre-processing!
 
     @unittest.skip("need to set _ENABLE_NEW_CASE_STATEMENT for this to work")
     def test_fsm_full_wadden1(self):
         # CirFix: timed out
         self.synth_success(fsm_dir, "wadden_buggy1", solver=self.solver, init=self.init,
-                                 incremental=self.incremental, timeout=self.timeout)
+                           incremental=self.incremental, timeout=self.timeout)
         # repaired by extended assign const
 
     def test_fsm_full_wadden2(self):
@@ -348,7 +357,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: incorrect repair
         changes = self.synth_success(i2c_dir / "master_sync_reset.toml", "kgoliya_buggy1", "fixed_x_prop_tb",
                                      solver=self.solver, init=self.init, incremental=self.incremental,
-                                     timeout=(self.timeout * 2)) # TODO: this benchmark has become very slow!
+                                     timeout=(self.timeout * 2))  # TODO: this benchmark has become very slow!
         self.assertEqual(1, changes)
 
     def test_i2c_slave_wadden1(self):
@@ -385,9 +394,11 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         self.synth_cannot_repair(sha_dir / "padder.toml", "ssscrazy_buggy1", solver=self.solver, init=self.init,
                                  incremental=self.incremental, timeout=self.timeout)
 
+
 class TestPaperExample(SynthesisTest):
     def test_tb(self):
         self.synth_success(paper_example_dir, "buggy", init='random')
+
 
 class TestChiselCounter(SynthesisTest):
     def test_full_tb(self):
@@ -426,11 +437,12 @@ class TestSdRamController(SynthesisTest):
 class TestI2C(SynthesisTest):
 
     def test_orig_fixed_x_prop_tb(self):
-        self.synth_no_repair(i2c_dir / "master_sync_reset.toml", testbench="fixed_x_prop_tb", init='zero', incremental=True)
-
+        self.synth_no_repair(i2c_dir / "master_sync_reset.toml", testbench="fixed_x_prop_tb", init='zero',
+                             incremental=True)
 
     def test_kgoliya_buggy1(self):
-        self.synth_success(i2c_dir / "master_sync_reset.toml", "kgoliya_buggy1", "fixed_x_prop_tb", init='zero', incremental=True)
+        self.synth_success(i2c_dir / "master_sync_reset.toml", "kgoliya_buggy1", "fixed_x_prop_tb", init='zero',
+                           incremental=True)
 
 
 class TestReedSolomon(SynthesisTest):
@@ -732,6 +744,7 @@ class TestTypeInference(unittest.TestCase):
         expected = {None: 1, 1: 190, 2: 25, 3: 23, 4: 37, 7: 11, 8: 79, 9: 3, 11: 2, 15: 4, 16: 8, 24: 2, 26: 6, 32: 36}
         self.assertEqual(expected, hist)
 
+
 class TestExposeBranches(unittest.TestCase):
     """ unittests for code in rtlrepair/expose_branches.py """
 
@@ -740,6 +753,7 @@ class TestExposeBranches(unittest.TestCase):
         from rtlrepair.expose_branches import expose_branches
         ast = parse_verilog(flip_flop_dir / "tff.v")
         expose_branches(ast)
+
 
 class TestPyVerilog(unittest.TestCase):
     """ tests to iron out some pyverilog bugs that we tried to fix in our local copy """
@@ -759,6 +773,7 @@ class TestPyVerilog(unittest.TestCase):
             ast = parse_verilog(Path(fp.name))
             out = serialize(ast)
             self.assertIn("reg test = 1'b0", out)
+
 
 if __name__ == '__main__':
     # ignore warnings because pyverilog is not good about closing some files it opens
