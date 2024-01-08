@@ -4,10 +4,11 @@
 
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.templates.assign_const import ProcessAnalyzer
+from rtlrepair.templates.assign_const import ProcessAnalyzer, RegisterFinder
 from rtlrepair.types import InferWidths
 from rtlrepair.utils import Namespace, ensure_block
 import pyverilog.vparser.ast as vast
+
 
 def conditional_overwrite(ast: vast.Source):
     namespace = Namespace(ast)
@@ -27,6 +28,17 @@ class ConditionalOverwrite(RepairTemplate):
         # we use this list to track which new blocks we introduced in order to minimize the diff between
         # buggy and repaired version
         self.blockified = []
+        # remember all 1-bit registers
+        self.bool_registers = set()
+
+    def visit_ModuleDef(self, node: vast.ModuleDef):
+        finder = RegisterFinder()
+        finder.visit(node)
+        self.bool_registers = set()
+        for reg in finder.registers:
+            if self.widths[reg] == 1:
+                self.bool_registers.add(reg)
+        return self.generic_visit(node)
 
     def visit_Always(self, node: vast.Always):
         analysis = ProcessAnalyzer()
@@ -34,13 +46,15 @@ class ConditionalOverwrite(RepairTemplate):
         if analysis.non_blocking_count > 0 and analysis.blocking_count > 0:
             print("WARN: single always process seems to mix blocking and non-blocking assignment. Skipping.")
             return node
+        # collect local condition atoms
+        conditions = collect_condition_atoms(analysis.conditions, self.bool_registers)
         # note: we are ignoring pointer for now since these might contain loop vars that may not always be in scope..
         assigned_vars = [var for var in analysis.assigned_vars if isinstance(var, vast.Identifier)]
         self.use_blocking = analysis.blocking_count > 0
         # add conditional overwrites to the end of the process
         stmts = []
         for var in assigned_vars:
-            cond = self.gen_condition(analysis.conditions, analysis.case_inputs)
+            cond = self.gen_condition(conditions, analysis.case_inputs)
             assignment = self.make_assignment(var)
             inner = vast.IfStatement(cond, assignment, None)
             stmts.append(self.make_change_stmt(inner, 0))
@@ -74,3 +88,21 @@ class ConditionalOverwrite(RepairTemplate):
         else:
             assign = vast.NonblockingSubstitution(vast.Lvalue(var), vast.Rvalue(const))
         return assign
+
+
+def collect_condition_atoms(conditions: list, regs: set) -> list:
+    atoms = set()
+    for cond in conditions:
+        atoms |= destruct_to_atom(cond)
+    atoms |= regs
+    return list(atoms)
+
+
+def destruct_to_atom(expr: list) -> set:
+    """ conjunction and negation is already part of our template, thus we want to exclude it from our atoms """
+    if isinstance(expr, vast.Unot) or isinstance(expr, vast.Ulnot):
+        return destruct_to_atom(expr.right)
+    elif isinstance(expr, vast.Land) or isinstance(expr, vast.Uand):
+        return destruct_to_atom(expr.left) | destruct_to_atom(expr.right)
+    else:
+        return { expr }
