@@ -14,6 +14,15 @@ _minimal_btor_conversion = [
     "flatten",
     "dffunmap",
 ]
+
+_new_btor_conversion = [
+    "proc",
+    "opt",
+    "flatten",
+    "dffunmap",
+    "clk2fflogic"
+]
+
 # inspired by the commands used by SymbiYosys
 _btor_conversion = [
     "proc",
@@ -46,8 +55,12 @@ def _read_sources(sources: list, top: str) -> list:
         read_cmd += [f"hierarchy -top {top}"]
     return read_cmd
 
-def _run_yosys(working_dir: Path, yosys_cmds: list, logfile = None) -> str:
+def _run_yosys(working_dir: Path, yosys_cmds: list, script_out: Path = None, logfile = None) -> str:
     cmd = ["yosys", "-p", " ; ".join(yosys_cmds)]
+    if script_out is not None:
+        with open(script_out, "w") as f:
+            print("#!/usr/bin/env bash", file=f)
+            print("yosys -p \"" + ' ; '.join(yosys_cmds) + '"', file=f)
     stderr = None if logfile is None else logfile
     r = subprocess.run(cmd, check=True, cwd=working_dir, stdout=subprocess.PIPE, stderr=stderr)
     stdout = r.stdout.decode('utf-8')
@@ -55,12 +68,12 @@ def _run_yosys(working_dir: Path, yosys_cmds: list, logfile = None) -> str:
         print(stdout, file=logfile)
     return stdout
 
-def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str = None):
+def to_btor(working_dir: Path, btor_name: Path, sources: list, top: str = None, script_out: Path = None):
     _check_exists(working_dir, sources)
     _require_yosys()
-    conversion = _minimal_btor_conversion
+    conversion = _new_btor_conversion
     yosys_cmd = _read_sources(sources, top) + conversion + [f"write_btor -x {btor_name.resolve()}"]
-    _run_yosys(working_dir, yosys_cmd)
+    _run_yosys(working_dir, yosys_cmd, script_out=script_out)
     assert btor_name.exists()
     return btor_name
 

@@ -111,7 +111,8 @@ class Synthesizer:
         # convert file and run synthesizer
         additional_sources = get_other_sources(benchmark)
         btor_filename = to_btor(working_dir, working_dir / (synth_filename.stem + ".btor"),
-                                [synth_filename] + additional_sources, benchmark.design.top)
+                                [synth_filename] + additional_sources, benchmark.design.top,
+                                script_out=working_dir / "to_botr.sh")
         result = _run_synthesizer(working_dir, btor_filename, benchmark.testbench.table, opts)
 
         status = status_name_to_enum[result['status']]
