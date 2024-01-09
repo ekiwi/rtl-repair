@@ -5,6 +5,7 @@ import math
 
 from rtlrepair.repair import RepairTemplate
 from rtlrepair.analysis import InferWidths, AnalysisResults, get_lvars
+from rtlrepair.templates.assign_const import ProcessAnalyzer
 from rtlrepair.utils import Namespace, ensure_block
 import pyverilog.vparser.ast as vast
 
@@ -45,6 +46,7 @@ class AddGuard(RepairTemplate):
         return node
 
     def visit_Assign(self, node: vast.Assign):
+        # assignments outside of a process
         if self.in_proc:
             return node  # unexpected
         # check to see if this is a 1-bit assignment
@@ -53,6 +55,32 @@ class AddGuard(RepairTemplate):
         atoms = find_atoms(get_lvars(node.left), self.a)
         node.right.var = self.build_guard(node.right.var, atoms)
         return node
+
+    def visit_Always(self, node: vast.Always):
+        self.in_proc = True
+        node.statement = self.visit(node.statement)
+        self.in_proc = False
+        return node
+
+    def visit_IfStatement(self, node: vast.IfStatement):
+        # we are not interested in if statements outside of processes
+        if not self.in_proc:
+            return node
+        # first we visit the children
+        node.true_statement = self.visit(node.true_statement)
+        node.false_statement = self.visit(node.false_statement)
+        # see which variables are assigned in this statement
+        analysis = ProcessAnalyzer()
+        analysis.visit(node.true_statement)
+        analysis.visit(node.false_statement)
+        if analysis.blocking_count > 0:
+            lvars = analysis.assigned_vars
+        else:
+            lvars = set()
+        atoms = find_atoms(lvars, self.a)
+        node.cond = self.build_guard(node.cond, atoms)
+        return node
+
 
     def build_guard(self, expr: vast.Node, atoms: list[vast.Node]) -> vast.Node:
         """
@@ -89,7 +117,7 @@ class AddGuard(RepairTemplate):
 
 def find_atoms(lvars: set[str], a: AnalysisResults) -> list[vast.Node]:
     atoms = []
-    l_deps = set.union(*[a.vars[v].depends_on for v in lvars])
+    l_deps = set() if len(lvars) == 0 else set.union(*[a.vars[v].depends_on for v in lvars])
     for var in a.vars.values():
         # we are only interested in 1-bit vars
         if var.width != 1:
