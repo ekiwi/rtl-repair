@@ -795,6 +795,10 @@ class TestDependencyAnalysis(unittest.TestCase):
         analyze_ast(ast).var_list()
         # no check, just making sure it does not crash
 
+    def test_sha3_round_s1(self):
+        ast = parse_verilog(sha_dir / "round_ssscrazy_buggy1.v")
+        analyze_ast(ast).var_list()
+        # no check, just making sure it does not crash
 
 
 

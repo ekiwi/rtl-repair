@@ -41,6 +41,7 @@ class VarInfo:
     is_input: bool = False
     is_output: bool = False
     is_const: bool = False
+    is_genvar: bool = False
     depends_on: set[str] = field(default_factory=set)
 
     def is_register(self) -> bool:
@@ -386,6 +387,10 @@ class DependencyAnalysis(AstVisitor):
         if node.name not in self.vars:
             self.vars[node.name] = VarInfo(node.name, self.widths[node.name])
 
+    def visit_Genvar(self, node: vast.Genvar):
+        assert node.name not in self.vars
+        self.vars[node.name] = VarInfo(node.name, self.widths[node.name], is_genvar=True)
+
     def visit_Always(self, node: vast.Always):
         # try to see if this process implements synchronous logic
         self.proc_info = find_clock_and_reset(node.sens_list)
@@ -415,9 +420,9 @@ class DependencyAnalysis(AstVisitor):
         self.proc_info = None
 
     def visit_assignment(self, is_blocking: bool, left: vast.Lvalue, right: vast.Node):
-        # warn about mixed assignments
         if self.proc_info is None:
-            print("TODO")
+            # if we are not in a proc, we are probably in a generate for statement, which we will just ignore
+            return
         if is_blocking and self.proc_info.is_sync():
             print("[DependencyAnalysis] WARN: blocking assignment in sync logic process!")
         if not is_blocking and self.proc_info.is_comb():
