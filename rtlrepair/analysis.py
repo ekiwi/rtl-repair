@@ -224,9 +224,12 @@ class InferWidths(AstVisitor):
         elif isinstance(node, vast.Assign):
             assert isinstance(node.left, vast.Lvalue)
             assert isinstance(node.right, vast.Rvalue)
-            # check the lhs first because it might influence the lhs
-            lhs_width = self.expr_width(node.left.var, None)
-            rhs_width = self.expr_width(node.right.var, lhs_width)
+            try:
+                # check the lhs first because it might influence the lhs
+                lhs_width = self.expr_width(node.left.var, None)
+                rhs_width = self.expr_width(node.right.var, lhs_width)
+            except RuntimeError:
+                pass  # ignore failure
         elif isinstance(node, vast.IfStatement):
             self.expr_width(node.cond, 1)
             self.visit(node.true_statement)
