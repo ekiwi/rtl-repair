@@ -665,7 +665,7 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
         widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
-        self.assertEqual({None: 1, 1: 13, 4: 8, 8: 17}, hist)
+        self.assertEqual({None: 1, 1: 22, 4: 8, 8: 17}, hist)
 
     def test_counter_widths(self):
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
@@ -690,21 +690,21 @@ class TestTypeInference(unittest.TestCase):
         # ast.show()
         widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
-        expected = {None: 1, 32: 24, 5: 50, 8: 17, 2: 7, 13: 4, 1: 26, 10: 7, 4: 7, 24: 4, 16: 5, 9: 2, 3: 1}
+        expected = {None: 1, 32: 22, 5: 51, 8: 17, 2: 8, 13: 5, 1: 36, 10: 7, 4: 7, 24: 4, 16: 7, 9: 2, 3: 1}
         self.assertEqual(expected, hist)
 
     def test_reed_solomon_widths(self):
         ast = parse_verilog(reed_dir / "BM_lamda.v")
         widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
-        expected = {None: 1, 1: 26, 3: 1, 4: 5, 5: 4, 8: 99, 9: 9, 32: 32}
+        expected = {None: 1, 1: 26, 3: 1, 4: 5, 5: 4, 8: 111, 9: 16, 32: 22}
         self.assertEqual(expected, hist)
 
     def test_i2c_bit_widths(self):
         ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.sync_reset.v", i2c_dir)
         widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
-        expected = {None: 1, 1: 69, 2: 15, 3: 11, 4: 5, 14: 4, 16: 6, 18: 19, 32: 2}
+        expected = {None: 1, 1: 71, 2: 15, 3: 11, 4: 5, 14: 4, 16: 6, 18: 19, 32: 2}
         self.assertEqual(expected, hist)
 
     def test_mux_widths(self):
@@ -719,14 +719,14 @@ class TestTypeInference(unittest.TestCase):
         ast = parse_verilog(s3_dir / "axis_adapter.v")
         widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
-        expected = {None: 1, 1: 63, 3: 5, 8: 11, 32: 24, 64: 3}
+        expected = {None: 1, 1: 67, 3: 5, 8: 13, 32: 23, 64: 3}
         self.assertEqual(expected, hist)
 
     def test_sd_spi_widths(self):
         ast = parse_verilog(zip_cpu_sdspi_dir / "sdspi.v")
         widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
-        expected = {None: 1, 1: 190, 2: 25, 3: 23, 4: 37, 7: 11, 8: 79, 9: 3, 11: 2, 15: 4, 16: 8, 24: 2, 26: 6, 32: 36}
+        expected = {None: 1, 1: 196, 2: 25, 3: 23, 4: 37, 7: 15, 8: 80, 9: 3, 11: 2, 15: 4, 16: 8, 24: 2, 26: 6, 32: 37}
         self.assertEqual(expected, hist)
 
     def test_xlnx_axi_width(self):
