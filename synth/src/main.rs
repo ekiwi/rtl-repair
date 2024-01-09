@@ -70,7 +70,7 @@ struct Args {
     pask_k_step_size: u64,
     #[arg(
         long,
-        default_value_t = 24u64,
+        default_value_t = 32u64,
         help = "the maximum repair window size before the incremental solver gives up"
     )]
     max_repair_window_size: u64,
