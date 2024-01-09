@@ -280,7 +280,10 @@ impl RepairWindow {
         if failures.is_empty() {
             self.past_k = std::cmp::min(original_failure, past_step_size + self.past_k);
         } else {
-            let max_future_failure = failures.iter().filter(|s| **s > original_failure).max();
+            let max_future_failure = failures
+                .iter()
+                .filter(|s| **s > (original_failure + old.future_k))
+                .max();
             match max_future_failure {
                 None => {
                     // if there are no solutions that lead to a later failure, we just increase the pastK
