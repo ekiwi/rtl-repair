@@ -639,25 +639,28 @@ def _make_histogram(widths: dict) -> dict:
     return dict(hist)
 
 
+from rtlrepair import parse_verilog
+from rtlrepair.dependency_analysis import analyze_dependencies
+
 class TestTypeInference(unittest.TestCase):
     """ actual unittests for code in rtlrepair/types.py """
 
     def test_flip_flop_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
         widths = infer_widths(ast)
         self.assertEqual({None: 1, 1: 6}, _make_histogram(widths))
 
     def test_flip_flop_buggy1_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff_wadden_buggy1.v")
         widths = infer_widths(ast)
         self.assertEqual({None: 1, 1: 5}, _make_histogram(widths))
 
     def test_decoder_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
         widths = infer_widths(ast)
@@ -665,7 +668,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 13, 4: 8, 8: 17}, hist)
 
     def test_counter_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
         widths = infer_widths(ast)
@@ -673,7 +676,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 8, 4: 5}, hist)
 
     def test_fsm_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(fsm_dir / "fsm_full.v")
         widths = infer_widths(ast)
@@ -681,7 +684,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 19, 3: 8}, hist)
 
     def test_left_shift_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(left_shift_dir / "lshift_reg.v")
         widths = infer_widths(ast)
@@ -689,7 +692,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 4, 8: 7, 32: 5}, hist)
 
     def test_sdram_controller_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(sd_dir / "sdram_controller.no_tri_state.v")
         # ast.show()
@@ -699,7 +702,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_reed_solomon_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(reed_dir / "BM_lamda.v")
         widths = infer_widths(ast)
@@ -708,7 +711,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_i2c_bit_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.sync_reset.v", i2c_dir)
         widths = infer_widths(ast)
@@ -717,7 +720,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_mux_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(mux_dir / "mux_4_1.v")
         widths = infer_widths(ast)
@@ -727,7 +730,7 @@ class TestTypeInference(unittest.TestCase):
 
     def test_axis_adapter_widths(self):
         """ This file contains the `indexed part selector`: [... +: ... ] """
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(s3_dir / "axis_adapter.v")
         widths = infer_widths(ast)
@@ -736,7 +739,7 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_sd_spi_widths(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.types import infer_widths
         ast = parse_verilog(zip_cpu_sdspi_dir / "sdspi.v")
         widths = infer_widths(ast)
@@ -749,7 +752,7 @@ class TestExposeBranches(unittest.TestCase):
     """ unittests for code in rtlrepair/expose_branches.py """
 
     def test_flip_flop(self):
-        from rtlrepair import parse_verilog
+
         from rtlrepair.expose_branches import expose_branches
         ast = parse_verilog(flip_flop_dir / "tff.v")
         expose_branches(ast)
@@ -758,8 +761,7 @@ class TestExposeBranches(unittest.TestCase):
 class TestDependencyAnalysis(unittest.TestCase):
     """ actual unittests for code in rtlrepair/dependency_analysis.py """
 
-    def check(self, expected: list, vvs: list):
-        print_actual = False
+    def check(self, expected: list, vvs: list, print_actual: bool = False):
         if print_actual:
             vstr = ", ".join(f'"{v.render()}"' for v in vvs)
             print(f"[{vstr}]")
@@ -768,13 +770,16 @@ class TestDependencyAnalysis(unittest.TestCase):
         self.assertEqual(len(expected), len(vvs))
 
     def test_flip_flop_deps(self):
-        from rtlrepair import parse_verilog
-        from rtlrepair.dependency_analysis import analyze_dependencies
         ast = parse_verilog(flip_flop_dir / "tff.v")
         expected = ["inp clk: {}", "out reg (@posedge clk) q: {}", "inp rstn: {}", "inp t: {}"]
         self.check(expected, analyze_dependencies(ast))
 
-
+    def test_decoder(self):
+        ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
+        expected = ["inp A: {}", "inp B: {}", "inp C: {}", "out Y0: {A, B, C, en}", "out Y1: {A, B, C, en}",
+                    "out Y2: {A, B, C, en}", "out Y3: {A, B, C, en}", "out Y4: {A, B, C, en}", "out Y5: {A, B, C, en}",
+                    "out Y6: {A, B, C, en}", "out Y7: {A, B, C, en}", "inp en: {}"]
+        self.check(expected, analyze_dependencies(ast))
 
 
 class TestPyVerilog(unittest.TestCase):
@@ -791,7 +796,7 @@ class TestPyVerilog(unittest.TestCase):
             fp.write(src)
             fp.close()
 
-            from rtlrepair import parse_verilog, serialize
+            from rtlrepair import serialize
             ast = parse_verilog(Path(fp.name))
             out = serialize(ast)
             self.assertIn("reg test = 1'b0", out)

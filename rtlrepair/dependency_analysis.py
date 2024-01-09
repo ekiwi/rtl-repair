@@ -38,7 +38,7 @@ class VarInfo:
     depends_on: set = field(default_factory=set)
 
     def is_register(self) -> bool:
-        return self.clocking is not None
+        return self.clocking is not None and self.clocking.is_sync()
 
     def render(self) -> str:
         out = ""
@@ -103,13 +103,35 @@ class DependencyAnalysis(AstVisitor):
         self.proc_info = None
 
     def visit_NonblockingSubstitution(self, node: vast.NonblockingSubstitution):
-        if self.proc_info.is_comb():
-            print("WARN: non-blocking assignment in comb logic process!")
-        else:
-            name = get_lvar(node.left)
-            old_clocking = self.vars[name].clocking
-            assert old_clocking is None or old_clocking == self.proc_info
-            self.vars[name].clocking = self.proc_info
+        self.visit_assignment(is_blocking=False, left=node.left, right=node.right)
+
+    def visit_BlockingSubstitution(self, node: vast.BlockingSubstitution):
+        self.visit_assignment(is_blocking=True, left=node.left, right=node.right)
+
+    def visit_Assign(self, node: vast.Assign):
+        # fake a proc info
+        self.proc_info = ProcInfo()
+        # treat like an blocking assignment in a comb process
+        self.visit_assignment(is_blocking=True, left=node.left, right=node.right)
+        self.proc_info = None
+
+    def visit_assignment(self, is_blocking: bool, left: vast.Lvalue, right: vast.Node):
+        # warn about mixed assignments
+        if is_blocking and self.proc_info.is_sync():
+            print("[DependencyAnalysis] WARN: blocking assignment in sync logic process!")
+        if not is_blocking and self.proc_info.is_comb():
+            print("[DependencyAnalysis] WARN: non-blocking assignment in comb logic process!")
+
+        names = sorted(get_lvars(left))
+        for name in names:
+            vv = self.vars[name]
+            if vv.clocking is None:
+                vv.clocking = self.proc_info
+            else:
+                assert vv.clocking == self.proc_info
+            if is_blocking:
+                # we only track comb dependencies
+                vv.depends_on |= get_rvars(right)
 
     def visit_IfStatement(self, node: vast.IfStatement):
         cond_vars = get_rvars(node.cond)
@@ -118,13 +140,17 @@ class DependencyAnalysis(AstVisitor):
         self.visit(node.false_statement)
         self.path_stack.pop()
 
-
-def get_lvar(expr: vast.Node) -> str:
+def get_lvars(expr: vast.Node) -> set[str]:
     """ returns variable that is being assigned """
     if isinstance(expr, vast.Lvalue):
-        return get_lvar(expr.var)
+        return get_lvars(expr.var)
     elif isinstance(expr, vast.Identifier):
-        return expr.name
+        return { expr.name }
+    elif isinstance(expr, vast.Concat) or isinstance(expr, vast.LConcat):
+        out = set()
+        for e in expr.list:
+            out |= get_lvars(e)
+        return out
     else:
         raise NotImplementedError(f"TODO: implement get_lvar for {expr} : {type(expr)}")
 
@@ -132,11 +158,14 @@ def get_lvar(expr: vast.Node) -> str:
 def get_rvars(expr: vast.Node) -> set[str]:
     """ returns variables that are being read """
     if isinstance(expr, vast.Identifier):
-        return set(expr.name)
-    elif isinstance(expr, vast.UnaryOperator):
-        return get_rvars(expr.right)
+        return {expr.name}
+    elif isinstance(expr, vast.Rvalue):
+        return get_rvars(expr.var)
     else:
-        raise NotImplementedError(f"TODO: implement get_rvars for {expr} : {type(expr)}")
+        out = set()
+        for e in expr.children():
+            out |= get_rvars(e)
+        return out
 
 
 def find_clock_and_reset(sens: vast.SensList) -> ProcInfo:
