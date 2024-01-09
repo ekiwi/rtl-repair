@@ -244,7 +244,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: correct repair
         changes = self.synth_success(counter_dir, "kgoliya_buggy1", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        self.assertEqual(1, changes)
+        self.assertEqual(2, changes)
 
     def test_counter_wadden1(self):
         # CirFix: correct repair
@@ -253,8 +253,10 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
 
     def test_counter_wadden2(self):
         # CirFix: correct repair
-        self.synth_cannot_repair(counter_dir, "wadden_buggy2", solver=self.solver, init=self.init,
-                                 incremental=self.incremental, timeout=self.timeout)
+        changes = self.synth_success(counter_dir, "wadden_buggy2", solver=self.solver, init=self.init,
+                                     incremental=self.incremental, timeout=self.timeout)
+        # solved with conditional overwrite
+        self.assertEqual(changes, 2)
 
     def test_flip_flop_wadden1(self):
         # CirFix: correct repair
@@ -567,7 +569,8 @@ class TestFirstCounter(SynthesisTest):
     def test_wadden_buggy2_orig_tb(self):
         # cannot be repaired with just literal replacement
         # this would need an if() condition to modified
-        self.synth_cannot_repair(counter_dir, "wadden_buggy2", "orig_tb", init='random')
+        # repaired with conditional overwrite
+        self.synth_success(counter_dir, "wadden_buggy2", "orig_tb", init='random')
 
     def test_kgoliya_buggy1_orig_tb(self):
         # this can be repaired through the assign_const template
