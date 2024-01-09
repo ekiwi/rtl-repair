@@ -3,31 +3,28 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.types import InferWidths
+from rtlrepair.analysis import AnalysisResults, VarInfo
 from rtlrepair.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
-def replace_literals(ast: vast.Source):
+def replace_literals(ast: vast.Source, analysis: AnalysisResults):
     namespace = Namespace(ast)
-    infer = InferWidths()
-    infer.run(ast)
-    repl = LiteralReplacer(infer.widths, infer.vars, infer.params)
+    repl = LiteralReplacer(analysis.vars, analysis.widths)
     repl.apply(namespace, ast)
 
 
 class LiteralReplacer(RepairTemplate):
-    def __init__(self, widths, vars, params):
+    def __init__(self, vars: dict[str, VarInfo], widths: dict[vast.Node, int]):
         super().__init__(name="literal")
-        self.widths = widths
         self.vars = vars
-        self.params = params
+        self.widths = widths
 
     def visit_Identifier(self, node: vast.Identifier):
-        if node.name in self.params:
+        var = self.vars[node.name]
+        if var.is_const:
             # we treat parameters like constants
-            bits = self.vars[node.name]
-            new_const = vast.Identifier(self.make_synth_var(bits))
+            new_const = vast.Identifier(self.make_synth_var(var.width))
             choice = self.make_change(new_const, node)
             return choice
         else:

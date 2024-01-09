@@ -4,7 +4,7 @@
 
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.types import InferWidths
+from rtlrepair.analysis import InferWidths
 from rtlrepair.utils import Namespace, ensure_block
 import pyverilog.vparser.ast as vast
 

@@ -17,6 +17,7 @@ from pathlib import Path
 from benchmarks import Benchmark, load_project, get_benchmark
 from benchmarks.result import create_buggy_and_original_diff, write_result
 from rtlrepair import parse_verilog, serialize, do_repair, Synthesizer, preprocess, SynthOptions, Status
+from rtlrepair.analysis import analyze_ast, AnalysisResults
 from rtlrepair.synthesizer import SynthStats
 from rtlrepair.templates import *
 
@@ -31,6 +32,7 @@ _available_templates = {
     'conditional_overwrite': conditional_overwrite,
 }
 _default_templates = ['replace_literals', 'assign_const', 'add_inversions']
+#_default_templates = ['conditional_overwrite']
 
 
 @dataclass
@@ -130,7 +132,7 @@ def find_solver_version(solver: str) -> str:
 # return this if the synthesizer did not run or did not run properly (i.e. crashed)
 NoSynthStat = SynthStats(solver_time_ns=0, past_k=-1, future_k=-1)
 
-def try_template(config: Config, ast, prefix: str, template, statistics: dict) -> (Status, list):
+def try_template(config: Config, ast, prefix: str, template, statistics: dict, analysis: AnalysisResults) -> (Status, list):
     if config.opts.per_template_timeout is not None:
         signal.alarm(int(math.ceil(config.opts.per_template_timeout)))
 
@@ -143,7 +145,7 @@ def try_template(config: Config, ast, prefix: str, template, statistics: dict) -
     os.mkdir(template_dir)
 
     # apply template any try to synthesize a solution
-    blockified = template(ast)
+    blockified = template(ast, analysis)
 
     # try to find a change that fixes the design
     synth_start_time = time.monotonic()
@@ -199,7 +201,7 @@ def try_template(config: Config, ast, prefix: str, template, statistics: dict) -
     return status, solutions
 
 
-def try_templates_in_sequence(config: Config, ast, statistics: dict) -> (Status, list, dict):
+def try_templates_in_sequence(config: Config, ast, statistics: dict, analysis: AnalysisResults) -> (Status, list, dict):
     all_solutions = []
     # instantiate repair templates, one after another
     # note: when  we tried to combine replace_literals and add_inversion, tests started taking a long time
@@ -207,7 +209,7 @@ def try_templates_in_sequence(config: Config, ast, statistics: dict) -> (Status,
         prefix = f"{ii + 1}_"
         # we need to deep copy the ast since the template is going to modify it in place!
         ast_copy = copy.deepcopy(ast)
-        status, solutions = try_template(config, ast, prefix, template, statistics)
+        status, solutions = try_template(config, ast, prefix, template, statistics, analysis)
         # early exit if there is nothing to do or if we found a solution and aren't instructed to run all templates
         if status == Status.NoRepair or (not config.opts.run_all_templates and status == Status.Success):
             return status, solutions
@@ -232,7 +234,10 @@ def repair(config: Config, statistics: dict):
     if config.opts.show_ast:
         ast.show()
 
-    status, solutions = try_templates_in_sequence(config, ast, statistics)
+    # analyze expressions types and dependencies
+    analysis = analyze_ast(ast)
+
+    status, solutions = try_templates_in_sequence(config, ast, statistics, analysis)
 
     # create repaired file in the case where the synthesizer had to make no changes
     if status == Status.NoRepair:

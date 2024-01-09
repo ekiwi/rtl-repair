@@ -3,15 +3,14 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.types import infer_widths
+from rtlrepair.analysis import AnalysisResults, VarInfo
 from rtlrepair.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
-def add_inversions(ast: vast.Source):
+def add_inversions(ast: vast.Source, analysis: AnalysisResults):
     namespace = Namespace(ast)
-    widths = infer_widths(ast)
-    Inverter(widths).apply(namespace, ast)
+    Inverter(analysis.widths).apply(namespace, ast)
 
 
 _skip_nodes = {vast.Lvalue, vast.Decl, vast.SensList, vast.Portlist}

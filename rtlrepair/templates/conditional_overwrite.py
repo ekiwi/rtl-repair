@@ -5,16 +5,14 @@
 
 from rtlrepair.repair import RepairTemplate
 from rtlrepair.templates.assign_const import ProcessAnalyzer, RegisterFinder
-from rtlrepair.types import InferWidths
+from rtlrepair.analysis import AnalysisResults, VarInfo
 from rtlrepair.utils import Namespace, ensure_block
 import pyverilog.vparser.ast as vast
 
 
-def conditional_overwrite(ast: vast.Source):
+def conditional_overwrite(ast: vast.Source, analysis: AnalysisResults):
     namespace = Namespace(ast)
-    infer = InferWidths()
-    infer.run(ast)
-    repl = ConditionalOverwrite(infer.widths)
+    repl = ConditionalOverwrite(analysis.widths)
     repl.apply(namespace, ast)
     return repl.blockified
 

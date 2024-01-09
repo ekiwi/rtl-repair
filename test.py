@@ -640,99 +640,86 @@ def _make_histogram(widths: dict) -> dict:
 
 
 from rtlrepair import parse_verilog
-from rtlrepair.dependency_analysis import analyze_dependencies
+from rtlrepair.analysis import analyze_ast
 
 
 class TestTypeInference(unittest.TestCase):
-    """ actual unittests for code in rtlrepair/types.py """
+    """ actual unittests for code in rtlrepair/analysis.py """
 
     def test_flip_flop_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         self.assertEqual({None: 1, 1: 6}, _make_histogram(widths))
 
     def test_flip_flop_buggy1_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff_wadden_buggy1.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         self.assertEqual({None: 1, 1: 5}, _make_histogram(widths))
 
     def test_decoder_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 13, 4: 8, 8: 17}, hist)
 
     def test_counter_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 8, 4: 5}, hist)
 
     def test_fsm_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(fsm_dir / "fsm_full.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 19, 3: 8}, hist)
 
     def test_left_shift_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(left_shift_dir / "lshift_reg.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         self.assertEqual({None: 1, 1: 4, 8: 7, 32: 5}, hist)
 
     def test_sdram_controller_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(sd_dir / "sdram_controller.no_tri_state.v")
         # ast.show()
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         expected = {None: 1, 32: 24, 5: 50, 8: 17, 2: 7, 13: 4, 1: 26, 10: 7, 4: 7, 24: 4, 16: 5, 9: 2, 3: 1}
         self.assertEqual(expected, hist)
 
     def test_reed_solomon_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(reed_dir / "BM_lamda.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 26, 3: 1, 4: 5, 5: 4, 8: 99, 9: 9, 32: 32}
         self.assertEqual(expected, hist)
 
     def test_i2c_bit_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.sync_reset.v", i2c_dir)
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 69, 2: 15, 3: 11, 4: 5, 14: 4, 16: 6, 18: 19, 32: 2}
         self.assertEqual(expected, hist)
 
     def test_mux_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(mux_dir / "mux_4_1.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         expected = {None: 1, 2: 5, 4: 5}
         self.assertEqual(expected, hist)
 
     def test_axis_adapter_widths(self):
         """ This file contains the `indexed part selector`: [... +: ... ] """
-
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(s3_dir / "axis_adapter.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 63, 3: 5, 8: 11, 32: 24, 64: 3}
         self.assertEqual(expected, hist)
 
     def test_sd_spi_widths(self):
-        from rtlrepair.types import infer_widths
         ast = parse_verilog(zip_cpu_sdspi_dir / "sdspi.v")
-        widths = infer_widths(ast)
+        widths = analyze_ast(ast).widths
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 190, 2: 25, 3: 23, 4: 37, 7: 11, 8: 79, 9: 3, 11: 2, 15: 4, 16: 8, 24: 2, 26: 6, 32: 36}
         self.assertEqual(expected, hist)
@@ -761,14 +748,14 @@ class TestDependencyAnalysis(unittest.TestCase):
     def test_flip_flop_deps(self):
         ast = parse_verilog(flip_flop_dir / "tff.v")
         expected = ["inp clk: {}", "out reg (@posedge clk) q: {}", "inp rstn: {}", "inp t: {}"]
-        self.check(expected, analyze_dependencies(ast))
+        self.check(expected, analyze_ast(ast).var_list())
 
     def test_decoder(self):
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
         expected = ["inp A: {}", "inp B: {}", "inp C: {}", "out Y0: {A, B, C, en}", "out Y1: {A, B, C, en}",
                     "out Y2: {A, B, C, en}", "out Y3: {A, B, C, en}", "out Y4: {A, B, C, en}", "out Y5: {A, B, C, en}",
                     "out Y6: {A, B, C, en}", "out Y7: {A, B, C, en}", "inp en: {}"]
-        self.check(expected, analyze_dependencies(ast))
+        self.check(expected, analyze_ast(ast).var_list())
 
     def test_sdram_controller(self):
         ast = parse_verilog(sd_dir / "sdram_controller.no_tri_state.v")
@@ -801,7 +788,7 @@ class TestDependencyAnalysis(unittest.TestCase):
                     "state_cnt_nxt: {IDLE, state, state_cnt}", "out we_n: {command}", "inp wr_addr: {}",
                     "inp wr_data: {}", "reg (@posedge clk) wr_data_r: {}", "inp wr_enable: {}"]
 
-        self.check(expected, analyze_dependencies(ast))
+        self.check(expected, analyze_ast(ast).var_list())
 
 
 class TestPyVerilog(unittest.TestCase):

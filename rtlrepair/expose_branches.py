@@ -3,7 +3,7 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 
-from rtlrepair.types import InferWidths
+from rtlrepair.analysis import InferWidths
 from rtlrepair.utils import Namespace, serialize
 from rtlrepair.visitor import AstVisitor
 import pyverilog.vparser.ast as vast

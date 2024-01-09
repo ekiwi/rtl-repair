@@ -4,28 +4,26 @@
 from collections import defaultdict
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.types import InferWidths
+from rtlrepair.analysis import AnalysisResults, VarInfo
 from rtlrepair.utils import Namespace
 import pyverilog.vparser.ast as vast
 from pyverilog.utils.identifiervisitor import getIdentifiers
 
 
-def replace_variables(ast: vast.Source):
+def replace_variables(ast: vast.Source, analysis: AnalysisResults):
     namespace = Namespace(ast)
-    infer = InferWidths()
-    infer.run(ast)
-    repl = VariableReplacer(infer.vars)
+    repl = VariableReplacer(analysis.vars)
     repl.apply(namespace, ast)
 
 
 class VariableReplacer(RepairTemplate):
-    def __init__(self, vars: dict):
+    def __init__(self, vars: dict[str, VarInfo]):
         super().__init__(name="variable")
         self.vars = vars
         self.ignore = set()  # variables that should be ignored
         width_to_var = defaultdict(list)
-        for name, width in self.vars.items():
-            width_to_var[width] += [name]
+        for var in self.vars.values():
+            width_to_var[var.width] += [var.name]
         self.width_to_var = dict(width_to_var)
 
     def _visit_assign(self, left, right):

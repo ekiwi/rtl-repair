@@ -3,22 +3,20 @@
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.types import InferWidths
+from rtlrepair.analysis import AnalysisResults, VarInfo
 from rtlrepair.utils import Namespace, ensure_block
 import pyverilog.vparser.ast as vast
 
 from rtlrepair.visitor import AstVisitor
 
 
-def assign_const(ast: vast.Source):
+def assign_const(ast: vast.Source, anslysis: AnalysisResults):
     """ assign an arbitrary constant to a variable at the beginning of a block
         - we ensure that only variables are assigned that are normally assigned in that particular process
         - we pick blocking vs. non-blocking based on what is normally used in the particular process
     """
     namespace = Namespace(ast)
-    infer = InferWidths()
-    infer.run(ast)
-    repl = ConstAssigner(infer.widths)
+    repl = ConstAssigner(anslysis.widths)
     repl.apply(namespace, ast)
     return repl.blockified
 
