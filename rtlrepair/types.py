@@ -199,7 +199,7 @@ class InferWidths(AstVisitor):
             self.vars[node.name] = 1
 
     def generic_visit(self, node):
-        if isinstance(node, vast.Variable) or isinstance(node, vast.Input)  or isinstance(node, vast.Output):
+        if isinstance(node, vast.Variable) or isinstance(node, vast.Input) or isinstance(node, vast.Output):
             self.determine_var_width(node)
         elif isinstance(node, vast.Parameter):
             self.determine_var_width(node)
