@@ -50,7 +50,7 @@ class AddGuard(RepairTemplate):
         if self.in_proc:
             return node  # unexpected
         # check to see if this is a 1-bit assignment
-        if self.a.widths[node.right.var] != 1:
+        if self.a.widths[node.left.var] != 1:
             return node
         atoms = find_atoms(get_lvars(node.left), self.a)
         node.right.var = self.build_guard(node.right.var, atoms)
