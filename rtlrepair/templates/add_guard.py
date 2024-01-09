@@ -39,12 +39,6 @@ class AddGuard(RepairTemplate):
         # ignore declarations
         return node
 
-    def visit_Always(self, node: vast.Always):
-        self.in_proc = True
-        self.visit(node.statement)
-        self.in_proc = False
-        return node
-
     def visit_Assign(self, node: vast.Assign):
         # assignments outside of a process
         if self.in_proc:

@@ -197,9 +197,8 @@ class InferWidths(AstVisitor):
         return eval_const_expr(node, self.params, self.widths)
 
     def determine_var_width(self, node):
-        assert isinstance(node, vast.Variable) or isinstance(node, vast.Parameter) or isinstance(node,
-                                                                                                 vast.Input) or isinstance(
-            node, vast.Output)
+        assert (isinstance(node, vast.Variable) or isinstance(node, vast.Parameter) or
+                isinstance(node, vast.Input) or isinstance(node, vast.Output))
         explicit_width = self.eval(node.width)
         if explicit_width is not None:  # if there is an explicit width annotated, take that
             self.vars[node.name] = explicit_width
@@ -217,6 +216,12 @@ class InferWidths(AstVisitor):
             #       default parameters, instead one might allow the user pass a parameter assignment
             self.params[node.name] = self.eval(node.value)
         elif isinstance(node, vast.Substitution):
+            assert isinstance(node.left, vast.Lvalue)
+            assert isinstance(node.right, vast.Rvalue)
+            # check the lhs first because it might influence the lhs
+            lhs_width = self.expr_width(node.left.var, None)
+            rhs_width = self.expr_width(node.right.var, lhs_width)
+        elif isinstance(node, vast.Assign):
             assert isinstance(node.left, vast.Lvalue)
             assert isinstance(node.right, vast.Rvalue)
             # check the lhs first because it might influence the lhs
@@ -460,6 +465,10 @@ class DependencyAnalysis(AstVisitor):
         for dd in self.path_stack:
             out |= dd
         return out
+
+    def visit_ForStatement(self, node: vast.ForStatement):
+        # only analyze the body
+        self.visit(node.statement)
 
     def visit_IfStatement(self, node: vast.IfStatement):
         # try to see if the condition is known at elaboration time

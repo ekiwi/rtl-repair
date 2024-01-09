@@ -181,16 +181,20 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_s1_b(self):
         """ Xilinx generated AXI Lite peripheral with missing guard """
-        self.synth_cannot_repair(s1_dir, "s1b", testbench="s1b", solver="yices2", init="zero", incremental=True,
-                                 timeout=60, max_changes=10)
+        changes = self.synth_success(s1_dir, "s1b", testbench="s1b", solver="yices2", init="zero", incremental=True,
+                                     timeout=60)
+        # adds correctly the !axis_bvalid, but is missing the s_axis_bready
+        self.assertEqual(changes, 2)
         # the other testbench does not reveal this bug
         self.synth_no_repair(s1_dir, "s1b", testbench="s1r", solver="yices2", init="zero", incremental=True,
                              timeout=60, max_changes=10)
 
     def test_s1_r(self):
         """ Xilinx generated AXI Lite peripheral with missing guard """
-        self.synth_cannot_repair(s1_dir, "s1r", testbench="s1r", solver="yices2", init="zero", incremental=True,
-                                 timeout=60, max_changes=10)
+        changes = self.synth_success(s1_dir, "s1r", testbench="s1r", solver="yices2", init="zero", incremental=True,
+                                     timeout=60)
+        # changes at the right place, but not quite the right guard
+        self.assertEqual(changes, 1)
         # the other testbench does not reveal this bug
         self.synth_no_repair(s1_dir, "s1r", testbench="s1b", solver="yices2", init="zero", incremental=True,
                              timeout=60, max_changes=10)
@@ -725,6 +729,12 @@ class TestTypeInference(unittest.TestCase):
         expected = {None: 1, 1: 190, 2: 25, 3: 23, 4: 37, 7: 11, 8: 79, 9: 3, 11: 2, 15: 4, 16: 8, 24: 2, 26: 6, 32: 36}
         self.assertEqual(expected, hist)
 
+    def test_xlnx_axi_width(self):
+        ast = parse_verilog(s1_dir / "xlnxdemo.v")
+        widths = analyze_ast(ast).widths
+        hist = _make_histogram(widths)
+        expected = {None: 1, 1: 53, 2: 5, 4: 2, 5: 34, 7: 6, 8: 33, 32: 47}
+        self.assertEqual(expected, hist)
 
 class TestExposeBranches(unittest.TestCase):
     """ unittests for code in rtlrepair/expose_branches.py """
