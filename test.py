@@ -755,6 +755,28 @@ class TestExposeBranches(unittest.TestCase):
         expose_branches(ast)
 
 
+class TestDependencyAnalysis(unittest.TestCase):
+    """ actual unittests for code in rtlrepair/dependency_analysis.py """
+
+    def check(self, expected: list, vvs: list):
+        print_actual = False
+        if print_actual:
+            vstr = ", ".join(f'"{v.render()}"' for v in vvs)
+            print(f"[{vstr}]")
+        for var in vvs:
+            self.assertIn(var.render(), expected)
+        self.assertEqual(len(expected), len(vvs))
+
+    def test_flip_flop_deps(self):
+        from rtlrepair import parse_verilog
+        from rtlrepair.dependency_analysis import analyze_dependencies
+        ast = parse_verilog(flip_flop_dir / "tff.v")
+        expected = ["inp clk: {}", "out reg (@posedge clk) q: {}", "inp rstn: {}", "inp t: {}"]
+        self.check(expected, analyze_dependencies(ast))
+
+
+
+
 class TestPyVerilog(unittest.TestCase):
     """ tests to iron out some pyverilog bugs that we tried to fix in our local copy """
 

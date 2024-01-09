@@ -7,21 +7,6 @@ import pyverilog.vparser.ast as vast
 from rtlrepair.visitor import AstVisitor
 from dataclasses import dataclass, field
 
-
-@dataclass
-class VarInfo:
-    name: str
-    clock: Optional[vast.Identifier] = None
-    reset: Optional[vast.Identifier] = None
-    is_input: bool = False
-    is_output: bool = False
-    is_parameter: bool = False
-    depends_on: set = field(default_factory=set)
-
-    def is_register(self) -> bool:
-        return self.clock is not None
-
-
 @dataclass
 class ProcInfo:
     clock: Optional[vast.Identifier] = None
@@ -33,6 +18,44 @@ class ProcInfo:
 
     def is_sync(self) -> bool:
         return not self.is_comb()
+
+    def render(self) -> str:
+        if self.clock is None:
+            return ""
+        edge = "posedge" if self.is_posedge else "negedge"
+        out = f"@{edge} {self.clock.name}"
+        if self.reset is not None:
+            out += f" {self.reset.name}"
+        return out
+
+@dataclass
+class VarInfo:
+    name: str
+    clocking: Optional[ProcInfo] = None
+    is_input: bool = False
+    is_output: bool = False
+    is_parameter: bool = False
+    depends_on: set = field(default_factory=set)
+
+    def is_register(self) -> bool:
+        return self.clocking is not None
+
+    def render(self) -> str:
+        out = ""
+        if self.is_parameter:
+            out += "param "
+        if self.is_input:
+            out += "inp "
+        if self.is_output:
+            out += "out "
+        if self.is_register():
+            out += f"reg ({self.clocking.render()}) "
+        out += self.name + ": {"
+        out += ", ".join(sorted(self.depends_on))
+        out += "}"
+        return out
+
+
 
 
 def analyze_dependencies(ast: vast.Source) -> list[VarInfo]:
@@ -84,8 +107,9 @@ class DependencyAnalysis(AstVisitor):
             print("WARN: non-blocking assignment in comb logic process!")
         else:
             name = get_lvar(node.left)
-            self.vars[name].clock = self.proc_info.clock
-            self.vars[name].reset = self.proc_info.reset
+            old_clocking = self.vars[name].clocking
+            assert old_clocking is None or old_clocking == self.proc_info
+            self.vars[name].clocking = self.proc_info
 
     def visit_IfStatement(self, node: vast.IfStatement):
         cond_vars = get_rvars(node.cond)
