@@ -153,7 +153,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
     def test_d13(self):
         """ simple AXIS frame len circuit with wrong calculatio / state update """
         # add_guard comes up with a plausible (but maybe incorrect) solution
-        self.synth_success(d13_dir, "d13", solver="yices2", init="zero", incremental=True, timeout=60)
+        self.synth_success(d13_dir, "d13", solver="yices2", init="zero", incremental=True, timeout=60, max_changes=3)
 
     def test_d12(self):
         """ AXIS Fifo with one-line fixable bug """
