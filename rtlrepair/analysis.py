@@ -268,6 +268,8 @@ def eval_const_expr(node: vast.Node, const_values: dict[str, int], widths: [vast
         value = eval_const_expr(node.left, const_values, widths) // eval_const_expr(node.right, const_values, widths)
     elif isinstance(node, vast.Land):
         value = eval_const_expr(node.left, const_values, widths) & eval_const_expr(node.right, const_values, widths)
+    elif isinstance(node, vast.Eq):
+        value = int(eval_const_expr(node.left, const_values, widths) == eval_const_expr(node.right, const_values, widths))
     elif isinstance(node, vast.Ulnot):
         value = ~eval_const_expr(node.left, const_values, widths)
     elif isinstance(node, vast.Width):
