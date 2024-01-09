@@ -114,7 +114,7 @@ def collect_condition_atoms(conditions: list) -> list:
 
 def destruct_to_atom(expr: list) -> set:
     """ conjunction and negation is already part of our template, thus we want to exclude it from our atoms """
-    if isinstance(expr, vast.UnaryOperator):
+    if isinstance(expr, vast.Unot) or isinstance(expr, vast.Ulnot):
         return destruct_to_atom(expr.right)
     elif isinstance(expr, vast.Land):
         return destruct_to_atom(expr.left) | destruct_to_atom(expr.right)
