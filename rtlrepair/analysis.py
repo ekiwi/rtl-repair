@@ -371,6 +371,10 @@ class DependencyAnalysis(AstVisitor):
         assert node.name not in self.vars
         self.vars[node.name] = VarInfo(node.name, self.widths[node.name], is_output=True)
 
+    def visit_Inout(self, node: vast.Inout):
+        assert node.name not in self.vars
+        self.vars[node.name] = VarInfo(node.name, self.widths[node.name], is_input=True, is_output=True)
+
     def visit_Variable(self, node: vast.Variable):
         assert node.name not in self.vars
         self.vars[node.name] = VarInfo(node.name, self.widths[node.name])
@@ -532,7 +536,8 @@ def find_clock_and_reset(sens: vast.SensList) -> ProcInfo:
         elif sens.list[1].sig.name.startswith('cl'):
             return ProcInfo(clock=sens.list[1].sig, is_posedge=is_posedge(types[1]), reset=sens.list[0].sig)
         else:
-            raise NotImplementedError(f"{sens.list}")
+            return None # probably a simulation block
+            # raise NotImplementedError(f"{sens.list}")
     else:
         raise NotImplementedError(f"{edges}")
 
