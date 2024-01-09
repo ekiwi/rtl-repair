@@ -46,6 +46,14 @@ class ConditionalOverwrite(RepairTemplate):
         assigned_vars = [var for var in analysis.assigned_vars if isinstance(var, vast.Identifier)]
         self.use_blocking = analysis.blocking_count > 0
         # add conditional overwrites to the end of the process
+        stmts_before = self.gen_assignments(assigned_vars, conditions, analysis)
+        stmts_after = self.gen_assignments(assigned_vars, conditions, analysis)
+        # append statements
+        node.statement = ensure_block(node.statement, self.blockified)
+        node.statement.statements = tuple(stmts_before + list(node.statement.statements) + stmts_after)
+        return node
+
+    def gen_assignments(self, assigned_vars, conditions, analysis):
         stmts = []
         for var in assigned_vars:
             lvars = get_lvars(var)
@@ -56,10 +64,7 @@ class ConditionalOverwrite(RepairTemplate):
                 assignment = self.make_assignment(var)
                 inner = vast.IfStatement(cond, assignment, None)
                 stmts.append(self.make_change_stmt(inner, 0))
-        # append statements
-        node.statement = ensure_block(node.statement, self.blockified)
-        node.statement.statements = tuple(list(node.statement.statements) + stmts)
-        return node
+        return stmts
 
     def gen_condition(self, conditions: list, case_inputs: list) -> vast.Node:
         atoms = conditions + [vast.Eq(ci, vast.Identifier(self.make_synth_var(self.widths[ci]))) for ci in case_inputs]
