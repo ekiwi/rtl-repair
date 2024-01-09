@@ -51,10 +51,11 @@ class ConditionalOverwrite(RepairTemplate):
             lvars = get_lvars(var)
             filtered_conditions = filter_atom(conditions, lvars, self.vars)
             filtered_case_inputs = filter_atom(analysis.case_inputs, lvars, self.vars)
-            cond = self.gen_condition(filtered_conditions, filtered_case_inputs)
-            assignment = self.make_assignment(var)
-            inner = vast.IfStatement(cond, assignment, None)
-            stmts.append(self.make_change_stmt(inner, 0))
+            if len(filtered_conditions) > 0 or len(filtered_case_inputs) > 0:
+                cond = self.gen_condition(filtered_conditions, filtered_case_inputs)
+                assignment = self.make_assignment(var)
+                inner = vast.IfStatement(cond, assignment, None)
+                stmts.append(self.make_change_stmt(inner, 0))
         # append statements
         node.statement = ensure_block(node.statement, self.blockified)
         node.statement.statements = tuple(list(node.statement.statements) + stmts)
