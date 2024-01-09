@@ -68,7 +68,7 @@ class AddGuard(RepairTemplate):
         analysis.visit(node.true_statement)
         analysis.visit(node.false_statement)
         if analysis.blocking_count > 0:
-            lvars = analysis.assigned_vars
+            lvars = set.union(*[get_lvars(a) for a in analysis.assigned_vars])
         else:
             lvars = set()
         atoms = find_atoms(lvars, self.a)
