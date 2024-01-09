@@ -32,7 +32,8 @@ _available_templates = {
     'conditional_overwrite': conditional_overwrite,
     'add_guard': add_guard,
 }
-_default_templates = ['replace_literals', 'assign_const', 'add_guard']
+#_default_templates = ['replace_literals', 'assign_const', 'add_guard']
+_default_templates = ['replace_literals', 'conditional_overwrite', 'add_guard']
 
 
 @dataclass

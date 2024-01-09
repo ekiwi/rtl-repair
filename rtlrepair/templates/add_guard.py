@@ -86,7 +86,6 @@ class AddGuard(RepairTemplate):
         """
         do_invert = self.make_change_var()
         may_invert = vast.Xor(vast.Identifier(do_invert), expr)
-        #may_invert = expr
         if len(atoms) == 0:
             return may_invert
         a = self.build_guard_item(atoms)
