@@ -642,25 +642,23 @@ def _make_histogram(widths: dict) -> dict:
 from rtlrepair import parse_verilog
 from rtlrepair.dependency_analysis import analyze_dependencies
 
+
 class TestTypeInference(unittest.TestCase):
     """ actual unittests for code in rtlrepair/types.py """
 
     def test_flip_flop_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff.v")
         widths = infer_widths(ast)
         self.assertEqual({None: 1, 1: 6}, _make_histogram(widths))
 
     def test_flip_flop_buggy1_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(flip_flop_dir / "tff_wadden_buggy1.v")
         widths = infer_widths(ast)
         self.assertEqual({None: 1, 1: 5}, _make_histogram(widths))
 
     def test_decoder_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(decoder_dir / "decoder_3_to_8.v")
         widths = infer_widths(ast)
@@ -668,7 +666,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 13, 4: 8, 8: 17}, hist)
 
     def test_counter_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(counter_dir / "first_counter_overflow.v")
         widths = infer_widths(ast)
@@ -676,7 +673,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 8, 4: 5}, hist)
 
     def test_fsm_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(fsm_dir / "fsm_full.v")
         widths = infer_widths(ast)
@@ -684,7 +680,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 19, 3: 8}, hist)
 
     def test_left_shift_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(left_shift_dir / "lshift_reg.v")
         widths = infer_widths(ast)
@@ -692,7 +687,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual({None: 1, 1: 4, 8: 7, 32: 5}, hist)
 
     def test_sdram_controller_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(sd_dir / "sdram_controller.no_tri_state.v")
         # ast.show()
@@ -702,7 +696,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_reed_solomon_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(reed_dir / "BM_lamda.v")
         widths = infer_widths(ast)
@@ -711,7 +704,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_i2c_bit_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(i2c_dir / "i2c_master_bit_ctrl.sync_reset.v", i2c_dir)
         widths = infer_widths(ast)
@@ -720,7 +712,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_mux_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(mux_dir / "mux_4_1.v")
         widths = infer_widths(ast)
@@ -739,7 +730,6 @@ class TestTypeInference(unittest.TestCase):
         self.assertEqual(expected, hist)
 
     def test_sd_spi_widths(self):
-
         from rtlrepair.types import infer_widths
         ast = parse_verilog(zip_cpu_sdspi_dir / "sdspi.v")
         widths = infer_widths(ast)
@@ -752,7 +742,6 @@ class TestExposeBranches(unittest.TestCase):
     """ unittests for code in rtlrepair/expose_branches.py """
 
     def test_flip_flop(self):
-
         from rtlrepair.expose_branches import expose_branches
         ast = parse_verilog(flip_flop_dir / "tff.v")
         expose_branches(ast)
@@ -779,6 +768,39 @@ class TestDependencyAnalysis(unittest.TestCase):
         expected = ["inp A: {}", "inp B: {}", "inp C: {}", "out Y0: {A, B, C, en}", "out Y1: {A, B, C, en}",
                     "out Y2: {A, B, C, en}", "out Y3: {A, B, C, en}", "out Y4: {A, B, C, en}", "out Y5: {A, B, C, en}",
                     "out Y6: {A, B, C, en}", "out Y7: {A, B, C, en}", "inp en: {}"]
+        self.check(expected, analyze_dependencies(ast))
+
+    def test_sdram_controller(self):
+        ast = parse_verilog(sd_dir / "sdram_controller.no_tri_state.v")
+        expected = ["const BANK_WIDTH: {}", "const CLK_FREQUENCY: {}", "const CMD_BACT: {}", "const CMD_MRS: {}",
+                    "const CMD_NOP: {}", "const CMD_PALL: {}", "const CMD_READ: {}", "const CMD_REF: {}",
+                    "const CMD_WRIT: {}", "const COL_WIDTH: {}", "const CYCLES_BETWEEN_REFRESH: {}",
+                    "const HADDR_WIDTH: {}", "const IDLE: {}", "const INIT_LOAD: {}", "const INIT_NOP1: {}",
+                    "const INIT_NOP1_1: {}", "const INIT_NOP2: {}", "const INIT_NOP3: {}", "const INIT_NOP4: {}",
+                    "const INIT_PRE1: {}", "const INIT_REF1: {}", "const INIT_REF2: {}", "const READ_ACT: {}",
+                    "const READ_CAS: {}", "const READ_NOP1: {}", "const READ_NOP2: {}", "const READ_READ: {}",
+                    "const REFRESH_COUNT: {}", "const REFRESH_TIME: {}", "const REF_NOP1: {}", "const REF_NOP2: {}",
+                    "const REF_PRE: {}", "const REF_REF: {}", "const ROW_WIDTH: {}", "const SDRADDR_WIDTH: {}",
+                    "const WRIT_ACT: {}", "const WRIT_CAS: {}", "const WRIT_NOP1: {}", "const WRIT_NOP2: {}",
+                    "out addr: {BANK_WIDTH, COL_WIDTH, HADDR_WIDTH, INIT_LOAD, READ_ACT, READ_CAS, ROW_WIDTH, SDRADDR_WIDTH, WRIT_ACT, WRIT_CAS, addr_r, command, haddr_r, state}",
+                    "addr_r: {BANK_WIDTH, COL_WIDTH, HADDR_WIDTH, INIT_LOAD, READ_ACT, READ_CAS, ROW_WIDTH, SDRADDR_WIDTH, WRIT_ACT, WRIT_CAS, haddr_r, state}",
+                    "out bank_addr: {BANK_WIDTH, HADDR_WIDTH, READ_ACT, READ_CAS, WRIT_ACT, WRIT_CAS, bank_addr_r, command, haddr_r, state}",
+                    "bank_addr_r: {BANK_WIDTH, HADDR_WIDTH, READ_ACT, READ_CAS, WRIT_ACT, WRIT_CAS, haddr_r, state}",
+                    "out reg (@posedge clk) busy: {}", "out cas_n: {command}", "inp clk: {}",
+                    "out clock_enable: {command}", "reg (@posedge clk) command: {}",
+                    "command_nxt: {CMD_BACT, CMD_MRS, CMD_NOP, CMD_PALL, CMD_READ, CMD_REF, CMD_WRIT, CYCLES_BETWEEN_REFRESH, IDLE, command, rd_enable, refresh_cnt, state, state_cnt, wr_enable}",
+                    "out cs_n: {command}", "inp data_in: {}", "out data_mask_high: {data_mask_high_r, state}",
+                    "data_mask_high_r: {state}", "out data_mask_low: {data_mask_low_r, state}",
+                    "data_mask_low_r: {state}", "out data_oe: {WRIT_CAS, state}", "out data_out: {wr_data_r}",
+                    "data_output: {}", "reg (@posedge clk) haddr_r: {}",
+                    "next: {CYCLES_BETWEEN_REFRESH, IDLE, INIT_LOAD, INIT_NOP1_1, INIT_NOP2, INIT_NOP3, INIT_NOP4, INIT_PRE1, INIT_REF1, INIT_REF2, READ_ACT, READ_CAS, READ_NOP1, READ_NOP2, READ_READ, REF_NOP1, REF_NOP2, REF_PRE, REF_REF, WRIT_ACT, WRIT_CAS, WRIT_NOP1, WRIT_NOP2, rd_enable, refresh_cnt, state, state_cnt, wr_enable}",
+                    "out ras_n: {command}", "inp rd_addr: {}", "out rd_data: {rd_data_r}",
+                    "reg (@posedge clk) rd_data_r: {}", "inp rd_enable: {}", "out rd_ready: {rd_ready_r}",
+                    "reg (@posedge clk) rd_ready_r: {}", "reg (@posedge clk) refresh_cnt: {}", "inp rst_n: {}",
+                    "reg (@posedge clk) state: {}", "reg (@posedge clk) state_cnt: {}",
+                    "state_cnt_nxt: {IDLE, state, state_cnt}", "out we_n: {command}", "inp wr_addr: {}",
+                    "inp wr_data: {}", "reg (@posedge clk) wr_data_r: {}", "inp wr_enable: {}"]
+
         self.check(expected, analyze_dependencies(ast))
 
 

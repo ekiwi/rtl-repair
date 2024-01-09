@@ -1,8 +1,8 @@
 # Copyright 2023-2024 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
-from typing import Optional, Dict
 
+from typing import Optional, Dict
 import pyverilog.vparser.ast as vast
 from rtlrepair.visitor import AstVisitor
 from dataclasses import dataclass, field
@@ -34,16 +34,16 @@ class VarInfo:
     clocking: Optional[ProcInfo] = None
     is_input: bool = False
     is_output: bool = False
-    is_parameter: bool = False
-    depends_on: set = field(default_factory=set)
+    is_const: bool = False
+    depends_on: set[str] = field(default_factory=set)
 
     def is_register(self) -> bool:
         return self.clocking is not None and self.clocking.is_sync()
 
     def render(self) -> str:
         out = ""
-        if self.is_parameter:
-            out += "param "
+        if self.is_const:
+            out += "const "
         if self.is_input:
             out += "inp "
         if self.is_output:
@@ -60,9 +60,23 @@ class VarInfo:
 
 def analyze_dependencies(ast: vast.Source) -> list[VarInfo]:
     analysis = DependencyAnalysis()
+    # ast.show()
     analysis.visit(ast)
-    var_list = sorted(analysis.vars.values(), key=lambda x: x.name)
+    vars = analysis.vars
+    resolve_transitory(vars)
+    var_list = sorted(vars.values(), key=lambda x: x.name)
     return var_list
+
+
+def resolve_transitory(vars: dict[str, VarInfo]):
+    for v in vars.values():
+        old_size = len(v.depends_on)
+        for other in list(v.depends_on):
+            other_info = vars[other]
+            if not other_info.is_register():
+                v.depends_on |= other_info.depends_on
+        if len(v.depends_on) == old_size:
+            continue # fixed point
 
 
 class DependencyAnalysis(AstVisitor):
@@ -80,7 +94,11 @@ class DependencyAnalysis(AstVisitor):
 
     def visit_Parameter(self, node: vast.Parameter):
         assert node.name not in self.vars
-        self.vars[node.name] = VarInfo(node.name, is_parameter=True)
+        self.vars[node.name] = VarInfo(node.name, is_const=True)
+
+    def visit_Localparam(self, node: vast.Localparam):
+        assert node.name not in self.vars
+        self.vars[node.name] = VarInfo(node.name, is_const=True)
 
     def visit_Input(self, node: vast.Input):
         assert node.name not in self.vars
@@ -93,6 +111,16 @@ class DependencyAnalysis(AstVisitor):
     def visit_Variable(self, node: vast.Variable):
         assert node.name not in self.vars
         self.vars[node.name] = VarInfo(node.name)
+
+    def visit_Reg(self, node: vast.Reg):
+        # reg can be used as a modifier
+        if node.name not in self.vars:
+            self.vars[node.name] = VarInfo(node.name)
+
+    def visit_Wire(self, node: vast.Wire):
+        # wire can be used as a modifier
+        if node.name not in self.vars:
+            self.vars[node.name] = VarInfo(node.name)
 
     def visit_Always(self, node: vast.Always):
         # try to see if this process implements synchronous logic
@@ -131,7 +159,14 @@ class DependencyAnalysis(AstVisitor):
                 assert vv.clocking == self.proc_info
             if is_blocking:
                 # we only track comb dependencies
+                vv.depends_on |= self.get_path_dependencies()
                 vv.depends_on |= get_rvars(right)
+
+    def get_path_dependencies(self) -> set:
+        out = set()
+        for dd in self.path_stack:
+            out |= dd
+        return out
 
     def visit_IfStatement(self, node: vast.IfStatement):
         cond_vars = get_rvars(node.cond)
@@ -145,7 +180,7 @@ def get_lvars(expr: vast.Node) -> set[str]:
     if isinstance(expr, vast.Lvalue):
         return get_lvars(expr.var)
     elif isinstance(expr, vast.Identifier):
-        return { expr.name }
+        return {expr.name}
     elif isinstance(expr, vast.Concat) or isinstance(expr, vast.LConcat):
         out = set()
         for e in expr.list:
@@ -175,7 +210,11 @@ def find_clock_and_reset(sens: vast.SensList) -> ProcInfo:
         return ProcInfo()
     # no we try to find an edge
     edges = [s.type for s in sens.list]
-    if edges == ['posedge']:
+
+    if edges == ['all']:
+        # @(*)
+        return ProcInfo()
+    elif edges == ['posedge']:
         return ProcInfo(clock=sens.list[0].sig, is_posedge=True)
     else:
-        raise NotImplementedError("{edges}")
+        raise NotImplementedError(f"{edges}")
