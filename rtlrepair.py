@@ -33,7 +33,7 @@ _available_templates = {
     'add_guard': add_guard,
 }
 #_default_templates = ['replace_literals', 'assign_const', 'add_guard']
-_default_templates = ['replace_literals', 'conditional_overwrite', 'add_guard']
+_default_templates = ['replace_literals', 'add_guard', 'conditional_overwrite']
 
 
 @dataclass
@@ -211,8 +211,13 @@ def try_templates_in_sequence(config: Config, ast, statistics: dict, analysis: A
         # we need to deep copy the ast since the template is going to modify it in place!
         ast_copy = copy.deepcopy(ast)
         status, solutions = try_template(config, ast, prefix, template, statistics, analysis)
+
+        # determine size of smallest solution
+        min_changes = min(s[1]['changes'] for s in solutions)
+
         # early exit if there is nothing to do or if we found a solution and aren't instructed to run all templates
-        if status == Status.NoRepair or (not config.opts.run_all_templates and status == Status.Success):
+        # keep going if the current solution is pretty large
+        if (status == Status.NoRepair or (not config.opts.run_all_templates and status == Status.Success)) and min_changes <= 6:
             return status, solutions
         else:
             all_solutions += solutions

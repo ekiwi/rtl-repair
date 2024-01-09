@@ -165,7 +165,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
         """ AXIS Frame Fifo with a missing reset to zero for two registers """
         changes = self.synth_success(d11_dir, "d11", solver="yices2", init="zero", incremental=True, timeout=60)
         # resets `drop_frame`, but not `wr_ptr_cur` because it is not required to pass the test
-        self.assertEqual(changes, 1)
+        self.assertEqual(changes, 2)
 
     def test_d8(self):
         """ AXIS Switch with wrong index. Should be fixable by simple literal replacement... """
