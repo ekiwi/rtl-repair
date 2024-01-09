@@ -258,7 +258,8 @@ def eval_const_expr(node: vast.Node, const_values: dict[str, int], widths: [vast
         else:
             value = eval_const_expr(node.true_value, const_values, widths)
     elif isinstance(node, vast.GreaterThan):
-        value = int(eval_const_expr(node.left, const_values, widths) > eval_const_expr(node.right, const_values, widths))
+        value = int(
+            eval_const_expr(node.left, const_values, widths) > eval_const_expr(node.right, const_values, widths))
     elif isinstance(node, vast.Plus):
         value = eval_const_expr(node.left, const_values, widths) + eval_const_expr(node.right, const_values, widths)
     elif isinstance(node, vast.Minus):
@@ -270,9 +271,10 @@ def eval_const_expr(node: vast.Node, const_values: dict[str, int], widths: [vast
     elif isinstance(node, vast.Land):
         value = eval_const_expr(node.left, const_values, widths) & eval_const_expr(node.right, const_values, widths)
     elif isinstance(node, vast.Eq):
-        value = int(eval_const_expr(node.left, const_values, widths) == eval_const_expr(node.right, const_values, widths))
+        value = int(
+            eval_const_expr(node.left, const_values, widths) == eval_const_expr(node.right, const_values, widths))
     elif isinstance(node, vast.Ulnot):
-        value = ~eval_const_expr(node.left, const_values, widths)
+        value = ~eval_const_expr(node.right, const_values, widths)
     elif isinstance(node, vast.Width):
         msb = eval_const_expr(node.msb, const_values, widths)
         lsb = eval_const_expr(node.lsb, const_values, widths)
@@ -349,7 +351,7 @@ class DependencyAnalysis(AstVisitor):
         self.in_initial = False
 
     def visit_Initial(self, node: vast.Initial):
-        pass # skip
+        pass  # skip
 
     def visit_Parameter(self, node: vast.Parameter):
         assert node.name not in self.vars
@@ -434,7 +436,8 @@ class DependencyAnalysis(AstVisitor):
             if vv.clocking is None:
                 vv.clocking = self.proc_info
             else:
-                assert vv.clocking == self.proc_info, f"{name}: {vv.clocking} vs. {self.proc_info}"
+                if vv.clocking != self.proc_info:
+                    print(f"[DependencyAnalysis] WARN: {name}: {vv.clocking} vs. {self.proc_info}")
             if is_blocking:
                 # we only track comb dependencies
                 vv.depends_on |= self.get_path_dependencies()
@@ -467,6 +470,7 @@ class DependencyAnalysis(AstVisitor):
             if not self.vars[var].is_const:
                 return False
         return True
+
 
 def get_lvars(expr: vast.Node) -> set[str]:
     """ returns variable that is being assigned """
@@ -510,22 +514,38 @@ def find_clock_and_reset(sens: vast.SensList) -> ProcInfo:
     if len(sens.list) < 1 or len(sens.list) > 2:
         return ProcInfo()
     # no we try to find an edge
-    edges = [s.type for s in sens.list]
 
-    if edges == ['all']:
+    types = [s.type for s in sens.list]
+    edge_count = count_edges(sens.list)
+
+    if types == ['all']:
         # @(*)
         return ProcInfo()
-    elif edges == ['posedge']:
-        return ProcInfo(clock=sens.list[0].sig, is_posedge=True)
-    elif edges == ['negedge']:
-        return ProcInfo(clock=sens.list[0].sig, is_posedge=False)
-    elif edges == ['posedge', 'posedge']:
+    elif all(t == 'level' for t in types):
+        return ProcInfo()
+    elif (len(sens.list), edge_count) == (1, 1):
+        return ProcInfo(clock=sens.list[0].sig, is_posedge=is_posedge(types[0]))
+    elif (len(sens.list), edge_count) == (2, 2):
         # HACK: try to distinguish clock and reset by name
         if sens.list[0].sig.name.startswith('cl'):
-            return ProcInfo(clock=sens.list[0].sig, is_posedge=True, reset=sens.list[1].sig)
+            return ProcInfo(clock=sens.list[0].sig, is_posedge=is_posedge(types[0]), reset=sens.list[1].sig)
         elif sens.list[1].sig.name.startswith('cl'):
-            return ProcInfo(clock=sens.list[1].sig, is_posedge=True, reset=sens.list[0].sig)
+            return ProcInfo(clock=sens.list[1].sig, is_posedge=is_posedge(types[1]), reset=sens.list[0].sig)
         else:
             raise NotImplementedError(f"{sens.list}")
     else:
         raise NotImplementedError(f"{edges}")
+
+
+def count_edges(lst: list) -> int:
+    return sum(is_edge(s.type) for s in lst)
+
+
+def is_edge(tpe: str) -> bool:
+    return tpe in {'posedge', 'negedge'}
+
+
+def is_posedge(tpe: str) -> bool:
+    return tpe == 'posedge'
+
+
