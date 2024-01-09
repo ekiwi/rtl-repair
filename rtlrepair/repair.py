@@ -109,6 +109,10 @@ class RepairTemplate(AstVisitor):
         # by default we ignore any inout declarations
         return node
 
+    def visit_Instance(self, node: vast.Instance):
+        # TODO: it would be OK to visit instance connections that are inputs to the instance
+        return node
+
     def visit_Parameter(self, node: vast.Parameter):
         # by default we ignore any parameter declarations
         return node

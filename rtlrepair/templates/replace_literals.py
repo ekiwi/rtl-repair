@@ -19,6 +19,13 @@ class LiteralReplacer(RepairTemplate):
         super().__init__(name="literal")
         self.vars = vars
         self.widths = widths
+        self.in_gen = False
+
+    def visit_GenerateStatement(self, node: vast.GenerateStatement):
+        self.in_gen = True
+        node = self.generic_visit(node)
+        self.in_gen = False
+        return node
 
     def visit_Identifier(self, node: vast.Identifier):
         var = self.vars[node.name]

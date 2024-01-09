@@ -169,8 +169,9 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_d8(self):
         """ AXIS Switch with wrong index. Should be fixable by simple literal replacement... """
-        # TODO: enable some instrumentation in generate blocks
-        self.synth_cannot_repair(d8_dir, "d8", solver="yices2", init="zero", incremental=True, timeout=60)
+        changes = self.synth_success(d8_dir, "d8", solver="yices2", init="zero", incremental=True, timeout=60)
+        # correctly changes constant in one place, but ground truth does change in two places
+        self.assertEqual(changes, 1)
 
     def test_c4(self):
         """ AXIS Async Fifo (we turned the reset into a sync reset) signals ready too early, needs one guard in boolean condition """
