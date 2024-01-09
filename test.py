@@ -790,6 +790,13 @@ class TestDependencyAnalysis(unittest.TestCase):
 
         self.check(expected, analyze_ast(ast).var_list())
 
+    def test_zip_cpu_sdspi(self):
+        ast = parse_verilog(zip_cpu_sdspi_dir / "llsdspi.v")
+        analyze_ast(ast).var_list()
+        # no check, just making sure it does not crash
+
+
+
 
 class TestPyVerilog(unittest.TestCase):
     """ tests to iron out some pyverilog bugs that we tried to fix in our local copy """

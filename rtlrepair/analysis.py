@@ -36,6 +36,7 @@ class ProcInfo:
 class VarInfo:
     name: str
     width: int
+    value: Optional[int] = None  # for constants
     clocking: Optional[ProcInfo] = None
     is_input: bool = False
     is_output: bool = False
@@ -65,6 +66,7 @@ class VarInfo:
 class AnalysisResults:
     widths: dict[vast.Node, int]
     vars: dict[str, VarInfo]
+    cond_res: Dict[vast.Node, int]
 
     def var_list(self) -> list[VarInfo]:
         return sorted(self.vars.values(), key=lambda i: i.name)
@@ -74,10 +76,10 @@ def analyze_ast(ast: vast.Source) -> AnalysisResults:
     # ast.show()
     infer = InferWidths()
     infer.run(ast)
-    deps = DependencyAnalysis(infer.vars)
+    deps = DependencyAnalysis(infer.vars, infer.widths, infer.params)
     deps.visit(ast)
     resolve_transitory(deps.vars)
-    return AnalysisResults(infer.widths, deps.vars)
+    return AnalysisResults(infer.widths, deps.vars, deps.cond_res)
 
 
 def infer_widths(ast: vast.Source) -> dict:
@@ -188,78 +190,8 @@ class InferWidths(AstVisitor):
         self.widths[node] = width
         return width
 
-    # tries to evaluate constants
-    def eval(self, node: vast.Node) -> int:
-        if node is None:
-            value = None
-        elif isinstance(node, vast.IntConst):
-            # we do not deal with tri-state signals!
-            if 'x' in node.value or 'z' in node.value:
-                value = None
-            else:
-                value, _ = parse_verilog_int_literal(node.value)
-        elif isinstance(node, vast.Identifier):
-            if not node.name in self.params:
-                print()
-            # assert node.name in self.params, f"Value of {node.name} not known at compile time. Not a constant?"
-            value = self.params[node.name]
-        elif isinstance(node, vast.Rvalue):
-            value = self.eval(node.var)
-        elif isinstance(node, vast.Cond):
-            cond = self.eval(node.cond)
-            if cond == 0:
-                value = self.eval(node.false_value)
-            else:
-                value = self.eval(node.true_value)
-        elif isinstance(node, vast.GreaterThan):
-            value = int(self.eval(node.left) > self.eval(node.right))
-        elif isinstance(node, vast.Plus):
-            value = self.eval(node.left) + self.eval(node.right)
-        elif isinstance(node, vast.Minus):
-            value = self.eval(node.left) - self.eval(node.right)
-        elif isinstance(node, vast.Times):
-            value = self.eval(node.left) * self.eval(node.right)
-        elif isinstance(node, vast.Divide):
-            value = self.eval(node.left) // self.eval(node.right)
-        elif isinstance(node, vast.Width):
-            msb = self.eval(node.msb)
-            lsb = self.eval(node.lsb)
-            if msb is None or lsb is None:
-                value = None
-            else:
-                if msb >= lsb >= 0:
-                    value = msb - lsb + 1
-                else:  # little endian?
-                    value = lsb - msb + 1
-        elif isinstance(node, vast.SystemCall):
-            if node.syscall == 'clog2':
-                inp = self.eval(node.args[0])
-                assert inp >= 0
-                if inp == 0:
-                    value = 0
-                else:
-                    value = int(math.ceil(math.log2(inp)))
-            else:
-                raise NotImplementedError(f"TODO: constant prop: {node} : {type(node)}")
-        elif isinstance(node, vast.Concat):
-            value = 0
-            for expr in node.list:
-                expr_value = self.eval(expr)
-                shift_amount = self.widths[expr]
-                value = (value << shift_amount) | expr_value
-        elif isinstance(node, vast.Repeat):
-            expr_value = self.eval(node.value)
-            shift_amount = self.widths[node.value]
-            repetitions = self.eval(node.times)
-            assert repetitions >= 0
-            value = 0
-            for ii in range(repetitions):
-                value = (value << shift_amount) | expr_value
-        elif isinstance(node, vast.StringConst):
-            value = None
-        else:
-            raise NotImplementedError(f"TODO: constant prop: {node} : {type(node)}")
-        return value
+    def eval(self, node: vast.Node) -> Optional[int]:
+        return eval_const_expr(node, self.params, self.widths)
 
     def determine_var_width(self, node):
         assert isinstance(node, vast.Variable) or isinstance(node, vast.Parameter) or isinstance(node,
@@ -302,6 +234,83 @@ class InferWidths(AstVisitor):
         return node
 
 
+def eval_const_expr(node: vast.Node, const_values: dict[str, int], widths: [vast.Node, int]) -> Optional[int]:
+    if node is None:
+        value = None
+    elif isinstance(node, vast.IntConst):
+        # we do not deal with tri-state signals!
+        if 'x' in node.value or 'z' in node.value:
+            value = None
+        else:
+            value, _ = parse_verilog_int_literal(node.value)
+    elif isinstance(node, vast.Identifier):
+        if node.name not in const_values:
+            raise RuntimeError(f"{node.name} is not constant")
+        else:
+            value = const_values[node.name]
+    elif isinstance(node, vast.Rvalue):
+        value = eval_const_expr(node.var, const_values, widths)
+    elif isinstance(node, vast.Cond):
+        cond = eval_const_expr(node.cond, const_values, widths)
+        if cond == 0:
+            value = eval_const_expr(node.false_value, const_values, widths)
+        else:
+            value = eval_const_expr(node.true_value, const_values, widths)
+    elif isinstance(node, vast.GreaterThan):
+        value = int(eval_const_expr(node.left, const_values, widths) > eval_const_expr(node.right, const_values, widths))
+    elif isinstance(node, vast.Plus):
+        value = eval_const_expr(node.left, const_values, widths) + eval_const_expr(node.right, const_values, widths)
+    elif isinstance(node, vast.Minus):
+        value = eval_const_expr(node.left, const_values, widths) - eval_const_expr(node.right, const_values, widths)
+    elif isinstance(node, vast.Times):
+        value = eval_const_expr(node.left, const_values, widths) * eval_const_expr(node.right, const_values, widths)
+    elif isinstance(node, vast.Divide):
+        value = eval_const_expr(node.left, const_values, widths) // eval_const_expr(node.right, const_values, widths)
+    elif isinstance(node, vast.Land):
+        value = eval_const_expr(node.left, const_values, widths) & eval_const_expr(node.right, const_values, widths)
+    elif isinstance(node, vast.Ulnot):
+        value = ~eval_const_expr(node.left, const_values, widths)
+    elif isinstance(node, vast.Width):
+        msb = eval_const_expr(node.msb, const_values, widths)
+        lsb = eval_const_expr(node.lsb, const_values, widths)
+        if msb is None or lsb is None:
+            value = None
+        else:
+            if msb >= lsb >= 0:
+                value = msb - lsb + 1
+            else:  # little endian?
+                value = lsb - msb + 1
+    elif isinstance(node, vast.SystemCall):
+        if node.syscall == 'clog2':
+            inp = eval_const_expr(node.args[0], const_values, widths)
+            assert inp >= 0
+            if inp == 0:
+                value = 0
+            else:
+                value = int(math.ceil(math.log2(inp)))
+        else:
+            raise NotImplementedError(f"TODO: constant prop: {node} : {type(node)}")
+    elif isinstance(node, vast.Concat):
+        value = 0
+        for expr in node.list:
+            expr_value = eval_const_expr(expr, const_values, widths)
+            shift_amount = widths[expr]
+            value = (value << shift_amount) | expr_value
+    elif isinstance(node, vast.Repeat):
+        expr_value = eval_const_expr(node.value, const_values, widths)
+        shift_amount = widths[node.value]
+        repetitions = eval_const_expr(node.times, const_values, widths)
+        assert repetitions >= 0
+        value = 0
+        for ii in range(repetitions):
+            value = (value << shift_amount) | expr_value
+    elif isinstance(node, vast.StringConst):
+        value = None
+    else:
+        raise NotImplementedError(f"TODO: constant prop: {node} : {type(node)}")
+    return value
+
+
 def resolve_transitory(vars: dict[str, VarInfo]):
     for v in vars.values():
         old_size = len(v.depends_on)
@@ -316,10 +325,13 @@ def resolve_transitory(vars: dict[str, VarInfo]):
 class DependencyAnalysis(AstVisitor):
     """ Analysis a Verilog module to find all combinatorial dependencies """
 
-    def __init__(self, widths: dict[str, int]):
+    def __init__(self, widths: dict[str, int], expr_widths: dict[vast.Node, int], param_values: dict[str, int]):
         super().__init__()
         self.widths = widths
+        self.expr_widths = expr_widths
+        self.param_values = param_values
         self.vars: Dict[str, VarInfo] = {}
+        self.cond_res: Dict[vast.Node, int] = {}
         self.proc_info: Optional[ProcInfo] = None
         self.path_stack = []
         self.in_initial = False
@@ -334,17 +346,17 @@ class DependencyAnalysis(AstVisitor):
         self.in_initial = False
 
     def visit_Initial(self, node: vast.Initial):
-        self.in_initial = True
-        self.generic_visit(node)
-        self.in_initial = False
+        pass # skip
 
     def visit_Parameter(self, node: vast.Parameter):
         assert node.name not in self.vars
-        self.vars[node.name] = VarInfo(node.name, self.widths[node.name], is_const=True)
+        self.vars[node.name] = VarInfo(node.name, self.widths[node.name], is_const=True,
+                                       value=self.param_values[node.name])
 
     def visit_Localparam(self, node: vast.Localparam):
         assert node.name not in self.vars
-        self.vars[node.name] = VarInfo(node.name, self.widths[node.name], is_const=True)
+        self.vars[node.name] = VarInfo(node.name, self.widths[node.name], is_const=True,
+                                       value=self.param_values[node.name])
 
     def visit_Input(self, node: vast.Input):
         assert node.name not in self.vars
@@ -375,9 +387,7 @@ class DependencyAnalysis(AstVisitor):
     def visit_Always(self, node: vast.Always):
         # try to see if this process implements synchronous logic
         self.proc_info = find_clock_and_reset(node.sens_list)
-        assert len(self.path_stack) == 0
         self.visit(node.statement)
-        assert len(self.path_stack) == 0
         self.proc_info = None
 
     def visit_NonblockingSubstitution(self, node: vast.NonblockingSubstitution):
@@ -430,12 +440,26 @@ class DependencyAnalysis(AstVisitor):
         return out
 
     def visit_IfStatement(self, node: vast.IfStatement):
-        cond_vars = get_rvars(node.cond)
-        self.path_stack.append(cond_vars)
-        self.visit(node.true_statement)
-        self.visit(node.false_statement)
-        self.path_stack.pop()
+        # try to see if the condition is known at elaboration time
+        if self.is_const_expr(node.cond):
+            cond_res = eval_const_expr(node.cond, self.param_values, self.expr_widths)
+            self.cond_res[node.cond] = cond_res
+            if cond_res == 0:
+                self.visit(node.false_statement)
+            else:
+                self.visit(node.true_statement)
+        else:
+            cond_vars = get_rvars(node.cond)
+            self.path_stack.append(cond_vars)
+            self.visit(node.true_statement)
+            self.visit(node.false_statement)
+            self.path_stack.pop()
 
+    def is_const_expr(self, expr: vast.Node) -> bool:
+        for var in get_rvars(expr):
+            if not self.vars[var].is_const:
+                return False
+        return True
 
 def get_lvars(expr: vast.Node) -> set[str]:
     """ returns variable that is being assigned """
@@ -486,6 +510,8 @@ def find_clock_and_reset(sens: vast.SensList) -> ProcInfo:
         return ProcInfo()
     elif edges == ['posedge']:
         return ProcInfo(clock=sens.list[0].sig, is_posedge=True)
+    elif edges == ['negedge']:
+        return ProcInfo(clock=sens.list[0].sig, is_posedge=False)
     elif edges == ['posedge', 'posedge']:
         # HACK: try to distinguish clock and reset by name
         if sens.list[0].sig.name.startswith('cl'):
