@@ -8,3 +8,4 @@ from rtlrepair.templates.replace_literals import replace_literals
 from rtlrepair.templates.replace_variables import replace_variables
 from rtlrepair.templates.assign_const import assign_const
 from rtlrepair.templates.conditional_overwrite import conditional_overwrite
+from rtlrepair.templates.add_guard import add_guard

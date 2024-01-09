@@ -42,6 +42,8 @@ class VarInfo:
     is_output: bool = False
     is_const: bool = False
     is_genvar: bool = False
+    is_clock: bool = False
+    is_reset: bool = False
     depends_on: set[str] = field(default_factory=set)
 
     def is_register(self) -> bool:
@@ -400,6 +402,12 @@ class DependencyAnalysis(AstVisitor):
     def visit_Always(self, node: vast.Always):
         # try to see if this process implements synchronous logic
         self.proc_info = find_clock_and_reset(node.sens_list)
+        # update information about which variables are clock or reset
+        if self.proc_info is not None:
+            if self.proc_info.clock is not None:
+                self.vars[self.proc_info.clock.name].is_clock = True
+            if self.proc_info.reset is not None:
+                self.vars[self.proc_info.reset.name].is_reset = True
         self.visit(node.statement)
         self.proc_info = None
 

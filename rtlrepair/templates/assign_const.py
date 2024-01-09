@@ -132,21 +132,3 @@ class ProcessAnalyzer(AstVisitor):
         for cc in node.caselist:
             self.visit(cc)
 
-
-class RegisterFinder(AstVisitor):
-    """ collects the names of all variables that are updated in an always @ posedge process with only non-blocking
-        assignments
-    """
-    def __init__(self):
-        super().__init__()
-        self.registers = set()
-
-    def visit_Always(self, node: vast.Always):
-        analysis = ProcessAnalyzer()
-        analysis.run(node)
-        if analysis.blocking_count > 0:
-            if analysis.non_blocking_count > 0:
-                print("WARN: single always process seems to mix blocking and non-blocking assignment. Skipping.")
-            return node
-        for var in analysis.assigned_vars:
-            self.registers.add(var)

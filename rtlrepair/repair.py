@@ -54,6 +54,11 @@ class RepairTemplate(AstVisitor):
         self.changed.append(name)
         return vast.Cond(vast.Identifier(name), changed_expr, original_expr, lineno=original_expr.lineno)
 
+    def make_change_var(self):
+        name: str = self._namespace.new_name(_synth_change_prefix + self.name)
+        self.changed.append(name)
+        return name
+
     def make_change_stmt(self, change_stmt: vast.Node, lineno: int):
         name: str = self._namespace.new_name(_synth_change_prefix + self.name)
         self.changed.append(name)

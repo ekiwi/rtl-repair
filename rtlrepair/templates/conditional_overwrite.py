@@ -4,23 +4,28 @@
 
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.templates.assign_const import ProcessAnalyzer, RegisterFinder
-from rtlrepair.analysis import AnalysisResults, VarInfo
+from rtlrepair.templates.assign_const import ProcessAnalyzer
+from rtlrepair.analysis import AnalysisResults, VarInfo, get_rvars, get_lvars
 from rtlrepair.utils import Namespace, ensure_block
 import pyverilog.vparser.ast as vast
 
 
 def conditional_overwrite(ast: vast.Source, analysis: AnalysisResults):
     namespace = Namespace(ast)
-    repl = ConditionalOverwrite(analysis.widths)
+    repl = ConditionalOverwrite(analysis)
     repl.apply(namespace, ast)
     return repl.blockified
 
 
+tru = vast.IntConst("1'b1")
+fals = vast.IntConst("1'b0")
+
 class ConditionalOverwrite(RepairTemplate):
-    def __init__(self, widths):
+    def __init__(self, analysis: AnalysisResults):
         super().__init__(name="conditional_overwrite")
-        self.widths = widths
+        self.widths = analysis.widths
+        self.cond_res = analysis.cond_res
+        self.vars = analysis.vars
         self.use_blocking = False
         self.assigned_vars = []
         # we use this list to track which new blocks we introduced in order to minimize the diff between
@@ -29,15 +34,6 @@ class ConditionalOverwrite(RepairTemplate):
         # remember all 1-bit registers
         self.bool_registers = set()
 
-    def visit_ModuleDef(self, node: vast.ModuleDef):
-        finder = RegisterFinder()
-        finder.visit(node)
-        self.bool_registers = set()
-        for reg in finder.registers:
-            if self.widths[reg] == 1:
-                self.bool_registers.add(reg)
-        return self.generic_visit(node)
-
     def visit_Always(self, node: vast.Always):
         analysis = ProcessAnalyzer()
         analysis.run(node)
@@ -45,14 +41,17 @@ class ConditionalOverwrite(RepairTemplate):
             print("WARN: single always process seems to mix blocking and non-blocking assignment. Skipping.")
             return node
         # collect local condition atoms
-        conditions = collect_condition_atoms(analysis.conditions, self.bool_registers)
+        conditions = collect_condition_atoms(analysis.conditions)
         # note: we are ignoring pointer for now since these might contain loop vars that may not always be in scope..
         assigned_vars = [var for var in analysis.assigned_vars if isinstance(var, vast.Identifier)]
         self.use_blocking = analysis.blocking_count > 0
         # add conditional overwrites to the end of the process
         stmts = []
         for var in assigned_vars:
-            cond = self.gen_condition(conditions, analysis.case_inputs)
+            lvars = get_lvars(var)
+            filtered_conditions = filter_atom(conditions, lvars, self.vars)
+            filtered_case_inputs = filter_atom(analysis.case_inputs, lvars, self.vars)
+            cond = self.gen_condition(filtered_conditions, filtered_case_inputs)
             assignment = self.make_assignment(var)
             inner = vast.IfStatement(cond, assignment, None)
             stmts.append(self.make_change_stmt(inner, 0))
@@ -66,7 +65,6 @@ class ConditionalOverwrite(RepairTemplate):
         # atoms can be inverted
         atoms_or_inv = [self.make_synth_choice(aa, vast.Ulnot(aa)) for aa in atoms]
         # atoms do not need to be used
-        tru = vast.IntConst("1'b1")
         atoms_optional = [self.make_change(aa, tru) for aa in atoms_or_inv]
         # combine all atoms together
         node = atoms_optional[0]
@@ -88,11 +86,28 @@ class ConditionalOverwrite(RepairTemplate):
         return assign
 
 
-def collect_condition_atoms(conditions: list, regs: set) -> list:
+def filter_atom(atoms: list, lvars: set[str], info: dict[str, VarInfo]) -> list:
+    # we can only use something as a condition, if it does not depend on any of the lvalues
+    out = []
+    for atom in atoms:
+        atom_vars = get_rvars(atom)
+        if atom_dep_ok(atom_vars, lvars, info):
+            out.append(atom)
+    return out
+
+
+def atom_dep_ok(atom_vars: set[str], lvars: set[str], info: dict[str, VarInfo]) -> bool:
+    for av in atom_vars:
+        ai = info[av]
+        if len(lvars & info[av].depends_on) > 0:
+            return False
+    return True
+
+
+def collect_condition_atoms(conditions: list) -> list:
     atoms = set()
     for cond in conditions:
         atoms |= destruct_to_atom(cond)
-    atoms |= regs
     return list(atoms)
 
 
