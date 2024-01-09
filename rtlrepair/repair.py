@@ -65,6 +65,7 @@ class RepairTemplate(AstVisitor):
         return vast.IfStatement(vast.Identifier(name), change_stmt, None, lineno=lineno)
 
     def make_synth_var(self, width: int):
+        assert width >= 1
         name = self._namespace.new_name(_synth_var_prefix + self.name)
         self.synth_vars.append((name, width))
         return name

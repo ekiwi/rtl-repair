@@ -96,13 +96,15 @@ class AddGuard(RepairTemplate):
         return vast.And(may_invert, may_a_or_b)
 
     def build_guard_item(self, atoms: list[vast.Node]) -> vast.Node:
-        # select one atom
-        select_width = int(math.ceil(math.log2(len(atoms))))
-        selector = vast.Identifier(self.make_synth_var(select_width))
+        assert len(atoms) > 0
         out = atoms[0]
-        for ii, other in enumerate(atoms[1:]):
-            ident = vast.IntConst(f"{select_width}'b{ii:b}")
-            out = vast.Cond(vast.Eq(selector, ident), other, out)
+        if len(atoms) > 1:
+            # select one atom
+            select_width = int(math.ceil(math.log2(len(atoms))))
+            selector = vast.Identifier(self.make_synth_var(select_width))
+            for ii, other in enumerate(atoms[1:]):
+                ident = vast.IntConst(f"{select_width}'b{ii:b}")
+                out = vast.Cond(vast.Eq(selector, ident), other, out)
         # may invert for free
         do_invert = self.make_synth_var(1)
         return vast.Xor(vast.Identifier(do_invert), out)
