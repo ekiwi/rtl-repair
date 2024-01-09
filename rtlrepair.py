@@ -220,7 +220,7 @@ def try_templates_in_sequence(config: Config, ast, statistics: dict, analysis: A
             if status == Status.Success:
                 # keep going if the current solution is pretty large
                 min_changes = min(s[1]['changes'] for s in solutions)
-                if min_changes <= 6:
+                if min_changes <= 3:
                     return status, solutions
                 else:
                     all_solutions += solutions
