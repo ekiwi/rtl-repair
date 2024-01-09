@@ -109,8 +109,11 @@ class AddGuard(RepairTemplate):
 
 
 def find_atoms(lvars: set[str], a: AnalysisResults) -> list[vast.Node]:
+    verbose = False
     atoms = []
     l_deps = set() if len(lvars) == 0 else set.union(*[a.vars[v].depends_on for v in lvars])
+    if verbose:
+        print(f"l_deps={l_deps}")
     for var in a.vars.values():
         # we are only interested in 1-bit vars
         if var.width != 1:
@@ -123,7 +126,9 @@ def find_atoms(lvars: set[str], a: AnalysisResults) -> list[vast.Node]:
         if len(lvar_deps) > 0 or var.name in lvars:
             continue
         # check to see if we would create a new dependency
-        new_deps = var.depends_on - l_deps
+        if verbose:
+            print(f"{var.name}.depends_on = {var.depends_on}")
+        new_deps = (var.depends_on | {var.name}) - l_deps
         if len(new_deps) > 0:
             continue
         # otherwise this might be a good candidate

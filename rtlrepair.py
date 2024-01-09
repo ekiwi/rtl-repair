@@ -32,7 +32,7 @@ _available_templates = {
     'conditional_overwrite': conditional_overwrite,
     'add_guard': add_guard,
 }
-#_default_templates = ['replace_literals', 'assign_const', 'add_guard']
+# _default_templates = ['replace_literals', 'assign_const', 'add_guard']
 _default_templates = ['replace_literals', 'add_guard', 'conditional_overwrite']
 
 
@@ -130,10 +130,13 @@ def find_solver_version(solver: str) -> str:
     r = subprocess.run([solver] + arg, check=True, stdout=subprocess.PIPE)
     return r.stdout.decode('utf-8').splitlines()[0].strip()
 
+
 # return this if the synthesizer did not run or did not run properly (i.e. crashed)
 NoSynthStat = SynthStats(solver_time_ns=0, past_k=-1, future_k=-1)
 
-def try_template(config: Config, ast, prefix: str, template, statistics: dict, analysis: AnalysisResults) -> (Status, list):
+
+def try_template(config: Config, ast, prefix: str, template, statistics: dict, analysis: AnalysisResults) -> (
+        Status, list):
     if config.opts.per_template_timeout is not None:
         signal.alarm(int(math.ceil(config.opts.per_template_timeout)))
 
@@ -159,8 +162,8 @@ def try_template(config: Config, ast, prefix: str, template, statistics: dict, a
         if config.opts.per_template_timeout is not None:
             status, assignments, synth_stats = Status.Timeout, [], NoSynthStat
         else:
-            assert config.opts.timeout is not None # global timeout instead!
-            raise e # dispatch to top
+            assert config.opts.timeout is not None  # global timeout instead!
+            raise e  # dispatch to top
     except subprocess.CalledProcessError:
         # something crashed, so we cannot repair this bug
         status, assignments, synth_stats = Status.CannotRepair, [], NoSynthStat
@@ -285,7 +288,7 @@ def check_verilator_version(opts: Options):
 
 def main():
     config = parse_args()
-    assert not (config.opts.timeout and config.opts.per_template_timeout),\
+    assert not (config.opts.timeout and config.opts.per_template_timeout), \
         "timeout and template-timeout options are not compatible!"
 
     check_verilator_version(config.opts)
@@ -306,7 +309,7 @@ def main():
     except TimeoutError:
         status, solutions = Status.Timeout, []
     delta_time = time.monotonic() - start_time
-    statistics['total_time'] =  delta_time
+    statistics['total_time'] = delta_time
 
     # save results to disk
     success = status in {Status.Success, Status.NoRepair}
