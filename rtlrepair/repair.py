@@ -171,10 +171,10 @@ class RepairTemplate(AstVisitor):
         # by default, we ignore delay statement since they do not make much sense for synchronous circuit descriptions
         return node
 
-    def visit_GenerateStatement(self, node: vast.GenerateStatement):
-        # generate blocks have their own rules which disallow many of the usual instrumentation that we do
-        # in the future, one might try to find a small set of changes that might be allowed
-        return node
+    # def visit_GenerateStatement(self, node: vast.GenerateStatement):
+    #     # generate blocks have their own rules which disallow many of the usual instrumentation that we do
+    #     # in the future, one might try to find a small set of changes that might be allowed
+    #     return node
 
 
 def do_repair(ast: vast.Source, assignment: dict, blockified: list) -> list:
