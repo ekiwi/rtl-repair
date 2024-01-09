@@ -212,13 +212,17 @@ def try_templates_in_sequence(config: Config, ast, statistics: dict, analysis: A
         ast_copy = copy.deepcopy(ast)
         status, solutions = try_template(config, ast, prefix, template, statistics, analysis)
 
-        # determine size of smallest solution
-        min_changes = min(s[1]['changes'] for s in solutions)
-
         # early exit if there is nothing to do or if we found a solution and aren't instructed to run all templates
-        # keep going if the current solution is pretty large
-        if (status == Status.NoRepair or (not config.opts.run_all_templates and status == Status.Success)) and min_changes <= 6:
-            return status, solutions
+        if status == Status.NoRepair or (not config.opts.run_all_templates and status == Status.Success):
+            if status == Status.Success:
+                # keep going if the current solution is pretty large
+                min_changes = min(s[1]['changes'] for s in solutions)
+                if min_changes <= 6:
+                    return status, solutions
+                else:
+                    all_solutions += solutions
+            else:
+                return status, solutions
         else:
             all_solutions += solutions
         ast = ast_copy
