@@ -123,16 +123,19 @@ def find_atoms(lvars: set[str], a: AnalysisResults) -> list[vast.Node]:
         # ignore clock signals
         if var.is_clock:
             continue
-        # check to see if the variable would create a loop
-        lvar_deps = lvars & var.depends_on
-        if len(lvar_deps) > 0 or var.name in lvars:
-            continue
-        # check to see if we would create a new dependency
-        if verbose:
-            print(f"{var.name}.depends_on = {var.depends_on}")
-        new_deps = (var.depends_on | {var.name}) - l_deps
-        if len(new_deps) > 0:
-            continue
+
+        # check which only mater for comb assignments
+        if len(lvars) > 0 and len(var.depends_on) > 0:
+            # check to see if the variable would create a loop
+            lvar_deps = lvars & var.depends_on
+            if len(lvar_deps) > 0 or var.name in lvars:
+                continue
+            # check to see if we would create a new dependency
+            if verbose:
+                print(f"{var.name}.depends_on = {var.depends_on}")
+            new_deps = (var.depends_on | {var.name}) - l_deps
+            if len(new_deps) > 0:
+                continue
         # otherwise this might be a good candidate
         atoms.append(vast.Identifier(var.name))
     return atoms
