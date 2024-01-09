@@ -64,7 +64,7 @@ struct Args {
     init: Init,
     #[arg(
         long,
-        default_value_t = 2u64,
+        default_value_t = 8u64,
         help = "step size for past-k in incremental solver"
     )]
     pask_k_step_size: u64,
