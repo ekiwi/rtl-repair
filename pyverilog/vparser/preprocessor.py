@@ -97,7 +97,7 @@ class VerilogPreprocessor(object):
             os.remove(temp_file_path)
 
     def read_output(self, remove: bool) -> str:
-        assert(os.path.isfile(self.outputfile), f"{self.outputfile} does not exist or is not a file!")
+        assert os.path.isfile(self.outputfile), f"{self.outputfile} does not exist or is not a file!"
         with open(self.outputfile) as f:
             text = f.read()
         if remove:
