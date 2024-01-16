@@ -108,7 +108,7 @@ jobs:
       timeout-minutes: 15
       run: |
         source venv/bin/activate
-        ./test.py
+        pytest -n auto test.py
 
   test-benchmarks:
     name: Common Benchmark Tests

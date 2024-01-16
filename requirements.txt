@@ -8,3 +8,7 @@ setuptools==60.2.0
 wheel==0.37.1
 vcdvcd==2.3.4
 tomli~=2.0.1
+# for testing
+pytest==7.4.4
+pytest-xdist==3.5.0
+
