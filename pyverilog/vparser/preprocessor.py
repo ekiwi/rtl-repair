@@ -29,7 +29,7 @@ import subprocess
 
 
 class VerilogPreprocessor(object):
-    def __init__(self, filelist, outputfile='pp.out', include=None, define=None):
+    def __init__(self, filelist, outputfile=None, include=None, define=None):
 
         if not isinstance(filelist, (tuple, list)):
             filelist = list(filelist)
@@ -79,25 +79,41 @@ class VerilogPreprocessor(object):
 
         self.iv.append('-E')
         self.iv.append('-o')
-        self.iv.append(outputfile)
+
+        # create a temporary file if necessary
+        if outputfile is None:
+            ff = tempfile.NamedTemporaryFile('w', delete=False)
+            ff.close()
+            self.outputfile = ff.name
+        else:
+            self.outputfile = outputfile
 
     def preprocess(self):
-        cmd = self.iv + list(self.filelist)
+        cmd = self.iv + [self.outputfile] + list(self.filelist)
         subprocess.call(cmd)
 
         # Removing the temporary files that were created
         for temp_file_path in self.temp_files_paths:
             os.remove(temp_file_path)
 
+    def read_output(self, remove: bool) -> str:
+        assert(os.path.isfile(self.outputfile), f"{self.outputfile} does not exist or is not a file!")
+        with open(self.outputfile) as f:
+            text = f.read()
+        if remove:
+            os.remove(self.outputfile)
+        return text
+
 
 def preprocess(
     filelist,
-    output='preprocess.output',
+    output=None,
     include=None,
     define=None
 ):
     pre = VerilogPreprocessor(filelist, output, include, define)
     pre.preprocess()
-    text = open(output).read()
+    with open(output) as f:
+        text = f.read()
     os.remove(output)
     return text

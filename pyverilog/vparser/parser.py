@@ -2643,9 +2643,8 @@ class ParseError(Exception):
 
 class VerilogCodeParser(object):
 
-    def __init__(self, filelist, preprocess_output='preprocess.output',
+    def __init__(self, filelist, preprocess_output=None,
                  preprocess_include=None, preprocess_define=None):
-        self.preprocess_output = preprocess_output
         self.directives = ()
         self.preprocessor = VerilogPreprocessor(filelist, preprocess_output,
                                                 preprocess_include,
@@ -2654,10 +2653,7 @@ class VerilogCodeParser(object):
 
     def preprocess(self):
         self.preprocessor.preprocess()
-        with open(self.preprocess_output) as f:
-            text = f.read()
-        os.remove(self.preprocess_output)
-        return text
+        return self.preprocessor.read_output(remove=True)
 
     def parse(self, preprocess_output='preprocess.output', debug=0):
         text = self.preprocess()
