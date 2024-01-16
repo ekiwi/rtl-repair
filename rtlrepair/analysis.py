@@ -228,7 +228,8 @@ class InferWidths(AstVisitor):
                 # check the lhs first because it might influence the lhs
                 lhs_width = self.expr_width(node.left.var, None)
                 rhs_width = self.expr_width(node.right.var, lhs_width)
-            except RuntimeError:
+            except RuntimeError as e:
+                # print(e)
                 pass  # ignore failure
         elif isinstance(node, vast.IfStatement):
             self.expr_width(node.cond, 1)

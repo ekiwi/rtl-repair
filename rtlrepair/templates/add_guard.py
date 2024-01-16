@@ -43,6 +43,14 @@ class AddGuard(RepairTemplate):
         # assignments outside of a process
         if self.in_proc:
             return node  # unexpected
+        # Sometimes our with inference algorithm is at wit's end, and we need to skip the node because we do
+        # not know if it will be 1-bit. This generally happens in generate for loops when the induction variable
+        # would need to be known in order to determine the width of an expression. In that case there might
+        # not even be a single with for that particular expression, as the width could be different in each loop
+        # iteration.
+        if node.left.var not in self.a.widths:
+            return node
+
         # check to see if this is a 1-bit assignment
         if self.a.widths[node.left.var] != 1:
             return node
