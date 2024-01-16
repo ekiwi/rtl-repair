@@ -1,0 +1,22 @@
+# read_sources
+read_verilog padder.v
+read_verilog keccak.v
+read_verilog f_permutation.v
+read_verilog padder1.v
+read_verilog rconst.v
+read_verilog round.v
+
+hierarchy -top keccak
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x keccak.btor

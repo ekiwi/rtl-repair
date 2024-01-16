@@ -1,0 +1,28 @@
+# read_sources
+read_verilog RS_dec.v
+read_verilog BM_lamda.v
+read_verilog GF_matrix_dec.v
+read_verilog GF_matrix_ascending_binary.v
+read_verilog input_syndromes.v
+read_verilog lamda_roots.v
+read_verilog transport_in2out.v
+read_verilog DP_RAM.v
+read_verilog out_stage.v
+read_verilog error_correction.v
+read_verilog Omega_Phy.v
+read_verilog GF_mult_add_syndromes.v
+
+hierarchy -top RS_dec
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x RS_dec.btor

@@ -1,0 +1,17 @@
+# read_sources
+read_verilog sdram_controller.no_tri_state.v
+
+hierarchy -top sdram_controller
+
+# minimal btor
+proc -noopt
+
+# extra
+opt
+
+async2sync
+flatten
+dffunmap
+
+
+write_btor -x sdram_controller.btor
