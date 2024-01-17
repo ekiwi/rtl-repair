@@ -2585,7 +2585,10 @@ def p_empty(p):
 
 # --------------------------------------------------------------------------
 def p_error(p):
-    p.lexer._raise_parser_error(p)
+    if p is not None:
+        p.lexer._raise_parser_error(p)
+    else:
+        print("WARN: unknown parser error")
 
 # import token list for parser generator
 from .lexer import tokens
