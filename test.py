@@ -31,6 +31,7 @@ opencores_dir = benchmark_dir / "cirfix" / "opencores"
 reed_dir = opencores_dir / "reed_solomon_decoder"
 sha_dir = opencores_dir / "sha3" / "low_throughput_core"
 i2c_dir = opencores_dir / "i2c"
+pairing_dir = opencores_dir / "pairing"
 chisel_dir = benchmark_dir / "chisel"
 chisel_counter_dir = chisel_dir / "counter"
 paper_example_dir = benchmark_dir / "paper_example"
@@ -412,6 +413,31 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
                                  incremental=self.incremental, timeout=self.timeout)
 
 
+
+
+
+class TestPairing(SynthesisTest):
+    """ Runs all pairing benchmarks. Mostly to make sure they timeout without crashing.  """
+    solver: str = 'bitwuzla'
+    incremental: bool = True
+    init: str = 'random'
+    timeout: int = 60
+
+    def test_pairing_k1(self):
+        # times out
+        self.synth_cannot_repair(pairing_dir, "kgoliya_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_pairing_w1(self):
+        # times out
+        self.synth_cannot_repair(pairing_dir, "wadden_buggy1", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
+    def test_pairing_w2(self):
+        # times out
+        self.synth_cannot_repair(pairing_dir, "wadden_buggy2", solver=self.solver, init=self.init,
+                                 incremental=self.incremental, timeout=self.timeout)
+
 class TestPaperExample(SynthesisTest):
     def test_tb(self):
         self.synth_success(paper_example_dir, "buggy", init='random')
@@ -751,6 +777,15 @@ class TestTypeInference(unittest.TestCase):
         hist = _make_histogram(widths)
         expected = {None: 1, 1: 53, 2: 5, 4: 2, 5: 34, 7: 6, 8: 33, 32: 47}
         self.assertEqual(expected, hist)
+
+    def test_pairing_width(self):
+        ast = parse_verilog(pairing_dir / "tate_pairing.v", include=pairing_dir)
+        analysis_results = analyze_ast(ast)
+        widths = analysis_results.widths
+        hist = _make_histogram(widths)
+        expected = {None: 1, 1: 10, 2: 3, 32: 6, 97: 2, 98: 4, 192: 1, 194: 14, 1164: 4}
+        self.assertEqual(expected, hist)
+        self.assertIn("nmu", analysis_results.vars, "\n" + str([v.name for v in analysis_results.var_list()]))
 
 class TestExposeBranches(unittest.TestCase):
     """ unittests for code in rtlrepair/expose_branches.py """
