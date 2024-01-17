@@ -1,0 +1,66 @@
+40d39
+<   reg last_cycle;
+85c84
+<           if(input_axis_tready & input_axis_tvalid) begin
+---
+>           if(input_axis_tvalid) begin
+103c102
+<           if(input_axis_tready & input_axis_tvalid) begin
+---
+>           if(input_axis_tvalid) begin
+105,113d103
+<             if(CYCLE_COUNT == 1) begin
+<               last_cycle = 1;
+<             end else if(input_axis_tkeep[CYCLE_KEEP_WIDTH-1:0] != { CYCLE_KEEP_WIDTH{ 1'b1 } }) begin
+<               last_cycle = 1;
+<             end else if(input_axis_tkeep[CYCLE_KEEP_WIDTH*2-1:CYCLE_KEEP_WIDTH] == { CYCLE_KEEP_WIDTH{ 1'b0 } }) begin
+<               last_cycle = 1;
+<             end else begin
+<               last_cycle = 0;
+<             end
+118,119c108,109
+<             output_axis_tdata_int = input_axis_tdata[CYCLE_DATA_WIDTH-1:0];
+<             output_axis_tkeep_int = input_axis_tkeep[CYCLE_KEEP_WIDTH-1:0];
+---
+>             output_axis_tdata_int = input_axis_tdata;
+>             output_axis_tkeep_int = input_axis_tkeep;
+121,122c111,112
+<             output_axis_tlast_int = input_axis_tlast & last_cycle;
+<             output_axis_tuser_int = input_axis_tuser & last_cycle;
+---
+>             output_axis_tlast_int = input_axis_tlast & ((CYCLE_COUNT == 1) | (input_axis_tkeep[CYCLE_KEEP_WIDTH-1:0] != { CYCLE_KEEP_WIDTH{ 1'b1 } }));
+>             output_axis_tuser_int = input_axis_tuser & ((CYCLE_COUNT == 1) | (input_axis_tkeep[CYCLE_KEEP_WIDTH-1:0] != { CYCLE_KEEP_WIDTH{ 1'b1 } }));
+126,131c116,117
+<             if(!last_cycle || !output_axis_tready_int) begin
+<               input_axis_tready_next = 0;
+<               state_next = STATE_TRANSFER_OUT;
+<             end else begin
+<               state_next = STATE_IDLE;
+<             end
+---
+>             input_axis_tready_next = 0;
+>             state_next = STATE_TRANSFER_OUT;
+139c125
+<         if(input_axis_tready & input_axis_tvalid) begin
+---
+>         if(input_axis_tvalid) begin
+187,195d172
+<           if(cycle_count_reg == CYCLE_COUNT - 1) begin
+<             last_cycle = 1;
+<           end else if(temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } }) begin
+<             last_cycle = 1;
+<           end else if(temp_tkeep_reg[(cycle_count_reg+1)*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] == { CYCLE_KEEP_WIDTH{ 1'b0 } }) begin
+<             last_cycle = 1;
+<           end else begin
+<             last_cycle = 0;
+<           end
+199,200c176,177
+<           output_axis_tlast_int = temp_tlast_reg & last_cycle;
+<           output_axis_tuser_int = temp_tuser_reg & last_cycle;
+---
+>           output_axis_tlast_int = temp_tlast_reg & ((cycle_count_reg == CYCLE_COUNT - 1) | (temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } }));
+>           output_axis_tuser_int = temp_tuser_reg & ((cycle_count_reg == CYCLE_COUNT - 1) | (temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } }));
+203c180
+<             if(last_cycle) begin
+---
+>             if((cycle_count_reg == CYCLE_COUNT - 1) | (temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } })) begin

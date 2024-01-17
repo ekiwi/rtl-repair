@@ -1,0 +1,583 @@
+/home/kevin/d/rtl-repair/synth/target/release/synth --design /home/kevin/d/rtl-repair/tmp1/axis-adapter-s3_s3_csv/1_replace_literals/axis_adapter_bug_s3.instrumented.btor --testbench /home/kevin/d/rtl-repair/benchmarks/fpga-debugging/axis-adapter-s3/tb.csv --solver yices2 --init zero --incremental --verbose --max-incorrect-solutions-per-window-size 4
+Number of change vars: 97
+Number of free vars:   97
+Loaded: axis_adapter_bug_s3.instrumented
+axis_adapter_bug_s3.instrumented
+input output_axis_tready : bv<1>
+input input_axis_tuser : bv<1>
+input input_axis_tlast : bv<1>
+input input_axis_tvalid : bv<1>
+input input_axis_tkeep : bv<8>
+input input_axis_tdata : bv<64>
+input rst : bv<1>
+input clk : bv<1>
+output input_axis_tready : bv<1>
+output output_axis_tvalid : bv<1>
+output output_axis_tdata : bv<8>
+output output_axis_tkeep : bv<1>
+output output_axis_tlast : bv<1>
+output output_axis_tuser : bv<1>
+output __change_count : bv<7> = add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(add(zext(__synth_change_literal_6, 6), zext(__synth_change_literal_53, 6)), zext(__synth_change_literal_70, 6)), zext(__synth_change_literal_66, 6)), zext(__synth_change_literal_67, 6)), zext(__synth_change_literal_68, 6)), zext(__synth_change_literal_69, 6)), zext(__synth_change_literal_42, 6)), zext(__synth_change_literal_41, 6)), zext(__synth_change_literal_32, 6)), zext(__synth_change_literal_7, 6)), zext(__synth_change_literal_43, 6)), zext(__synth_change_literal_50, 6)), zext(__synth_change_literal_48, 6)), zext(__synth_change_literal_46, 6)), zext(__synth_change_literal_33, 6)), zext(__synth_change_literal_38, 6)), zext(__synth_change_literal_3, 6)), zext(__synth_change_literal_56, 6)), zext(__synth_change_literal_44, 6)), zext(__synth_change_literal_21, 6)), zext(__synth_change_literal_11, 6)), zext(__synth_change_literal_8, 6)), zext(__synth_change_literal_9, 6)), zext(__synth_change_literal_35, 6)), zext(__synth_change_literal_36, 6)), zext(__synth_change_literal_19, 6)), zext(__synth_change_literal_29, 6)), zext(__synth_change_literal_12, 6)), zext(__synth_change_literal_16, 6)), zext(__synth_change_literal_14, 6)), zext(__synth_change_literal_5, 6)), zext(__synth_change_literal_61, 6)), zext(__synth_change_literal_62, 6)), zext(__synth_change_literal_63, 6)), zext(__synth_change_literal_64, 6)), zext(__synth_change_literal_25, 6)), zext(__synth_change_literal_26, 6)), zext(__synth_change_literal_27, 6)), zext(__synth_change_literal_4, 6)), zext(__synth_change_literal_57, 6)), zext(__synth_change_literal_58, 6)), zext(__synth_change_literal_59, 6)), zext(__synth_change_literal_60, 6)), zext(__synth_change_literal_22, 6)), zext(__synth_change_literal_23, 6)), zext(__synth_change_literal_24, 6)), zext(__synth_change_literal_2, 6)), zext(__synth_change_literal_55, 6)), zext(__synth_change_literal_1, 6)), zext(__synth_change_literal_54, 6)), zext(__synth_change_literal_65, 6)), zext(__synth_change_literal_45, 6)), zext(__synth_change_literal_34, 6)), zext(__synth_change_literal_20, 6)), zext(__synth_change_literal_28, 6)), zext(__synth_change_literal_13, 6)), zext(__synth_change_literal_0, 6)), zext(__synth_change_literal_73, 6)), zext(__synth_change_literal_72, 6)), zext(__synth_change_literal_71, 6)), zext(__synth_change_literal_52, 6)), zext(__synth_change_literal_51, 6)), zext(__synth_change_literal_49, 6)), zext(__synth_change_literal_47, 6)), zext(__synth_change_literal_40, 6)), zext(__synth_change_literal_39, 6)), zext(__synth_change_literal_37, 6)), zext(__synth_change_literal_31, 6)), zext(__synth_change_literal_30, 6)), zext(__synth_change_literal_18, 6)), zext(__synth_change_literal_17, 6)), zext(__synth_change_literal_15, 6)), zext(__synth_change_literal_10, 6)), zext(__synth_change_literal_96, 6)), zext(__synth_change_literal_95, 6)), zext(__synth_change_literal_94, 6)), zext(__synth_change_literal_93, 6)), zext(__synth_change_literal_92, 6)), zext(__synth_change_literal_91, 6)), zext(__synth_change_literal_90, 6)), zext(__synth_change_literal_89, 6)), zext(__synth_change_literal_88, 6)), zext(__synth_change_literal_87, 6)), zext(__synth_change_literal_86, 6)), zext(__synth_change_literal_85, 6)), zext(__synth_change_literal_84, 6)), zext(__synth_change_literal_83, 6)), zext(__synth_change_literal_82, 6)), zext(__synth_change_literal_81, 6)), zext(__synth_change_literal_80, 6)), zext(__synth_change_literal_79, 6)), zext(__synth_change_literal_78, 6)), zext(__synth_change_literal_77, 6)), zext(__synth_change_literal_76, 6)), zext(__synth_change_literal_75, 6)), zext(__synth_change_literal_74, 6))
+node %1926 : bv<1> = ite(__synth_change_literal_5, zext(__synth_literal_5, 24), 32'x0)[0]
+node %42 : bv<32> = zext(cycle_count_reg, 24)
+node %1930 : bv<32> = add(mul(%42, ite(__synth_change_literal_63, __synth_literal_63, 32'x1)), 32'x0)
+node %53 : bv<32> = zext(temp_tkeep_reg, 24)
+node %1329 : bv<1> = ite(__synth_change_literal_42, __synth_literal_42, 1'b0)
+node _procmux_1974_CMP0 : bv<1> = eq(state_reg, ite(__synth_change_literal_41, __synth_literal_41, 3'b10))
+node _procmux_1976_CMP0 : bv<1> = eq(state_reg, ite(__synth_change_literal_32, __synth_literal_32, 3'b1))
+node _procmux_1978_CMP0 : bv<1> = eq(state_reg, ite(__synth_change_literal_7, __synth_literal_7, 3'b0))
+node %362 : bv<1> = input_axis_tkeep[0]
+node %1361 : bv<1> = ite(__synth_change_literal_11, __synth_literal_11, 1'b0)
+node %1369 : bv<1> = eq(ite(__synth_change_literal_8, __synth_literal_8, 32'x8), ite(__synth_change_literal_9, __synth_literal_9, 32'x1))
+node output_axis_tuser_int : bv<1> = ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, input_axis_tuser, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, %1926, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, 1'b0, ite(input_axis_tvalid, and(input_axis_tuser, or(eq(ite(__synth_change_literal_25, __synth_literal_25, 32'x8), ite(__synth_change_literal_26, __synth_literal_26, 32'x1)), not(eq(%362, ite(__synth_change_literal_27, __synth_literal_27, 1'b1))))), %1926))), 1'b0))), 1'b0)), 1'b0), ite(_procmux_1976_CMP0, %1926, ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, temp_tuser_reg, and(temp_tuser_reg, or(eq(%42, sub(ite(__synth_change_literal_61, __synth_literal_61, 32'x8), ite(__synth_change_literal_62, __synth_literal_62, 32'x1))), not(eq(ite(sgt(32'x0, %1930), logical_shift_left(%53, neg(%1930)), logical_shift_right(%53, %1930))[0], ite(__synth_change_literal_64, __synth_literal_64, 1'b1)))))), 1'b0))), %1926)))
+node %1665 : bv<1> = not(output_axis_tvalid)
+node %1810 : bv<1> = or(output_axis_tready, %1665)
+node %1871 : bv<1> = ite(__synth_change_literal_4, zext(__synth_literal_4, 24), 32'x0)[0]
+node %1875 : bv<32> = add(mul(%42, ite(__synth_change_literal_59, __synth_literal_59, 32'x1)), 32'x0)
+node output_axis_tlast_int : bv<1> = ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, input_axis_tlast, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, %1871, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, 1'b0, ite(input_axis_tvalid, and(input_axis_tlast, or(eq(ite(__synth_change_literal_22, __synth_literal_22, 32'x8), ite(__synth_change_literal_23, __synth_literal_23, 32'x1)), not(eq(%362, ite(__synth_change_literal_24, __synth_literal_24, 1'b1))))), %1871))), 1'b0))), 1'b0)), 1'b0), ite(_procmux_1976_CMP0, %1871, ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, temp_tlast_reg, and(temp_tlast_reg, or(eq(%42, sub(ite(__synth_change_literal_57, __synth_literal_57, 32'x8), ite(__synth_change_literal_58, __synth_literal_58, 32'x1))), not(eq(ite(sgt(32'x0, %1875), logical_shift_left(%53, neg(%1875)), logical_shift_right(%53, %1875))[0], ite(__synth_change_literal_60, __synth_literal_60, 1'b1)))))), 1'b0))), %1871)))
+node %1639 : bv<1> = ite(__synth_change_literal_3, zext(__synth_literal_3, 24), 32'x0)[0]
+node output_axis_tvalid_int : bv<1> = ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, input_axis_tvalid, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, %1639, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, 1'b0, ite(input_axis_tvalid, ite(__synth_change_literal_21, __synth_literal_21, 32'x1)[0], %1639))), 1'b0))), 1'b0)), 1'b0), ite(_procmux_1976_CMP0, %1639, ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(__synth_change_literal_44, __synth_literal_44, 32'x1)[0], ite(__synth_change_literal_56, __synth_literal_56, 32'x1)[0]), 1'b0))), %1639)))
+node %1823 : bv<1> = ite(__synth_change_literal_2, zext(__synth_literal_2, 24), 32'x0)[0]
+node %1826 : bv<32> = add(mul(%42, ite(__synth_change_literal_55, __synth_literal_55, 32'x1)), 32'x0)
+node output_axis_tkeep_int : bv<1> = ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, %362, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, %1823, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, 1'b0, ite(input_axis_tvalid, %362, %1823))), 1'b0))), 1'b0)), 1'b0), ite(_procmux_1976_CMP0, %1823, ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, temp_tkeep_reg[0], ite(sgt(32'x0, %1826), logical_shift_left(%53, neg(%1826)), logical_shift_right(%53, %1826))[0]), 1'b0))), %1823)))
+node %1783 : bv<8> = ite(__synth_change_literal_1, zext(__synth_literal_1, 24), 32'x0)[7:0]
+node %1787 : bv<64> = sext(add(mul(%42, ite(__synth_change_literal_54, __synth_literal_54, 32'x8)), 32'x0), 32)
+node %528 : bv<8> = input_axis_tdata[7:0]
+node output_axis_tdata_int : bv<8> = ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, %528, ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, %1783, ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, 8'b0, ite(input_axis_tvalid, %528, %1783))), 8'b0))), 8'b0)), 8'b0), ite(_procmux_1976_CMP0, %1783, ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, temp_tdata_reg[7:0], ite(sgt(64'x0, %1787), logical_shift_left(temp_tdata_reg, neg(%1787)), logical_shift_right(temp_tdata_reg, %1787))[7:0]), 8'b0))), %1783)))
+node %1980 : bv<1> = ite(__synth_change_literal_53, zext(__synth_literal_53, 24), 32'x0)[0]
+node %1538 : bv<32> = add(mul(%42, ite(__synth_change_literal_68, __synth_literal_68, 32'x1)), 32'x0)
+node %1555 : bv<1> = or(eq(%42, sub(ite(__synth_change_literal_66, __synth_literal_66, 32'x8), ite(__synth_change_literal_67, __synth_literal_67, 32'x1))), not(eq(ite(sgt(32'x0, %1538), logical_shift_left(%53, neg(%1538)), logical_shift_right(%53, %1538))[0], ite(__synth_change_literal_69, __synth_literal_69, 1'b1))))
+node %1324 : bv<1> = and(input_axis_tready, input_axis_tvalid)
+node %179 : bv<1> = not(temp_axis_tvalid_reg)
+node output_axis_tready_int_early : bv<1> = or(or(output_axis_tready, and(%179, %1665)), and(%179, not(output_axis_tvalid_int)))
+node %1601 : bv<1> = or(eq(%42, sub(ite(__synth_change_literal_35, __synth_literal_35, 32'x8), ite(__synth_change_literal_36, __synth_literal_36, 32'x1))), input_axis_tlast)
+node %685 : bv<33> = sext(32'x0, 1)
+node %687 : bv<33> = neg(sub(concat(1'b0, add(mul(%42, 32'x1), 32'x0)), %685))
+node %2515 : bv<33> = zext(and(8'b1, input_axis_tkeep), 25)
+node %689 : bv<33> = neg(%687)
+node %692 : bv<1> = sgt(33'x0, %687)
+node _procmux_1644 : bv<8> = ite(input_axis_tvalid, input_axis_tkeep, temp_tkeep_reg)
+node _procmux_1616 : bv<1> = ite(input_axis_tvalid, input_axis_tuser, temp_tuser_reg)
+node _procmux_1630 : bv<1> = ite(input_axis_tvalid, input_axis_tlast, temp_tlast_reg)
+node %768 : bv<64> = sext(neg(sub(concat(1'b0, add(mul(%42, 32'x8), 32'x0)), %685)), 31)
+node %2497 : bv<64> = and(64'xff, input_axis_tdata)
+node %770 : bv<64> = neg(%768)
+node %772 : bv<1> = sgt(64'x0, %768)
+node _procmux_1658 : bv<64> = ite(input_axis_tvalid, input_axis_tdata, temp_tdata_reg)
+state output_axis_tuser : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_85, zext(__synth_literal_85, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, output_axis_tuser_int, output_axis_tuser), ite(output_axis_tready, temp_axis_tuser_reg, output_axis_tuser)))
+state output_axis_tlast : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_84, zext(__synth_literal_84, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, output_axis_tlast_int, output_axis_tlast), ite(output_axis_tready, temp_axis_tlast_reg, output_axis_tlast)))
+state output_axis_tvalid : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_83, zext(__synth_literal_83, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, output_axis_tvalid_int, output_axis_tvalid), ite(output_axis_tready, temp_axis_tvalid_reg, output_axis_tvalid)))
+state output_axis_tkeep : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_82, zext(__synth_literal_82, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, output_axis_tkeep_int, output_axis_tkeep), ite(output_axis_tready, temp_axis_tkeep_reg, output_axis_tkeep)))
+state output_axis_tdata : bv<8>
+  [init] 8'b0
+  [next] ite(rst, ite(__synth_change_literal_81, zext(__synth_literal_81, 24), 32'x0)[7:0], ite(output_axis_tready_int, ite(%1810, output_axis_tdata_int, output_axis_tdata), ite(output_axis_tready, temp_axis_tdata_reg, output_axis_tdata)))
+state input_axis_tready : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_80, zext(__synth_literal_80, 24), 32'x0)[0], ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, output_axis_tready_int_early, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, ite(input_axis_tvalid, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, ite(input_axis_tvalid, ite(input_axis_tlast, ite(__synth_change_literal_14, zext(__synth_literal_14, 24), 32'x0)[0], ite(__synth_change_literal_16, __synth_literal_16, 32'x1)[0]), 1'b0), 1'b0)), 1'b0), ite(__synth_change_literal_12, __synth_literal_12, 32'x1)[0]), 1'b0)), 1'b0), ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, 1'b0, ite(input_axis_tvalid, ite(__synth_change_literal_29, zext(__synth_literal_29, 24), 32'x0)[0], ite(__synth_change_literal_19, __synth_literal_19, 32'x1)[0]))), 1'b0))), 1'b0)), 1'b0), ite(_procmux_1976_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, ite(input_axis_tvalid, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, ite(input_axis_tvalid, ite(%1601, output_axis_tready_int_early, ite(__synth_change_literal_38, __synth_literal_38, 32'x1)[0]), 1'b0), 1'b0)), ite(__synth_change_literal_33, __synth_literal_33, 32'x1)[0]), 1'b0)), ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, ite(input_axis_tlast, ite(__synth_change_literal_46, zext(__synth_literal_46, 24), 32'x0)[0], ite(__synth_change_literal_48, __synth_literal_48, 32'x1)[0]), 1'b0), 1'b0), 1'b0), 1'b0))), ite(__synth_change_literal_50, __synth_literal_50, 32'x1)[0]), 1'b0), 1'b0), 1'b0))), ite(__synth_change_literal_43, zext(__synth_literal_43, 24), 32'x0)[0]), 1'b0), 1'b0))), ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, 1'b0, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, 1'b0, ite(output_axis_tready_int, ite(%1555, ite(__synth_change_literal_70, __synth_literal_70, 32'x1)[0], %1980), 1'b0)), 1'b0))), %1980)), 1'b0)))), 1'b0))), ite(__synth_change_literal_6, zext(__synth_literal_6, 24), 32'x0)[0]))))
+state temp_axis_tuser_reg : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_91, zext(__synth_literal_91, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, temp_axis_tuser_reg, output_axis_tuser_int), ite(output_axis_tready, ite(__synth_change_literal_96, zext(__synth_literal_96, 24), 32'x0)[0], temp_axis_tuser_reg)))
+state temp_axis_tlast_reg : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_90, zext(__synth_literal_90, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, temp_axis_tlast_reg, output_axis_tlast_int), ite(output_axis_tready, ite(__synth_change_literal_95, zext(__synth_literal_95, 24), 32'x0)[0], temp_axis_tlast_reg)))
+state temp_axis_tvalid_reg : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_89, zext(__synth_literal_89, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, temp_axis_tvalid_reg, output_axis_tvalid_int), ite(output_axis_tready, ite(__synth_change_literal_94, zext(__synth_literal_94, 24), 32'x0)[0], temp_axis_tvalid_reg)))
+state temp_axis_tkeep_reg : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_88, zext(__synth_literal_88, 24), 32'x0)[0], ite(output_axis_tready_int, ite(%1810, temp_axis_tkeep_reg, output_axis_tkeep_int), ite(output_axis_tready, ite(__synth_change_literal_93, zext(__synth_literal_93, 24), 32'x0)[0], temp_axis_tkeep_reg)))
+state temp_axis_tdata_reg : bv<8>
+  [init] 8'b0
+  [next] ite(rst, ite(__synth_change_literal_87, zext(__synth_literal_87, 24), 32'x0)[7:0], ite(output_axis_tready_int, ite(%1810, temp_axis_tdata_reg, output_axis_tdata_int), ite(output_axis_tready, ite(__synth_change_literal_92, zext(__synth_literal_92, 24), 32'x0)[7:0], temp_axis_tdata_reg)))
+state __synth_literal_6 : bv<8>
+  [next] __synth_literal_6
+state __synth_change_literal_6 : bv<1>
+  [next] __synth_change_literal_6
+state __synth_literal_53 : bv<8>
+  [next] __synth_literal_53
+state __synth_change_literal_53 : bv<1>
+  [next] __synth_change_literal_53
+state __synth_literal_70 : bv<32>
+  [next] __synth_literal_70
+state __synth_change_literal_70 : bv<1>
+  [next] __synth_change_literal_70
+state cycle_count_reg : bv<8>
+  [init] 8'b0
+  [next] ite(rst, ite(__synth_change_literal_75, zext(__synth_literal_75, 24), 32'x0)[7:0], ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, cycle_count_reg, ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, ite(input_axis_tvalid, ite(__synth_change_literal_13, __synth_literal_13, 32'x1)[7:0], cycle_count_reg), 8'b0)), 8'b0), ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, 8'b0, ite(input_axis_tvalid, ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, 8'b0, ite(input_axis_tvalid, ite(output_axis_tready_int, ite(__synth_change_literal_28, __synth_literal_28, 32'x1)[7:0], ite(__synth_change_literal_20, zext(__synth_literal_20, 24), 32'x0)[7:0]), 8'b0))), 8'b0), cycle_count_reg))), 8'b0))), 8'b0)), 8'b0), ite(_procmux_1976_CMP0, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, ite(input_axis_tvalid, add(%42, ite(__synth_change_literal_34, __synth_literal_34, 32'x1))[7:0], cycle_count_reg), 8'b0)), ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, ite(__synth_change_literal_45, __synth_literal_45, 32'x1)[7:0], cycle_count_reg), 8'b0), 8'b0), 8'b0))), cycle_count_reg), 8'b0), 8'b0))), ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, 8'b0, ite(output_axis_tready_int, add(%42, ite(__synth_change_literal_65, __synth_literal_65, 32'x1))[7:0], cycle_count_reg)), 8'b0)))), 8'b0))), cycle_count_reg))))
+state __synth_literal_66 : bv<32>
+  [next] __synth_literal_66
+state __synth_change_literal_66 : bv<1>
+  [next] __synth_change_literal_66
+state __synth_literal_67 : bv<32>
+  [next] __synth_literal_67
+state __synth_change_literal_67 : bv<1>
+  [next] __synth_change_literal_67
+state temp_tkeep_reg : bv<8>
+  [init] 8'b0
+  [next] ite(rst, ite(__synth_change_literal_77, zext(__synth_literal_77, 24), 32'x0)[7:0], ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, temp_tkeep_reg, ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, _procmux_1644, 8'b0)), 8'b0), ite(_procmux_1978_CMP0, ite(%1369, 8'b0, ite(%1361, 8'b0, _procmux_1644)), 8'b0))), 8'b0)), 8'b0), ite(_procmux_1976_CMP0, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, ite(input_axis_tvalid, or(and(temp_tkeep_reg, not(ite(%692, logical_shift_left(33'x1, %689), logical_shift_right(33'x1, %687))[7:0])), ite(%692, logical_shift_left(%2515, %689), logical_shift_right(%2515, %687))[7:0]), temp_tkeep_reg), 8'b0)), ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 8'b0, ite(_procmux_1976_CMP0, 8'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, input_axis_tkeep, temp_tkeep_reg), 8'b0), 8'b0), 8'b0))), temp_tkeep_reg), 8'b0), 8'b0))), temp_tkeep_reg), 8'b0))), temp_tkeep_reg))))
+state __synth_literal_68 : bv<32>
+  [next] __synth_literal_68
+state __synth_change_literal_68 : bv<1>
+  [next] __synth_change_literal_68
+state __synth_literal_69 : bv<1>
+  [next] __synth_literal_69
+state __synth_change_literal_69 : bv<1>
+  [next] __synth_change_literal_69
+state output_axis_tready_int : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_86, zext(__synth_literal_86, 24), 32'x0)[0], output_axis_tready_int_early)
+state __synth_literal_42 : bv<1>
+  [next] __synth_literal_42
+state __synth_change_literal_42 : bv<1>
+  [next] __synth_change_literal_42
+state state_reg : bv<3>
+  [init] 3'b0
+  [next] ite(rst, ite(__synth_change_literal_74, __synth_literal_74, 3'b0), ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, ite(__synth_change_literal_10, __synth_literal_10, 3'b0), ite(_procmux_1978_CMP0, ite(%1369, 3'b0, ite(%1361, ite(_procmux_1978_CMP0, ite(%1369, 3'b0, ite(%1361, ite(input_axis_tvalid, ite(_procmux_1978_CMP0, ite(%1369, 3'b0, ite(%1361, ite(input_axis_tvalid, ite(input_axis_tlast, ite(__synth_change_literal_15, __synth_literal_15, 3'b10), ite(__synth_change_literal_17, __synth_literal_17, 3'b1)), 3'b0), 3'b0)), 3'b0), ite(__synth_change_literal_18, __synth_literal_18, 3'b0)), 3'b0)), 3'b0), ite(_procmux_1978_CMP0, ite(%1369, 3'b0, ite(%1361, 3'b0, ite(input_axis_tvalid, ite(__synth_change_literal_30, __synth_literal_30, 3'b10), ite(__synth_change_literal_31, __synth_literal_31, 3'b0)))), 3'b0))), 3'b0)), 3'b0), ite(_procmux_1976_CMP0, ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, ite(input_axis_tvalid, ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, ite(input_axis_tvalid, ite(%1601, ite(__synth_change_literal_37, __synth_literal_37, 3'b10), ite(__synth_change_literal_39, __synth_literal_39, 3'b1)), 3'b0), 3'b0)), ite(__synth_change_literal_40, __synth_literal_40, 3'b1)), 3'b0)), ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, 3'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, 3'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, 3'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, 3'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, ite(input_axis_tlast, ite(__synth_change_literal_47, __synth_literal_47, 3'b10), ite(__synth_change_literal_49, __synth_literal_49, 3'b1)), 3'b0), 3'b0), 3'b0), 3'b0))), ite(__synth_change_literal_51, __synth_literal_51, 3'b0)), 3'b0), 3'b0), 3'b0))), ite(__synth_change_literal_52, __synth_literal_52, 3'b10)), 3'b0), 3'b0))), ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, 3'b0, ite(_procmux_1974_CMP0, ite(%1329, 3'b0, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 3'b0, ite(_procmux_1976_CMP0, 3'b0, ite(_procmux_1974_CMP0, ite(%1329, 3'b0, ite(output_axis_tready_int, ite(%1555, ite(__synth_change_literal_71, __synth_literal_71, 3'b0), ite(__synth_change_literal_72, __synth_literal_72, 3'b10)), 3'b0)), 3'b0))), ite(__synth_change_literal_73, __synth_literal_73, 3'b10))), 3'b0)))), 3'b0))), ite(__synth_change_literal_0, __synth_literal_0, 3'b0)))))
+state __synth_literal_41 : bv<3>
+  [next] __synth_literal_41
+state __synth_change_literal_41 : bv<1>
+  [next] __synth_change_literal_41
+state __synth_literal_32 : bv<3>
+  [next] __synth_literal_32
+state __synth_change_literal_32 : bv<1>
+  [next] __synth_change_literal_32
+state __synth_literal_7 : bv<3>
+  [next] __synth_literal_7
+state __synth_change_literal_7 : bv<1>
+  [next] __synth_change_literal_7
+state __synth_literal_43 : bv<8>
+  [next] __synth_literal_43
+state __synth_change_literal_43 : bv<1>
+  [next] __synth_change_literal_43
+state __synth_literal_50 : bv<32>
+  [next] __synth_literal_50
+state __synth_change_literal_50 : bv<1>
+  [next] __synth_change_literal_50
+state __synth_literal_48 : bv<32>
+  [next] __synth_literal_48
+state __synth_change_literal_48 : bv<1>
+  [next] __synth_change_literal_48
+state __synth_literal_46 : bv<8>
+  [next] __synth_literal_46
+state __synth_change_literal_46 : bv<1>
+  [next] __synth_change_literal_46
+state __synth_literal_33 : bv<32>
+  [next] __synth_literal_33
+state __synth_change_literal_33 : bv<1>
+  [next] __synth_change_literal_33
+state __synth_literal_38 : bv<32>
+  [next] __synth_literal_38
+state __synth_change_literal_38 : bv<1>
+  [next] __synth_change_literal_38
+state __synth_literal_3 : bv<8>
+  [next] __synth_literal_3
+state __synth_change_literal_3 : bv<1>
+  [next] __synth_change_literal_3
+state __synth_literal_56 : bv<32>
+  [next] __synth_literal_56
+state __synth_change_literal_56 : bv<1>
+  [next] __synth_change_literal_56
+state __synth_literal_44 : bv<32>
+  [next] __synth_literal_44
+state __synth_change_literal_44 : bv<1>
+  [next] __synth_change_literal_44
+state __synth_literal_21 : bv<32>
+  [next] __synth_literal_21
+state __synth_change_literal_21 : bv<1>
+  [next] __synth_change_literal_21
+state __synth_literal_11 : bv<1>
+  [next] __synth_literal_11
+state __synth_change_literal_11 : bv<1>
+  [next] __synth_change_literal_11
+state __synth_literal_8 : bv<32>
+  [next] __synth_literal_8
+state __synth_change_literal_8 : bv<1>
+  [next] __synth_change_literal_8
+state __synth_literal_9 : bv<32>
+  [next] __synth_literal_9
+state __synth_change_literal_9 : bv<1>
+  [next] __synth_change_literal_9
+state __synth_literal_35 : bv<32>
+  [next] __synth_literal_35
+state __synth_change_literal_35 : bv<1>
+  [next] __synth_change_literal_35
+state __synth_literal_36 : bv<32>
+  [next] __synth_literal_36
+state __synth_change_literal_36 : bv<1>
+  [next] __synth_change_literal_36
+state __synth_literal_19 : bv<32>
+  [next] __synth_literal_19
+state __synth_change_literal_19 : bv<1>
+  [next] __synth_change_literal_19
+state __synth_literal_29 : bv<8>
+  [next] __synth_literal_29
+state __synth_change_literal_29 : bv<1>
+  [next] __synth_change_literal_29
+state __synth_literal_12 : bv<32>
+  [next] __synth_literal_12
+state __synth_change_literal_12 : bv<1>
+  [next] __synth_change_literal_12
+state __synth_literal_16 : bv<32>
+  [next] __synth_literal_16
+state __synth_change_literal_16 : bv<1>
+  [next] __synth_change_literal_16
+state __synth_literal_14 : bv<8>
+  [next] __synth_literal_14
+state __synth_change_literal_14 : bv<1>
+  [next] __synth_change_literal_14
+state __synth_literal_5 : bv<8>
+  [next] __synth_literal_5
+state __synth_change_literal_5 : bv<1>
+  [next] __synth_change_literal_5
+state temp_tuser_reg : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_79, zext(__synth_literal_79, 24), 32'x0)[0], ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, temp_tuser_reg, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, _procmux_1616, 1'b0)), 1'b0), ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, 1'b0, _procmux_1616)), 1'b0))), 1'b0)), 1'b0), ite(_procmux_1976_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, _procmux_1616, 1'b0)), ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, input_axis_tuser, temp_tuser_reg), 1'b0), 1'b0), 1'b0))), temp_tuser_reg), 1'b0), 1'b0))), temp_tuser_reg), 1'b0))), temp_tuser_reg))))
+state __synth_literal_61 : bv<32>
+  [next] __synth_literal_61
+state __synth_change_literal_61 : bv<1>
+  [next] __synth_change_literal_61
+state __synth_literal_62 : bv<32>
+  [next] __synth_literal_62
+state __synth_change_literal_62 : bv<1>
+  [next] __synth_change_literal_62
+state __synth_literal_63 : bv<32>
+  [next] __synth_literal_63
+state __synth_change_literal_63 : bv<1>
+  [next] __synth_change_literal_63
+state __synth_literal_64 : bv<1>
+  [next] __synth_literal_64
+state __synth_change_literal_64 : bv<1>
+  [next] __synth_change_literal_64
+state __synth_literal_25 : bv<32>
+  [next] __synth_literal_25
+state __synth_change_literal_25 : bv<1>
+  [next] __synth_change_literal_25
+state __synth_literal_26 : bv<32>
+  [next] __synth_literal_26
+state __synth_change_literal_26 : bv<1>
+  [next] __synth_change_literal_26
+state __synth_literal_27 : bv<1>
+  [next] __synth_literal_27
+state __synth_change_literal_27 : bv<1>
+  [next] __synth_change_literal_27
+state __synth_literal_4 : bv<8>
+  [next] __synth_literal_4
+state __synth_change_literal_4 : bv<1>
+  [next] __synth_change_literal_4
+state temp_tlast_reg : bv<1>
+  [init] 1'b0
+  [next] ite(rst, ite(__synth_change_literal_78, zext(__synth_literal_78, 24), 32'x0)[0], ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, temp_tlast_reg, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, _procmux_1630, 1'b0)), 1'b0), ite(_procmux_1978_CMP0, ite(%1369, 1'b0, ite(%1361, 1'b0, _procmux_1630)), 1'b0))), 1'b0)), 1'b0), ite(_procmux_1976_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, _procmux_1630, 1'b0)), ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 1'b0, ite(_procmux_1976_CMP0, 1'b0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, input_axis_tlast, temp_tlast_reg), 1'b0), 1'b0), 1'b0))), temp_tlast_reg), 1'b0), 1'b0))), temp_tlast_reg), 1'b0))), temp_tlast_reg))))
+state __synth_literal_57 : bv<32>
+  [next] __synth_literal_57
+state __synth_change_literal_57 : bv<1>
+  [next] __synth_change_literal_57
+state __synth_literal_58 : bv<32>
+  [next] __synth_literal_58
+state __synth_change_literal_58 : bv<1>
+  [next] __synth_change_literal_58
+state __synth_literal_59 : bv<32>
+  [next] __synth_literal_59
+state __synth_change_literal_59 : bv<1>
+  [next] __synth_change_literal_59
+state __synth_literal_60 : bv<1>
+  [next] __synth_literal_60
+state __synth_change_literal_60 : bv<1>
+  [next] __synth_change_literal_60
+state __synth_literal_22 : bv<32>
+  [next] __synth_literal_22
+state __synth_change_literal_22 : bv<1>
+  [next] __synth_change_literal_22
+state __synth_literal_23 : bv<32>
+  [next] __synth_literal_23
+state __synth_change_literal_23 : bv<1>
+  [next] __synth_change_literal_23
+state __synth_literal_24 : bv<1>
+  [next] __synth_literal_24
+state __synth_change_literal_24 : bv<1>
+  [next] __synth_change_literal_24
+state __synth_literal_2 : bv<8>
+  [next] __synth_literal_2
+state __synth_change_literal_2 : bv<1>
+  [next] __synth_change_literal_2
+state __synth_literal_55 : bv<32>
+  [next] __synth_literal_55
+state __synth_change_literal_55 : bv<1>
+  [next] __synth_change_literal_55
+state __synth_literal_1 : bv<8>
+  [next] __synth_literal_1
+state __synth_change_literal_1 : bv<1>
+  [next] __synth_change_literal_1
+state temp_tdata_reg : bv<64>
+  [init] 64'x0
+  [next] ite(rst, concat(32'x0, ite(__synth_change_literal_76, zext(__synth_literal_76, 24), 32'x0)), ite(_procmux_1978_CMP0, ite(_procmux_1978_CMP0, ite(%1369, temp_tdata_reg, ite(_procmux_1978_CMP0, ite(%1369, 64'x0, ite(%1361, ite(_procmux_1978_CMP0, ite(%1369, 64'x0, ite(%1361, _procmux_1658, 64'x0)), 64'x0), ite(_procmux_1978_CMP0, ite(%1369, 64'x0, ite(%1361, 64'x0, _procmux_1658)), 64'x0))), 64'x0)), 64'x0), ite(_procmux_1976_CMP0, ite(_procmux_1978_CMP0, 64'x0, ite(_procmux_1976_CMP0, ite(input_axis_tvalid, or(and(temp_tdata_reg, not(ite(%772, logical_shift_left(64'xff, %770), logical_shift_right(64'xff, %768)))), ite(%772, logical_shift_left(%2497, %770), logical_shift_right(%2497, %768))), temp_tdata_reg), 64'x0)), ite(_procmux_1974_CMP0, ite(_procmux_1978_CMP0, 64'x0, ite(_procmux_1976_CMP0, 64'x0, ite(_procmux_1974_CMP0, ite(%1329, ite(_procmux_1978_CMP0, 64'x0, ite(_procmux_1976_CMP0, 64'x0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(_procmux_1978_CMP0, 64'x0, ite(_procmux_1976_CMP0, 64'x0, ite(_procmux_1974_CMP0, ite(%1329, ite(output_axis_tready_int, ite(%1324, input_axis_tdata, temp_tdata_reg), 64'x0), 64'x0), 64'x0))), temp_tdata_reg), 64'x0), 64'x0))), temp_tdata_reg), 64'x0))), temp_tdata_reg))))
+state __synth_literal_54 : bv<32>
+  [next] __synth_literal_54
+state __synth_change_literal_54 : bv<1>
+  [next] __synth_change_literal_54
+state __synth_literal_65 : bv<32>
+  [next] __synth_literal_65
+state __synth_change_literal_65 : bv<1>
+  [next] __synth_change_literal_65
+state __synth_literal_45 : bv<32>
+  [next] __synth_literal_45
+state __synth_change_literal_45 : bv<1>
+  [next] __synth_change_literal_45
+state __synth_literal_34 : bv<32>
+  [next] __synth_literal_34
+state __synth_change_literal_34 : bv<1>
+  [next] __synth_change_literal_34
+state __synth_literal_20 : bv<8>
+  [next] __synth_literal_20
+state __synth_change_literal_20 : bv<1>
+  [next] __synth_change_literal_20
+state __synth_literal_28 : bv<32>
+  [next] __synth_literal_28
+state __synth_change_literal_28 : bv<1>
+  [next] __synth_change_literal_28
+state __synth_literal_13 : bv<32>
+  [next] __synth_literal_13
+state __synth_change_literal_13 : bv<1>
+  [next] __synth_change_literal_13
+state __synth_literal_0 : bv<3>
+  [next] __synth_literal_0
+state __synth_change_literal_0 : bv<1>
+  [next] __synth_change_literal_0
+state __synth_literal_73 : bv<3>
+  [next] __synth_literal_73
+state __synth_change_literal_73 : bv<1>
+  [next] __synth_change_literal_73
+state __synth_literal_72 : bv<3>
+  [next] __synth_literal_72
+state __synth_change_literal_72 : bv<1>
+  [next] __synth_change_literal_72
+state __synth_literal_71 : bv<3>
+  [next] __synth_literal_71
+state __synth_change_literal_71 : bv<1>
+  [next] __synth_change_literal_71
+state __synth_literal_52 : bv<3>
+  [next] __synth_literal_52
+state __synth_change_literal_52 : bv<1>
+  [next] __synth_change_literal_52
+state __synth_literal_51 : bv<3>
+  [next] __synth_literal_51
+state __synth_change_literal_51 : bv<1>
+  [next] __synth_change_literal_51
+state __synth_literal_49 : bv<3>
+  [next] __synth_literal_49
+state __synth_change_literal_49 : bv<1>
+  [next] __synth_change_literal_49
+state __synth_literal_47 : bv<3>
+  [next] __synth_literal_47
+state __synth_change_literal_47 : bv<1>
+  [next] __synth_change_literal_47
+state __synth_literal_40 : bv<3>
+  [next] __synth_literal_40
+state __synth_change_literal_40 : bv<1>
+  [next] __synth_change_literal_40
+state __synth_literal_39 : bv<3>
+  [next] __synth_literal_39
+state __synth_change_literal_39 : bv<1>
+  [next] __synth_change_literal_39
+state __synth_literal_37 : bv<3>
+  [next] __synth_literal_37
+state __synth_change_literal_37 : bv<1>
+  [next] __synth_change_literal_37
+state __synth_literal_31 : bv<3>
+  [next] __synth_literal_31
+state __synth_change_literal_31 : bv<1>
+  [next] __synth_change_literal_31
+state __synth_literal_30 : bv<3>
+  [next] __synth_literal_30
+state __synth_change_literal_30 : bv<1>
+  [next] __synth_change_literal_30
+state __synth_literal_18 : bv<3>
+  [next] __synth_literal_18
+state __synth_change_literal_18 : bv<1>
+  [next] __synth_change_literal_18
+state __synth_literal_17 : bv<3>
+  [next] __synth_literal_17
+state __synth_change_literal_17 : bv<1>
+  [next] __synth_change_literal_17
+state __synth_literal_15 : bv<3>
+  [next] __synth_literal_15
+state __synth_change_literal_15 : bv<1>
+  [next] __synth_change_literal_15
+state __synth_literal_10 : bv<3>
+  [next] __synth_literal_10
+state __synth_change_literal_10 : bv<1>
+  [next] __synth_change_literal_10
+state __synth_literal_96 : bv<8>
+  [next] __synth_literal_96
+state __synth_literal_95 : bv<8>
+  [next] __synth_literal_95
+state __synth_literal_94 : bv<8>
+  [next] __synth_literal_94
+state __synth_literal_93 : bv<8>
+  [next] __synth_literal_93
+state __synth_literal_92 : bv<8>
+  [next] __synth_literal_92
+state __synth_literal_91 : bv<8>
+  [next] __synth_literal_91
+state __synth_literal_90 : bv<8>
+  [next] __synth_literal_90
+state __synth_literal_89 : bv<8>
+  [next] __synth_literal_89
+state __synth_literal_88 : bv<8>
+  [next] __synth_literal_88
+state __synth_literal_87 : bv<8>
+  [next] __synth_literal_87
+state __synth_literal_86 : bv<8>
+  [next] __synth_literal_86
+state __synth_literal_85 : bv<8>
+  [next] __synth_literal_85
+state __synth_literal_84 : bv<8>
+  [next] __synth_literal_84
+state __synth_literal_83 : bv<8>
+  [next] __synth_literal_83
+state __synth_literal_82 : bv<8>
+  [next] __synth_literal_82
+state __synth_literal_81 : bv<8>
+  [next] __synth_literal_81
+state __synth_literal_80 : bv<8>
+  [next] __synth_literal_80
+state __synth_literal_79 : bv<8>
+  [next] __synth_literal_79
+state __synth_literal_78 : bv<8>
+  [next] __synth_literal_78
+state __synth_literal_77 : bv<8>
+  [next] __synth_literal_77
+state __synth_literal_76 : bv<8>
+  [next] __synth_literal_76
+state __synth_literal_75 : bv<8>
+  [next] __synth_literal_75
+state __synth_literal_74 : bv<3>
+  [next] __synth_literal_74
+state __synth_change_literal_96 : bv<1>
+  [next] __synth_change_literal_96
+state __synth_change_literal_95 : bv<1>
+  [next] __synth_change_literal_95
+state __synth_change_literal_94 : bv<1>
+  [next] __synth_change_literal_94
+state __synth_change_literal_93 : bv<1>
+  [next] __synth_change_literal_93
+state __synth_change_literal_92 : bv<1>
+  [next] __synth_change_literal_92
+state __synth_change_literal_91 : bv<1>
+  [next] __synth_change_literal_91
+state __synth_change_literal_90 : bv<1>
+  [next] __synth_change_literal_90
+state __synth_change_literal_89 : bv<1>
+  [next] __synth_change_literal_89
+state __synth_change_literal_88 : bv<1>
+  [next] __synth_change_literal_88
+state __synth_change_literal_87 : bv<1>
+  [next] __synth_change_literal_87
+state __synth_change_literal_86 : bv<1>
+  [next] __synth_change_literal_86
+state __synth_change_literal_85 : bv<1>
+  [next] __synth_change_literal_85
+state __synth_change_literal_84 : bv<1>
+  [next] __synth_change_literal_84
+state __synth_change_literal_83 : bv<1>
+  [next] __synth_change_literal_83
+state __synth_change_literal_82 : bv<1>
+  [next] __synth_change_literal_82
+state __synth_change_literal_81 : bv<1>
+  [next] __synth_change_literal_81
+state __synth_change_literal_80 : bv<1>
+  [next] __synth_change_literal_80
+state __synth_change_literal_79 : bv<1>
+  [next] __synth_change_literal_79
+state __synth_change_literal_78 : bv<1>
+  [next] __synth_change_literal_78
+state __synth_change_literal_77 : bv<1>
+  [next] __synth_change_literal_77
+state __synth_change_literal_76 : bv<1>
+  [next] __synth_change_literal_76
+state __synth_change_literal_75 : bv<1>
+  [next] __synth_change_literal_75
+state __synth_change_literal_74 : bv<1>
+  [next] __synth_change_literal_74
+
+Input `clk` : bv<1> is missing from the testbench.
+input_axis_tready@8: 1 vs. 0 (E/A)
+output_axis_tlast@8: 1 vs. 0 (E/A)
+Executed 8 steps in 306.842µs
+Incremental: 8 .. 8 .. 8
+input_axis_tready@8: 1 vs. 0 (E/A)
+output_axis_tlast@8: 1 vs. 0 (E/A)
+Took 90ns to unroll
+Took 322.852µs to apply constraints
+Check-Sat took 24.34µs
+Found a minimal solution with 1 changes.
+Solution: ["__synth_change_literal_74"]
+New fail at: 8
+Solution: ["__synth_change_literal_75"]
+New fail at: 8
+Solution: ["__synth_change_literal_76"]
+New fail at: 8
+Solution: ["__synth_change_literal_77"]
+New fail at: 8
+Reached the maximum number of incorrect solutions. Going to increase the window.
+Incremental: 6 .. 8 .. 8
+input_axis_tready@8: 1 vs. 0 (E/A)
+output_axis_tlast@8: 1 vs. 0 (E/A)
+Took 14.445092ms to unroll
+Took 1.759611ms to apply constraints
+Check-Sat took 24.118863ms
+Found a minimal solution with 1 changes.
+Solution: ["__synth_change_literal_45"]
+New fail at: 8
+Solution: ["__synth_change_literal_74"]
+New fail at: 8
+Solution: ["__synth_change_literal_75"]
+New fail at: 8
+Solution: ["__synth_change_literal_76"]
+New fail at: 8
+Reached the maximum number of incorrect solutions. Going to increase the window.
+Incremental: 4 .. 8 .. 8
+input_axis_tready@8: 1 vs. 0 (E/A)
+output_axis_tlast@8: 1 vs. 0 (E/A)
+Took 62.968699ms to unroll
+Took 1.68381ms to apply constraints
+Check-Sat took 25.453501ms
+Found a minimal solution with 1 changes.
+Solution: ["__synth_change_literal_92"]
+New fail at: 8
+Solution: ["__synth_change_literal_74"]
+New fail at: 8
+Solution: ["__synth_change_literal_75"]
+New fail at: 8
+Solution: ["__synth_change_literal_76"]
+New fail at: 8
+Reached the maximum number of incorrect solutions. Going to increase the window.
+Incremental: 2 .. 8 .. 8
+input_axis_tready@8: 1 vs. 0 (E/A)
+output_axis_tlast@8: 1 vs. 0 (E/A)
+Took 80.126738ms to unroll
+Took 3.810704ms to apply constraints
+Check-Sat took 81.557027ms
+Found a minimal solution with 1 changes.
+Solution: ["__synth_change_literal_31"]
+New fail at: 3
+Solution: ["__synth_change_literal_40"]
+New fail at: 8
+Incremental: 0 .. 8 .. 8
+input_axis_tready@8: 1 vs. 0 (E/A)
+output_axis_tlast@8: 1 vs. 0 (E/A)
+Took 105.81505ms to unroll
+Took 4.826521ms to apply constraints
+Check-Sat took 120.354892ms
+Found a minimal solution with 2 changes.
+Solution: ["__synth_change_literal_66", "__synth_change_literal_58"]
+Synthesizer took 2.229862848s
+== RESULT ==
+{"status":"success","solver-time":0,"past-k":8,"future-k":0,"solutions":[{"assignment":{"__synth_change_literal_6":0,"__synth_change_literal_53":0,"__synth_change_literal_70":0,"__synth_change_literal_66":1,"__synth_change_literal_67":0,"__synth_change_literal_68":0,"__synth_change_literal_69":0,"__synth_change_literal_42":0,"__synth_change_literal_41":0,"__synth_change_literal_32":0,"__synth_change_literal_7":0,"__synth_change_literal_43":0,"__synth_change_literal_50":0,"__synth_change_literal_48":0,"__synth_change_literal_46":0,"__synth_change_literal_33":0,"__synth_change_literal_38":0,"__synth_change_literal_3":0,"__synth_change_literal_56":0,"__synth_change_literal_44":0,"__synth_change_literal_21":0,"__synth_change_literal_11":0,"__synth_change_literal_8":0,"__synth_change_literal_9":0,"__synth_change_literal_35":0,"__synth_change_literal_36":0,"__synth_change_literal_19":0,"__synth_change_literal_29":0,"__synth_change_literal_12":0,"__synth_change_literal_16":0,"__synth_change_literal_14":0,"__synth_change_literal_5":0,"__synth_change_literal_61":0,"__synth_change_literal_62":0,"__synth_change_literal_63":0,"__synth_change_literal_64":0,"__synth_change_literal_25":0,"__synth_change_literal_26":0,"__synth_change_literal_27":0,"__synth_change_literal_4":0,"__synth_change_literal_57":0,"__synth_change_literal_58":1,"__synth_change_literal_59":0,"__synth_change_literal_60":0,"__synth_change_literal_22":0,"__synth_change_literal_23":0,"__synth_change_literal_24":0,"__synth_change_literal_2":0,"__synth_change_literal_55":0,"__synth_change_literal_1":0,"__synth_change_literal_54":0,"__synth_change_literal_65":0,"__synth_change_literal_45":0,"__synth_change_literal_34":0,"__synth_change_literal_20":0,"__synth_change_literal_28":0,"__synth_change_literal_13":0,"__synth_change_literal_0":0,"__synth_change_literal_73":0,"__synth_change_literal_72":0,"__synth_change_literal_71":0,"__synth_change_literal_52":0,"__synth_change_literal_51":0,"__synth_change_literal_49":0,"__synth_change_literal_47":0,"__synth_change_literal_40":0,"__synth_change_literal_39":0,"__synth_change_literal_37":0,"__synth_change_literal_31":0,"__synth_change_literal_30":0,"__synth_change_literal_18":0,"__synth_change_literal_17":0,"__synth_change_literal_15":0,"__synth_change_literal_10":0,"__synth_change_literal_96":0,"__synth_change_literal_95":0,"__synth_change_literal_94":0,"__synth_change_literal_93":0,"__synth_change_literal_92":0,"__synth_change_literal_91":0,"__synth_change_literal_90":0,"__synth_change_literal_89":0,"__synth_change_literal_88":0,"__synth_change_literal_87":0,"__synth_change_literal_86":0,"__synth_change_literal_85":0,"__synth_change_literal_84":0,"__synth_change_literal_83":0,"__synth_change_literal_82":0,"__synth_change_literal_81":0,"__synth_change_literal_80":0,"__synth_change_literal_79":0,"__synth_change_literal_78":0,"__synth_change_literal_77":0,"__synth_change_literal_76":0,"__synth_change_literal_75":0,"__synth_change_literal_74":0,"__synth_literal_6":1,"__synth_literal_53":1,"__synth_literal_70":1,"__synth_literal_66":5,"__synth_literal_67":0,"__synth_literal_68":676059667,"__synth_literal_69":0,"__synth_literal_42":0,"__synth_literal_41":2,"__synth_literal_32":1,"__synth_literal_7":0,"__synth_literal_43":0,"__synth_literal_50":0,"__synth_literal_48":0,"__synth_literal_46":0,"__synth_literal_33":0,"__synth_literal_38":0,"__synth_literal_3":0,"__synth_literal_56":1,"__synth_literal_44":1,"__synth_literal_21":1,"__synth_literal_11":0,"__synth_literal_8":0,"__synth_literal_9":0,"__synth_literal_35":0,"__synth_literal_36":0,"__synth_literal_19":1,"__synth_literal_29":0,"__synth_literal_12":1,"__synth_literal_16":0,"__synth_literal_14":0,"__synth_literal_5":0,"__synth_literal_61":0,"__synth_literal_62":2147483648,"__synth_literal_63":939524096,"__synth_literal_64":0,"__synth_literal_25":0,"__synth_literal_26":0,"__synth_literal_27":0,"__synth_literal_4":1,"__synth_literal_57":1,"__synth_literal_58":4,"__synth_literal_59":452395008,"__synth_literal_60":0,"__synth_literal_22":2147483648,"__synth_literal_23":0,"__synth_literal_24":1,"__synth_literal_2":1,"__synth_literal_55":0,"__synth_literal_1":0,"__synth_literal_54":1431655766,"__synth_literal_65":244,"__synth_literal_45":0,"__synth_literal_34":0,"__synth_literal_20":0,"__synth_literal_28":3,"__synth_literal_13":1,"__synth_literal_0":0,"__synth_literal_73":0,"__synth_literal_72":2,"__synth_literal_71":0,"__synth_literal_52":0,"__synth_literal_51":0,"__synth_literal_49":0,"__synth_literal_47":0,"__synth_literal_40":0,"__synth_literal_39":0,"__synth_literal_37":0,"__synth_literal_31":0,"__synth_literal_30":2,"__synth_literal_18":0,"__synth_literal_17":0,"__synth_literal_15":0,"__synth_literal_10":0,"__synth_literal_96":0,"__synth_literal_95":0,"__synth_literal_94":0,"__synth_literal_93":0,"__synth_literal_92":0,"__synth_literal_91":0,"__synth_literal_90":0,"__synth_literal_89":0,"__synth_literal_88":0,"__synth_literal_87":0,"__synth_literal_86":1,"__synth_literal_85":0,"__synth_literal_84":0,"__synth_literal_83":0,"__synth_literal_82":0,"__synth_literal_81":0,"__synth_literal_80":0,"__synth_literal_79":0,"__synth_literal_78":0,"__synth_literal_77":0,"__synth_literal_76":0,"__synth_literal_75":0,"__synth_literal_74":2}}]}

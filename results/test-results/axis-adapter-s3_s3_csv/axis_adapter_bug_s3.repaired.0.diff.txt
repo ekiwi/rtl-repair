@@ -1,0 +1,17 @@
+35c35,37
+<   localparam [2:0] STATE_IDLE = 3'd0;localparam [2:0] STATE_TRANSFER_IN = 3'd1;localparam [2:0] STATE_TRANSFER_OUT = 3'd2;
+---
+>   localparam [2:0] STATE_IDLE = 3'd0;
+>   localparam [2:0] STATE_TRANSFER_IN = 3'd1;
+>   localparam [2:0] STATE_TRANSFER_OUT = 3'd2;
+176c178
+<           output_axis_tlast_int = temp_tlast_reg & ((cycle_count_reg == CYCLE_COUNT - 1) | (temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } }));
+---
+>           output_axis_tlast_int = temp_tlast_reg & ((cycle_count_reg == CYCLE_COUNT - 32'b100) | (temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } }));
+180c182
+<             if((cycle_count_reg == CYCLE_COUNT - 1) | (temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } })) begin
+---
+>             if((cycle_count_reg == 32'b101 - 1) | (temp_tkeep_reg[cycle_count_reg*CYCLE_KEEP_WIDTH +: CYCLE_KEEP_WIDTH] != { CYCLE_KEEP_WIDTH{ 1'b1 } })) begin
+189a192,193
+>       end
+>       default: begin

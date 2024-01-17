@@ -1,0 +1,5 @@
+%Warning-CASEINCOMPLETE: /home/kevin/d/rtl-repair/benchmarks/fpga-debugging/axis-adapter-s3/axis_adapter_bug_s3.v:150:5: Case values incompletely covered (example pattern 0x3)
+150 |     case (state_reg)
+|     ^~~~
+... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=4.225
+... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.

@@ -1,0 +1,4 @@
+replace_literals
+2
+176: 1 -> 32'b100
+180: CYCLE_COUNT -> 32'b101

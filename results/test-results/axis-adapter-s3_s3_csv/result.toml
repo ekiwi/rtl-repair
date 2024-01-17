@@ -1,0 +1,24 @@
+[result]
+tool="rtl-repair"
+project="axis-adapter-s3"
+bug="s3"
+success=true
+seconds=3.185155940002005
+buggy="axis_adapter_bug_s3.v"
+original="axis_adapter.v"
+
+[[repairs]]
+name="axis_adapter_bug_s3.repaired.0.v"
+diff="axis_adapter_bug_s3.repaired.0.diff.txt"
+# tool specific meta-data
+changes=2
+template="replace_literals"
+synth_time=2.4271656080018147
+template_time=2.452016294999339
+solver_time=0.0
+past_k=8
+future_k=0
+
+[custom]
+status="success"
+statistics="""{"preprocess": {"time": 0.5119314830008079, "changes": 1}, "replace_literals": {"prefix": "axis_adapter_bug_s3.repaired.0", "solver_time": 0.0, "status": "Success", "synth_time": 2.4271656080018147, "template_time": 2.452016294999339, "solutions": 1}, "total_time": 3.185155940002005}"""
