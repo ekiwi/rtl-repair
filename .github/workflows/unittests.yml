@@ -154,11 +154,12 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate
         pip install -r requirements.txt
-    - name: Check Repairs found by CirFix for the mux_4_1 benchmark
+    - name: Check Repairs found by CirFix for the mux_4_1 benchmark (and also RTL-Repair results)
       run: |
         source venv/bin/activate
         ./scripts/check_repairs.py --working-dir=tmp --results=results/test-results --sim=iverilog
         cat tmp/mux_4_1_wadden_buggy1_oracle-full_repair_2021-07-20-23:50:05.log
+        cat tmp/axis-adapter-s3_s3_csv/result.toml 
 
   test-cirfix:
     name: Test CirFix Quick Repairs

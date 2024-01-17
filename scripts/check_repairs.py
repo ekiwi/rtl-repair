@@ -273,15 +273,16 @@ def write_check_toml(filename: Path, repair_check_results: dict[str,RepairResult
             print(f'extended-sim="{res.extended_rtl_sim.name.lower()}"', file=ff)
             print(f'iverilog-sim="{res.iverilog_rtl_sim.name.lower()}"', file=ff)
             print("# reported result from the CirFix paper", file=ff)
-            if cirfix_table_3 == 'correct':
-                tool, human = TestResult.Pass, TestResult.Pass
-            elif cirfix_table_3 == 'plausible':
-                tool, human = TestResult.Pass, TestResult.Fail
-            else:
-                assert cirfix_table_3 == 'timeout'
-                tool, human = TestResult.Fail, TestResult.Fail
-            print(f'cirfix-tool="{tool.name.lower()}"', file=ff)
-            print(f'cirfix-author="{human.name.lower()}"', file=ff)
+            if cirfix_table_3 is not None:
+                if cirfix_table_3 == 'correct':
+                    tool, human = TestResult.Pass, TestResult.Pass
+                elif cirfix_table_3 == 'plausible':
+                    tool, human = TestResult.Pass, TestResult.Fail
+                else:
+                    assert cirfix_table_3 == 'timeout'
+                    tool, human = TestResult.Fail, TestResult.Fail
+                print(f'cirfix-tool="{tool.name.lower()}"', file=ff)
+                print(f'cirfix-author="{human.name.lower()}"', file=ff)
 
 
 def main():
@@ -359,8 +360,11 @@ def main():
                 print()
 
         # create a check.toml
-        cirfix_table_3 = benchmarks.benchmark_to_cirfix_paper_table_3[project.name][bug.name]
-        write_check_toml(result_working_dir / "check.toml", repair_check_results, cirfix_table_3=cirfix_table_3[3])
+        if project.name in benchmarks.benchmark_to_cirfix_paper_table_3:
+            cirfix_table_3 = benchmarks.benchmark_to_cirfix_paper_table_3[project.name][bug.name][3]
+        else:
+            cirfix_table_3 = None
+        write_check_toml(result_working_dir / "check.toml", repair_check_results, cirfix_table_3=cirfix_table_3)
 
 
 if __name__ == '__main__':

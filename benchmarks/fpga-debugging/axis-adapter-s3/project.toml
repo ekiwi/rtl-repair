@@ -12,10 +12,10 @@ buggy = "axis_adapter_bug_s3.v"
 name = "csv"
 table = "tb.csv"
 
-# Note: not tested with CirFix
+# original Verilog testbench (ASPLOS'22)
 [[testbenches]]
 name = "verilog"
+tags = ["original"]
 sources = ["tb.v"]
 output = "output.txt"
 oracle = "tb.csv"
-timeout = 60.0

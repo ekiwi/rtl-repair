@@ -166,14 +166,18 @@ def check_against_oracle(oracle_filename: Path, output_filename: Path) -> SimRes
     with open(oracle_filename) as oracle, open(output_filename) as output:
         oracle_header, output_header = parse_csv_line(oracle.readline()), parse_csv_line(output.readline())
         assert oracle_header == output_header, f"{oracle_header} != {output_header}"
-        assert oracle_header[0].lower() == 'time', f"{oracle_header}"
-        header = oracle_header[1:]
+        has_time = oracle_header[0].lower() == 'time'
+        if has_time:
+            header = oracle_header[1:]
+        else:
+            header = oracle_header
 
         # compare line by line
         for (ii, (expected, actual)) in enumerate(zip(oracle, output)):
             expected, actual = parse_csv_line(expected), parse_csv_line(actual)
             # remove first line (time)
-            expected, actual = expected[1:], actual[1:]
+            if has_time:
+                expected, actual = expected[1:], actual[1:]
             msg = []
             for ee, aa, nn in zip(expected, actual, header):
                 ee, aa = ee.lower(), aa.lower()
