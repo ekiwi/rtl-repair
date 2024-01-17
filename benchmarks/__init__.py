@@ -200,6 +200,7 @@ class Bug:
 @dataclass
 class Testbench:
     name: str
+    bugs: list[str] # optional list of bugs that are revealed by this particular tb
     tags: list[str]
 
 
@@ -268,10 +269,11 @@ def _load_testbench(base_dir: Path, dd: dict) -> Testbench:
     # common to both kinds of testbenches
     name = dd['name']
     tags = dd['tags'] if 'tags' in dd else []
+    bugs = dd['bugs'] if 'bugs' in dd else None
     if 'oracle' in dd:
         inits = [] if 'init-files' not in dd else [parse_path(pp, base_dir, True) for pp in dd['init-files']]
         tt = VerilogOracleTestbench(
-            name=name, tags=tags,
+            name=name, tags=tags, bugs=bugs,
             sources=[parse_path(pp, base_dir, True) for pp in dd['sources']],
             output=dd['output'],
             oracle=parse_path(dd['oracle'], base_dir, True),
@@ -280,7 +282,7 @@ def _load_testbench(base_dir: Path, dd: dict) -> Testbench:
         if "timeout" in dd:
             tt.timeout = float(dd["timeout"])
     else:
-        tt = TraceTestbench(name=name, tags=tags, table=parse_path(dd['table'], base_dir, True))
+        tt = TraceTestbench(name=name, tags=tags, bugs=bugs, table=parse_path(dd['table'], base_dir, True))
     return tt
 
 
@@ -325,27 +327,29 @@ def load_project(filename: Path) -> Project:
     return Project(name, design, bugs, testbenches)
 
 
-def pick_testbench(project: Project, testbench: str = None) -> Testbench:
+def pick_testbench(project: Project, testbench: str = None, bug: str = None) -> Testbench:
     assert len(project.testbenches) > 0
-    if testbench is None:
-        return project.testbenches[0]
-    else:
-        return next(t for t in project.testbenches if t.name == testbench)
+    return _filter_tbs(project.testbenches, testbench, bug)[0]
 
-def pick_oracle_testbench(project: Project, testbench: str = None) -> VerilogOracleTestbench:
+def _filter_tbs(tbs: list, testbench: str, bug: str) -> list:
+    # if a testbench of a particular name is specified, then we just look for that bench and ignore whether it is
+    # suitable for a particular bug
+    if testbench is not None:
+        return [tb for tb in tbs if tb.name == testbench]
+    elif bug is not None:
+        return [tb for tb in tbs if (tb.bugs is None) or (bug in tb.bugs)]
+    else:
+        return tbs
+
+def pick_oracle_testbench(project: Project, testbench: str = None, bug: str = None) -> VerilogOracleTestbench:
     tbs = [tb for tb in project.testbenches if isinstance(tb, VerilogOracleTestbench)]
     assert len(tbs) > 0, f"No VerilogOracleTestbench available for project {project.name}."
-    if testbench is None:
-        return tbs[0]
-    else:
-        return next(t for t in tbs if t.name == testbench)
-def pick_trace_testbench(project: Project, testbench: str = None) -> TraceTestbench:
+    return _filter_tbs(tbs, testbench, bug)[0]
+
+def pick_trace_testbench(project: Project, testbench: str = None, bug: str = None) -> TraceTestbench:
     tbs = [tb for tb in project.testbenches if isinstance(tb, TraceTestbench)]
     assert len(tbs) > 0, f"No TraceTestbench available for project {project.name}."
-    if testbench is None:
-        return tbs[0]
-    else:
-        return next(t for t in tbs if t.name == testbench)
+    return _filter_tbs(tbs, testbench, bug)[0]
 
 def get_benchmarks(project: Project, testbench: str = None) -> list:
     tb = pick_testbench(project, testbench)
@@ -353,9 +357,9 @@ def get_benchmarks(project: Project, testbench: str = None) -> list:
 
 def get_benchmark(project: Project, bug_name: str, testbench: str = None, use_trace_testbench: bool = False) -> Benchmark:
     if use_trace_testbench:
-        tb = pick_trace_testbench(project, testbench)
+        tb = pick_trace_testbench(project, testbench, bug=bug_name)
     else:
-        tb = pick_testbench(project, testbench)
+        tb = pick_testbench(project, testbench, bug=bug_name)
 
     if bug_name is None:    # no bug --> create a benchmark from the original circuit
         original = project.design.sources[0]

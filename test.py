@@ -149,6 +149,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_d4(self):
         """ AXIS Fifo with overflow bug """
+        # timeout
         self.synth_cannot_repair(d4_dir, "d4", solver="yices2", init="zero", incremental=True, timeout=60)
 
     def test_d13(self):
@@ -184,8 +185,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_s1_b(self):
         """ Xilinx generated AXI Lite peripheral with missing guard """
-        changes = self.synth_success(s1_dir, "s1b", testbench="s1b", solver="yices2", init="zero", incremental=True,
-                                     timeout=60)
+        changes = self.synth_success(s1_dir, "s1b", solver="yices2", init="zero", incremental=True, timeout=60)
         # adds correctly the !axis_bvalid, but is missing the s_axis_bready
         self.assertEqual(changes, 2)
         # the other testbench does not reveal this bug
@@ -194,8 +194,7 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_s1_r(self):
         """ Xilinx generated AXI Lite peripheral with missing guard """
-        changes = self.synth_success(s1_dir, "s1r", testbench="s1r", solver="yices2", init="zero", incremental=True,
-                                     timeout=60)
+        changes = self.synth_success(s1_dir, "s1r", solver="yices2", init="zero", incremental=True, timeout=60)
         # changes at the right place, but not quite the right guard
         self.assertEqual(changes, 1)
         # the other testbench does not reveal this bug

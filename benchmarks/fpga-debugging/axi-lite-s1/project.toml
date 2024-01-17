@@ -17,10 +17,11 @@ buggy = "xlnxdemo_bug_s1r.v"
 [[testbenches]]
 name = "s1b"
 table = "tb0.csv"
+bugs = ["s1b"]
 
 
 # trace that leads to a property violation around the R signals when run on s1r
 [[testbenches]]
 name = "s1r"
 table = "tb1.csv"
-
+bugs = ["s1r"]
