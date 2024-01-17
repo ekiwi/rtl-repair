@@ -16,10 +16,15 @@ def is_empty_block(node: vast.Node):
 class AstVisitor:
     """ Generic AST visitor for pyverilog. Inspired by the IdentifierReplace class. """
 
-    def __init__(self):
-        pass
+    def __init__(self, only_first_module: bool = True):
+        self.only_first_module = only_first_module
+        self.visited_first_module = False
 
     def visit(self, node):
+        if isinstance(node, vast.ModuleDef):
+            if self.visited_first_module and self.only_first_module:
+                return node  # done
+            self.visited_first_module = True
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         ret = visitor(node)
