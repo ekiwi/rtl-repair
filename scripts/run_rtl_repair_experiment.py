@@ -23,9 +23,14 @@ from benchmarks import Benchmark, assert_file_exists
 # global experiment default settings
 _solver = 'bitwuzla'
 _incremental = True
-_init = 'random'  # the incremental solver always uses random init
+_init = 'random'
 _timeout = 60  # one minute timeout
 _verbose_synth = True
+
+# the FPGA benchmarks all have testbenches from Verilator which assume a zero init
+_init_fpga = 'zero'
+# the FPGA benchmarks benefit from running with yices2
+_solver_fpga = 'yices2'
 
 @dataclass
 class ExpConfig:
@@ -161,8 +166,14 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict) -> dict:
                     continue
             sys.stdout.write(f"{bb.name} w/ {testbench.name}")
             sys.stdout.flush()
+            if exp_conf.fpga_instead_of_cirfix_bench:
+                init = _init_fpga
+                solver = _solver_fpga
+            else:
+                init = _init
+                solver = _solver
             status, changes, template = run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name,
-                                                       testbench=testbench.name, solver=_solver, init=_init,
+                                                       testbench=testbench.name, solver=solver, init=init,
                                                        incremental=exp_conf.incremental,
                                                        timeout=exp_conf.timeout,
                                                        all_templates=exp_conf.all_templates,
