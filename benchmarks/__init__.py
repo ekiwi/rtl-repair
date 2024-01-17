@@ -11,6 +11,7 @@ import tomli
 
 benchmark_dir = Path(__file__).parent.resolve()
 _cirfix_benchmark_dir = benchmark_dir / "cirfix"
+_fpga_benchmark_dir = benchmark_dir / "fpga-debugging"
 _opencores_dir = _cirfix_benchmark_dir / "opencores"
 _sha3_dir = _opencores_dir / "sha3" / "low_throughput_core"
 
@@ -29,7 +30,21 @@ projects = {
     "sha3_f_permutation": _sha3_dir / "f_permutation.toml",
     "sha3_keccak": _sha3_dir / "keccak.toml",
     "sha3_padder": _sha3_dir / "padder.toml",
+    "axi-lite-s1": _fpga_benchmark_dir / "axi-lite-s1",
+    "axi-stream-s2": _fpga_benchmark_dir / "axi-stream-s2",
+    "axis-adapter-s3": _fpga_benchmark_dir / "axis-adapter-s3",
+    "axis-async-fifo-c4": _fpga_benchmark_dir / "axis-async-fifo-c4",
+    "axis-fifo-d4": _fpga_benchmark_dir / "axis-fifo-d4",
+    "axis-fifo-d12": _fpga_benchmark_dir / "axis-fifo-d12",
+    "axis-frame-fifo-d11": _fpga_benchmark_dir / "axis-frame-fifo-d11",
+    "axis-frame-len-d13": _fpga_benchmark_dir / "axis-frame-len-d13",
+    "axis-switch-d8": _fpga_benchmark_dir / "axis-switch-d8",
+    # skipping fadd since it employs advanced system Verilog constructs
+    "zipcpu-spi-c1-c3-d9": _fpga_benchmark_dir / "zipcpu-spi-c1-c3-d9",
 }
+
+fpga_projects = ["axi-lite-s1", "axi-stream-s2", "axis-adapter-s3", "axis-async-fifo-c4", "axis-fifo-d4",
+                 "axis-fifo-d12", "axis-frame-fifo-d11", "axis-frame-len-d13", "axis-switch-d8", "zipcpu-spi-c1-c3-d9"]
 
 cirfix_seeds = {
     "decoder_3_to_8": {
@@ -372,6 +387,9 @@ def get_seed(benchmark: Benchmark) -> Optional[str]:
 def is_cirfix_paper_benchmark(benchmark: Benchmark) -> bool:
     return (benchmark.project_name in cirfix_seeds and
             benchmark.bug.name in cirfix_seeds[benchmark.project_name])
+
+def is_fpga_debugging_benchmark(benchmark: Benchmark) -> bool:
+    return benchmark.project_name in fpga_projects
 
 
 def assert_file_exists(name: str, filename: Path):

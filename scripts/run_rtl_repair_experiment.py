@@ -33,6 +33,7 @@ class ExpConfig:
     timeout: int    # per template timeout when all_templates is true
     all_templates: bool
     past_k_step_size: int = None
+    fpga_instead_of_cirfix_bench: bool = False
 
 @dataclass
 class Config:
@@ -46,11 +47,13 @@ ExpDefault = 'default'
 ExpAllTemplates = 'all-templates'
 ExpBasicSynth = 'basic-synth'
 ExpPastKOne = 'past-k-1'
+ExpFpga = 'fpga'
 Configs: dict[str, ExpConfig] = {
     ExpDefault: ExpConfig(incremental=True, timeout=_timeout, all_templates=False),
     ExpAllTemplates: ExpConfig(incremental=True, timeout=_timeout, all_templates=True),
     ExpBasicSynth: ExpConfig(incremental=False, timeout=_timeout, all_templates=False),
     ExpPastKOne: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, past_k_step_size=1),
+    ExpFpga: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, fpga_instead_of_cirfix_bench=True),
 }
 Exps = list(Configs.keys())
 
@@ -137,6 +140,7 @@ def run_rtl_repair(working_dir: Path, benchmark: Benchmark, project_toml: Path, 
 
 def run_all_cirfix_benchmarks(conf: Config, projects: dict) -> dict:
     statistics = defaultdict(int)
+    exp_conf = Configs[conf.experiment]
     for name, project in projects.items():
         # overwrite for manual adjustments that we had to make
         if name in benchmarks.rtlrepair_replacements:
@@ -148,11 +152,15 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict) -> dict:
         bbs = benchmarks.get_benchmarks(project)
         for bb in bbs:
             assert isinstance(bb, Benchmark)
-            if not benchmarks.is_cirfix_paper_benchmark(bb):
-                continue
+            # skip irrelevant benchmarks
+            if exp_conf.fpga_instead_of_cirfix_bench:
+                if not benchmarks.is_fpga_debugging_benchmark(bb):
+                    continue
+            else:
+                if not benchmarks.is_cirfix_paper_benchmark(bb):
+                    continue
             sys.stdout.write(f"{bb.name} w/ {testbench.name}")
             sys.stdout.flush()
-            exp_conf = Configs[conf.experiment]
             status, changes, template = run_rtl_repair(conf.working_dir, bb, project_toml, bb.bug.name,
                                                        testbench=testbench.name, solver=_solver, init=_init,
                                                        incremental=exp_conf.incremental,
