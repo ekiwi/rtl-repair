@@ -163,7 +163,7 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict) -> dict:
             else:
                 if not benchmarks.is_cirfix_paper_benchmark(bb):
                     continue
-            testbench = benchmarks.pick_trace_testbench(project, bb.bug)
+            testbench = benchmarks.pick_trace_testbench(project, bb.bug.name)
             sys.stdout.write(f"{bb.name} w/ {testbench.name}")
             sys.stdout.flush()
             if exp_conf.fpga_instead_of_cirfix_bench:
