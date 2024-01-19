@@ -105,7 +105,7 @@ def filter_atom(atoms: list, lvars: set[str], info: dict[str, VarInfo]) -> list:
 def atom_dep_ok(atom_vars: set[str], lvars: set[str], info: dict[str, VarInfo]) -> bool:
     for av in atom_vars:
         ai = info[av]
-        if len(lvars & info[av].depends_on) > 0:
+        if len(lvars & ai.depends_on) > 0:
             return False
     return True
 

@@ -150,10 +150,11 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
     other_sources = get_other_sources(benchmark)
     # synthesize
     gate_level = working_dir / f"{repair_filename.stem}.gatelevel.v"
+    gate_level_script = working_dir / f"{repair_filename.stem}.gatelevel.ys"
     try:
         with open(working_dir / f"{repair_filename.stem}.synthesis.log", 'w') as gate_level_logfile:
             to_gatelevel_netlist(working_dir, gate_level, [repair_filename] + other_sources, top=benchmark.design.top,
-                                 logfile=gate_level_logfile)
+                                 logfile=gate_level_logfile, script_out=gate_level_script)
         synthesis_success = True
     except subprocess.CalledProcessError:
         synthesis_success = False
