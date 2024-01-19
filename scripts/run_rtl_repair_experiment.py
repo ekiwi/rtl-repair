@@ -153,7 +153,6 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict) -> dict:
             project = benchmarks.load_project(project_toml)
         else:
             project_toml = benchmarks.projects[name]
-        testbench = benchmarks.pick_trace_testbench(project)
         bbs = benchmarks.get_benchmarks(project)
         for bb in bbs:
             assert isinstance(bb, Benchmark)
@@ -164,6 +163,7 @@ def run_all_cirfix_benchmarks(conf: Config, projects: dict) -> dict:
             else:
                 if not benchmarks.is_cirfix_paper_benchmark(bb):
                     continue
+            testbench = benchmarks.pick_trace_testbench(project, bb.bug)
             sys.stdout.write(f"{bb.name} w/ {testbench.name}")
             sys.stdout.flush()
             if exp_conf.fpga_instead_of_cirfix_bench:
