@@ -463,7 +463,7 @@ def repair_statistics_table(statistics: dict) ->  list[list[str]]:
 
 def ablation_table(results: dict) ->  list[list[str]]:
     header = ["Benchmark"]
-    for e in ["Preprocessing", "Replace Literals", "Assign Constant", "Invert Condition", "Basic Synthesizer", "RTL-Repair", "CirFix"]:
+    for e in ["Preprocessing", "Replace Literals", "Add Guard", "Conditional Overwrite", "Basic Synthesizer", "RTL-Repair", "CirFix"]:
         header += multicol(2, e)
     header += ["Speedup"]
     rows = []
@@ -486,7 +486,7 @@ def ablation_table(results: dict) ->  list[list[str]]:
             row += multicol(3*2, "Repaired by preprocessing")
         else:
 
-            for template in ['replace_literals', 'assign_const', 'add_inversions']:
+            for template in ['replace_literals', 'add_guard', 'conditional_overwrite']:
                 if not template in stats:
                     row += multicol(2, "")
                     continue
