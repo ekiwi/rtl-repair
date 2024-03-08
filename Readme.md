@@ -11,6 +11,16 @@ This artifact includes:
 - benchmarking scripts `scripts`
 - a small rtl-repair demo: `demo`
 
+## Kick the Tires
+
+To quickly test out that the artifact works on your machine we recommend going through the following steps which you should be able to complete in around 30min:
+- [Installation](#installation) (~15min)
+- [Artifact Setup](#artifact-setup) (~2min)
+- [OSDD Measurements](#osdd-measurements) (~4min)
+- [Default RTL Repair Evaluation](#rtl-repair-repairs) (run only the first command ~7min)
+- [Demo (Optional)](#demo-optional) (play with the tool, min. 2min)
+
+
 ## Installation
 
 ### Python
