@@ -1,5 +1,13 @@
 # RTL-Repair: Fast Symbolic Repair of Hardware Design Code
 
+This artifact includes:
+- the code for our rtl-repair tool in: `rtlrepair` and `synth`
+- repair benchmarks from the CirFix paper: `benchmarks/cirfix`
+- the CirFix tool: `cirfix`
+- repair benchmarks derived from reproducible bugs from "Debugging in the Brave New World of Reconfigurable Hardware" (ASPLOS'22): `benchmarks/fpga-debugging`
+- benchmarking scripts `scripts`
+- a small rtl-repair demo: `demo`
+
 ## Installation
 
 ### Python
@@ -93,7 +101,7 @@ rm vcd-traces/*.vcd
 
 ### CirFix Repairs
 
-_This step should take around min (assuming you have a machine with 16 cores and set `--threads=8`)._
+_This step should take around 24 h._
 
 
 We added a script which automatically runs CirFix on all benchmarks used in the original evaluation. This script can also parallelize the execution which speeds up the evaluation. Please use a conservative number of threads in order not to disadvantage CirFix. Half the number of physical cores on your machine is a good starting point, i.e., if your machine has 8 physical cores, use 4 threads.
@@ -102,6 +110,7 @@ From the root folder please run the following (where `$N` is the number of threa
 ```sh
 ./cirfix/run.py --working-dir=cirfix-repairs --clear --experiment=cirfix-paper --simulator=vcs --threads=$N
 ```
+
 
 ### RTL-Repair Repairs
 
