@@ -71,25 +71,30 @@ cd ..
 
 ### OSDD Measurements
 
-_This step should take around 10min._
+_This step should take around 25min._
 
 
 To measure the output / state divergence delta (OSDD) we need to first generate VCD traces of all ground truth and buggy designs. To do so, run the following:
 
 ```sh
 ./scripts/generate_vcd_traces.py --sim=vcs --timeout=25 --verbose vcd-traces
+# the second script takes much longer since it analyzes some large VCD traces in python .. sorry!
 ./scripts/calc_osdd.py --working-dir=vcd-traces
+# delete VCD files after analysis to save disk space
+rm vcd-traces/*.vcd
 ```
 
-**TODO** run calc osdd script!
 
 ### CirFix Repairs
+
+_This step should take around min (assuming you have a machine with 16 cores and set `--threads=8`)._
+
 
 We added a script which automatically runs CirFix on all benchmarks used in the original evaluation. This script can also parallelize the execution which speeds up the evaluation. Please use a conservative number of threads in order not to disadvantage CirFix. Half the number of physical cores on your machine is a good starting point, i.e., if your machine has 8 physical cores, use 4 threads.
 
 From the root folder please run the following (where `$N` is the number of threads):
 ```sh
-./cirfix/run.py --working-dir=cirfix-repairs --clear --experiment=cirfix-paper --simulator=vcs --thread=$N
+./cirfix/run.py --working-dir=cirfix-repairs --clear --experiment=cirfix-paper --simulator=vcs --threads=$N
 ```
 
 ### RTL-Repair Repairs
