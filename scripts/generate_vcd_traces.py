@@ -117,6 +117,9 @@ def main():
         if proj.name in _skip_projects:
             if verbose: print(f"Skipping {proj.name}")
             continue
+        if not benchmarks.is_cirfix_paper_project(proj):
+            if verbose: print(f"Skipping {proj.name} because it is not a benchmark from the CirFix paper.")
+            continue
         if verbose:
             print(f"Generating VCD traces for {proj.name}")
         gen_project_traces(output_dir, sim, verbose, timeout, proj, results)

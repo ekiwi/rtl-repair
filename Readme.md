@@ -11,7 +11,7 @@ Please make sure that you have Python in version 3.10 or newer installed.
 
 Please make sure you have [a recent version of Rust installed](https://www.rust-lang.org/tools/install). When in doubt, please update your version to the latest (most commonly through `rustup update`).
 
-### Open-Source Verilog Simulators and SMT Solver
+### Open-Source Verilog Simulators, SMT Solvers and the Yosys Synthesis Tool
 
 Download [OSS CAD Suite version `2022-06-22` from github](https://github.com/YosysHQ/oss-cad-suite-build/releases/tag/2022-06-22) and put the binaries on your path.
 
@@ -31,6 +31,9 @@ Yices 2.6.4
 
 $ iverilog -v
 Icarus Verilog version 12.0 (devel) (s20150603-1556-g542da1166)
+
+$ yosys -version
+Yosys 0.20+42 (git sha1 1c36f4cc2, clang 10.0.0-4ubuntu1 -fPIC -Os)
 ```
 
 ### Commercial Verilog Simulator: VCS
@@ -46,6 +49,8 @@ Thus we require VCS to evaluate CirFix, to execute benchmarks when we check repa
 
 ## Artifact Setup
 
+_This step should take around 1min._
+
 First we need to create a virtual environment in the root folder of the repository. This virtual environment needs to be activated in all later steps.
 
 ```sh
@@ -58,12 +63,16 @@ We also need to build the synthesizer binary once.
 ```sh
 cd synth
 cargo build --release
+cd ..
 ```
 
 
 ## Artifact Instructions
 
 ### OSDD Measurements
+
+_This step should take around 10min._
+
 
 To measure the output / state divergence delta (OSDD) we need to first generate VCD traces of all ground truth and buggy designs. To do so, run the following:
 
