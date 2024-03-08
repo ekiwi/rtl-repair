@@ -108,6 +108,8 @@ jobs:
       timeout-minutes: 15
       run: |
         source venv/bin/activate
+        # avoid a race condition by ensuring that file exists
+        mkdir -p working-dir
         pytest -n auto test.py
 
   test-benchmarks:
