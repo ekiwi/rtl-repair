@@ -236,7 +236,7 @@ def parse_args() -> Config:
     parser.add_argument("--debug", default=False, action='store_true', help='turns on generation of VCD trace files')
     args = parser.parse_args()
     assert args.simulator in {'vcs', 'iverilog'}, f"unknown simulator: {args.simulator}"
-    return Config(Path(args.working_dir), Path(args.results), sim=args.simulator, skip_rtl_sim=args.skip_rtl_sim, debug=debug)
+    return Config(Path(args.working_dir), Path(args.results), sim=args.simulator, skip_rtl_sim=args.skip_rtl_sim, debug=args.debug)
 
 
 def create_dir(working_dir: Path):
