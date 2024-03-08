@@ -66,6 +66,13 @@ cargo build --release
 cd ..
 ```
 
+We implemented a VCD comparison for our OSDD measurement in rust as well:
+```sh
+cd scripts/osdd
+cargo build --release
+cd ../..
+```
+
 
 ## Artifact Instructions
 

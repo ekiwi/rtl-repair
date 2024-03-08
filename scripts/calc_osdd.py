@@ -5,12 +5,11 @@
 #
 # uses VCD traces generated from benchmarks to calculate the
 # output/state divergence delta (OSDD) for different bug scenarios
-
+import subprocess
 import sys
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
-import vcdvcd
 import typing
 
 # add root dir in order to be able to load "benchmarks" module
@@ -30,6 +29,8 @@ out_of_scope = {
     ('mux_4_1', 'wadden_buggy2'): "buggy design has a latch, but no clock that we can use to sample",
 }
 
+osdd_binary = _script_dir / "osdd" / "target" / "release" / "osdd"
+assert osdd_binary.is_file(), "Cannot find the osdd calculator. Please run `cargo build --release` in scripts/osdd"
 
 @dataclass
 class Config:
@@ -96,204 +97,6 @@ def end_logger():
     global _logfile
     if _logfile is not None:
         _logfile.close()
-
-
-def find_clock(names: list) -> str:
-    candidates = ["clock", "clk"]
-    # sort names from shortest to longest
-    names = sorted(names, key=lambda n: len(n))
-    # check to see if the name could be a clock
-    for name in names:
-        suffix = name.split('.')[-1]
-        if suffix.strip().lower() in candidates:
-            return name
-    raise RuntimeError(f"Failed to find clock among signals: {names}")
-
-
-def remove_size_from_name(name: str) -> str:
-    """ changes e.g. "state[2:0]" to "state" """
-    return name.split('[')[0]
-
-
-def find_str_prefix(aa: str, bb: str) -> str:
-    prefix = ''
-    for a, b in zip(aa, bb):
-        if a == b:
-            prefix += a
-        else:
-            return prefix
-    return prefix
-
-
-def find_common_prefix(names: list) -> str:
-    prefixes = {'.'.join(nn.split('.')[:-1]) for nn in names}
-    sorted_prefixes = sorted(list(prefixes), key=lambda n: len(n))
-    prefix = sorted_prefixes[0]
-    for entry in sorted_prefixes[1:]:
-        if not entry.startswith(prefix):
-            prefix = find_str_prefix(prefix, entry)
-            if len(prefix) == 0: return ""  # early exit (performance optimization)
-    return prefix + "."
-
-
-class EarlyVcdParserExit(Exception):
-    pass
-
-
-class VCDConverter(vcdvcd.StreamParserCallbacks):
-    def __init__(self, out: typing.TextIO, interesting_signals: list, max_depth: int = -1):
-        super().__init__()
-        self.max_depth = max_depth
-        self.out = out
-        self.interesting_signals: list = interesting_signals
-        self.signals = dict()
-        self.id_to_index = dict()
-        self.values = []
-        self.clock = None
-        self.clock_id = None
-        self.sample_at = None
-        self.sample_count = 0
-
-    def enddefinitions(self, vcd, signals, cur_sig_vals):
-        # convert references to list and sort by name
-        refs = [(k, v) for k, v in vcd.references_to_ids.items()]
-        refs = sorted(refs, key=lambda e: e[0])
-        names = [remove_size_from_name(e[0]) for e in refs]
-        info(f"Found {len(refs)} signals")
-
-        # identify clock signal
-        self.clock = find_clock(names)
-        self.clock_id = vcd.references_to_ids[self.clock]
-
-        # ensure that all interesting signals are in the VCD
-        prefix = find_common_prefix(names)
-        interesting_with_prefix = [prefix + ii for ii in self.interesting_signals]
-        # are any interesting signals missing from the VCD?
-        missing = set(interesting_with_prefix) - set(names)
-        if len(missing) > 0:
-            # this is normally about Verilog arrays which aren't included in the VCD by default
-            print(f"WARN: Interesting signals are missing from the VCD: {list(missing)}.\nAvailable:{names}")
-            interesting_with_prefix = [ii for ii in interesting_with_prefix if ii not in missing]
-
-        # we only track the interesting signals
-        refs_by_name = {remove_size_from_name(e[0]): e for e in refs}
-        refs = [refs_by_name[ii] for ii in interesting_with_prefix]
-        refs = [refs_by_name[self.clock]] + refs
-        self.id_to_index = {e[1]: i for i, e in enumerate(refs)}
-        self.values = ["x"] * len(refs)
-        clock_index = self.id_to_index[self.clock_id]
-        info(f"{clock_index=} {len(self.values)=}")
-        self.values[clock_index] = "0"
-
-        header = ', '.join(self.interesting_signals)
-        self.out.write(header + '\n')
-        self.sample_count = 0
-
-    def write_to_file(self, time):
-        if self.sample_at is None: return
-        # at the next timestep after a rising edge, we need to write all samples to disk
-        if time > self.sample_at:
-            self.sample_at = None
-            # skip clock
-            values = self.values[1:]
-            line = ', '.join(f"{v}" for v in values)
-            self.out.write(line + "\n")
-            self.sample_count += 1
-            if self.max_depth >= 0 and self.sample_count > self.max_depth:
-                raise EarlyVcdParserExit()
-
-    def value(self, vcd, time, value, identifier_code, cur_sig_vals):
-        # ignore signals that we are not interested in
-        if identifier_code not in self.id_to_index: return
-
-        # dump values if appropriate
-        self.write_to_file(time)
-
-        index = self.id_to_index[identifier_code]
-
-        # detect rising edge on the clock
-        if identifier_code == self.clock_id:
-            rising_edge = self.values[index] == "0" and value == "1"
-            if rising_edge:
-                self.sample_at = time
-
-        # update values
-        self.values[self.id_to_index[identifier_code]] = value
-
-
-def vcd_to_csv(working_dir: Path, interesting_signals: list, vcd_path: Path, max_depth: int = -1):
-    assert_exists(working_dir)
-    assert working_dir.is_dir(), f"{working_dir} is not a directory!"
-    csv_file = open(vcd_path.parent / f"{vcd_path.stem}.csv", 'w+t')
-    converter = VCDConverter(csv_file, interesting_signals, max_depth=max_depth)
-    try:
-        vcdvcd.VCDVCD(str(vcd_path.resolve()), callbacks=converter, store_tvs=False)
-    except EarlyVcdParserExit:
-        pass  # early exits are implemented via an exception, but also part of the normal operation
-    csv_file.seek(0)
-    return csv_file, converter.sample_count
-
-
-def get_signal_names(testbench: Path) -> list:
-    with open(testbench, 'r') as f:
-        header = f.readline()
-    return parse_csv_line(header)
-
-
-def parse_csv_line(line: str) -> list:
-    return [n.strip() for n in line.split(',')]
-
-
-def compare_line(ii: int, original: list, buggy: list, signals: list, is_state: set, is_output: set) -> list:
-    disagree = []
-    for ((o, b), name) in zip(zip(original, buggy), signals):
-        if o.lower() == 'x':  # no constraint!
-            continue
-        if o.lower() != b.lower():
-            disagree.append(Disagreement(ii, name, name in is_state, name in is_output, o.lower(), b.lower()))
-    return disagree
-
-
-def compare(original: typing.TextIO, buggy: typing.TextIO, is_state: set, is_output: set):
-    original_signals = parse_csv_line(original.readline())
-    buggy_signals = parse_csv_line(buggy.readline())
-    assert original_signals == buggy_signals, f"{original_signals} != {buggy_signals}"
-    signals = original_signals
-
-    # iterate over lines together
-    ii = 0
-
-    first_state_disagreement = -1
-    first_output_disagreement = -1
-
-    for o_line, b_line in zip(original, buggy):
-        o = parse_csv_line(o_line)
-        b = parse_csv_line(b_line)
-        disagree = compare_line(ii, o, b, signals, is_state, is_output)
-        state_disagree = [d for d in disagree if d.is_state]
-        output_disagree = [d for d in disagree if d.is_output]
-        if first_state_disagreement == -1 and len(state_disagree) > 0:
-            first_state_disagreement = ii
-        if first_output_disagreement == -1 and len(output_disagree) > 0:
-            first_output_disagreement = ii
-        # print info
-        for d in disagree:
-            if d.is_state and d.is_output:
-                ext = " (O+S)"
-            elif d.is_state:
-                ext = " (S)"
-            elif d.is_output:
-                ext = " (O)"
-            else:
-                ext = ""
-            info(f"{d.signal}@{d.step}: {d.actual} != {d.expected}{ext}")
-
-        # early exit for when we find the first external divergence
-        if first_output_disagreement > -1:
-            break
-        ii += 1
-
-    return first_state_disagreement, first_output_disagreement
 
 
 def common_list(a: list, b: list) -> list:
@@ -364,7 +167,7 @@ def compare_traces(conf: Config) -> Result:
     # we are only interested in signals that are contained in both circuits, but the widths are allowed to differ
     interesting_states = common_list([n for n, _ in gt_states], [n for n, _ in buggy_states])
     interesting_outputs = common_list([n for n, _ in gt_outputs], [n for n, _ in buggy_outputs])
-    interesting_signals = union_list(interesting_states, interesting_outputs)
+    # interesting_signals = union_list(interesting_states, interesting_outputs)
 
     # VCD names used in the `generate_vcd_traces.py` script
     gt_vcd = conf.working_dir / f"{conf.benchmark.project_name}.groundtruth.vcd"
@@ -375,22 +178,21 @@ def compare_traces(conf: Config) -> Result:
     # derive logfile name from benchmark
     logfile: Path = conf.working_dir / f"{conf.benchmark.project_name}.{conf.benchmark.bug.name}.log"
 
-    # look at the VCDs now
-    start_logger(logfile)
+    # write signals to file
+    signal_file: Path = conf.working_dir / f"{conf.benchmark.project_name}.{conf.benchmark.bug.name}.signals"
+    with open(signal_file, 'w') as f:
+        print(", ".join(interesting_states), file=f)
+        print(", ".join(interesting_outputs), file=f)
 
-    # convert VCD files into CSV tables for easier (line-by-line) comparison
-    gt_csv, gt_samples = vcd_to_csv(conf.working_dir, interesting_signals, gt_vcd)
-    res.ground_truth_testbench_cycles = gt_samples
-    # sometimes the buggy code runs longer than the ground truth, however there is no reason to sample that far!
-    buggy_csv, _ = vcd_to_csv(conf.working_dir, interesting_signals, buggy_vcd, max_depth=gt_samples)
-
-    # debug code to print out CSV
-    # print(original_vcd.read())
-    # original_vcd.seek(0)
-
-    # do the comparison
-    (first_state, first_output) = compare(original=gt_csv, buggy=buggy_csv,
-                                          is_state=set(interesting_states), is_output=set(interesting_outputs))
+    # call to rust binary in order to quickly compare VCDs
+    cmd = [str(osdd_binary.resolve()),
+           f"--gt-wave={gt_vcd.resolve()}",
+           f"--buggy-wave={buggy_vcd.resolve()}",
+           f"--signals={signal_file.resolve()}",
+    ]
+    # print(" ".join(cmd))
+    r = subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
+    first_state, first_output = [int(p) for p in r.stdout.decode('utf-8').split(',')]
 
     if first_output == -1:
         res.notes = "no disagreement found"
@@ -403,10 +205,6 @@ def compare_traces(conf: Config) -> Result:
             delta = first_output - first_state + 1
         res.delta = delta
 
-    # release resources
-    end_logger()
-    gt_csv.close()
-    buggy_csv.close()
     return res
 
 
