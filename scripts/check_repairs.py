@@ -31,6 +31,7 @@ class Config:
     result_dir: Path
     sim: str
     skip_rtl_sim: bool
+    debug: bool
 
 
 class TestResult(Enum):
@@ -47,7 +48,7 @@ class RepairResult:
     iverilog_rtl_sim: TestResult = TestResult.NA
 
 
-def check_sim(sim: str, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list,
+def check_sim(sim: str, working_dir: Path, logfile, benchmark: Benchmark, design_sources: list, dump_trace: bool,
               max_cycles: int = None):
     assert isinstance(benchmark.testbench, VerilogOracleTestbench)
     output = working_dir / benchmark.testbench.output
@@ -61,11 +62,12 @@ def check_sim(sim: str, working_dir: Path, logfile, benchmark: Benchmark, design
 
     # run testbench
     tb_sources = benchmark.testbench.sources + design_sources
+    # dump a trace for easier debugging
+    defines = [("DUMP_TRACE", 1)] if dump_trace else []
     run_conf = RunConf(include_dir=benchmark.design.directory,
                        verbose=False, show_stdout=False, logfile=logfile,
                        timeout=60 * 2, # 2 minutes max
-                       # dump a trace for easier debugging
-                       defines=[("DUMP_TRACE", 1)])
+                       defines=defines)
     if logfile:
         logfile.flush()
     run(working_dir, sim, tb_sources, run_conf)
@@ -107,7 +109,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
         other_sources = get_other_sources(benchmark)
         run_logfile = working_dir / f"{repair_filename.stem}.sim.log"
         with open(run_logfile, 'w') as logff:
-            sim_res = check_sim(conf.sim, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+            sim_res = check_sim(conf.sim, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources, conf.debug)
         sys.stdout.write(f" RTL-sim {sim_res.emoji}")
         sys.stdout.flush()
         # rename output in order to preserve it
@@ -130,7 +132,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
             other_sources = get_other_sources(benchmark)
             run_logfile = working_dir / f"{repair_filename.stem}.sim.iverilog.log"
             with open(run_logfile, 'w') as logff:
-                sim_res = check_sim("iverilog", working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+                sim_res = check_sim("iverilog", working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources, conf.debug)
             sys.stdout.write(f" iVerilog-RTL-sim {sim_res.emoji}")
             sys.stdout.flush()
             # rename output in order to preserve it
@@ -166,7 +168,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
         print(f"Gate-Level Simulation with Oracle Testbench: {benchmark.testbench.name}", file=logfile)
         run_logfile = working_dir / f"{repair_filename.stem}.gatelevel.sim.log"
         with open(run_logfile, 'w') as logff:
-            gate_res = check_sim(conf.sim, working_dir, logff, benchmark, [gate_level.resolve()], max_cycles=max_cycles)
+            gate_res = check_sim(conf.sim, working_dir, logff, benchmark, [gate_level.resolve()], conf.debug, max_cycles=max_cycles)
         sys.stdout.write(f" Gate-level {gate_res.emoji}")
         sys.stdout.flush()
         # rename trace
@@ -186,7 +188,7 @@ def check_repair(conf: Config, working_dir: Path, logfile, project: Project, rep
         other_sources = get_other_sources(benchmark)
         run_logfile = working_dir / f"{repair_filename.stem}.sim.{benchmark.testbench.name}.log"
         with open(run_logfile, 'w') as logff:
-            sim_res = check_sim(conf.sim, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources)
+            sim_res = check_sim(conf.sim, working_dir, logff, benchmark, [repair_filename.resolve()] + other_sources, conf.debug)
         sys.stdout.write(f" Extended RTL-sim {sim_res.emoji}")
         sys.stdout.flush()
         # rename output in order to preserve it
@@ -231,9 +233,10 @@ def parse_args() -> Config:
     parser.add_argument('--results', help='Directory containing the result.toml files.', required=True)
     parser.add_argument("--simulator", default="vcs")
     parser.add_argument("--skip-rtl-sim", default=False, action='store_true')
+    parser.add_argument("--debug", default=False, action='store_true', help='turns on generation of VCD trace files')
     args = parser.parse_args()
     assert args.simulator in {'vcs', 'iverilog'}, f"unknown simulator: {args.simulator}"
-    return Config(Path(args.working_dir), Path(args.results), sim=args.simulator, skip_rtl_sim=args.skip_rtl_sim)
+    return Config(Path(args.working_dir), Path(args.results), sim=args.simulator, skip_rtl_sim=args.skip_rtl_sim, debug=debug)
 
 
 def create_dir(working_dir: Path):

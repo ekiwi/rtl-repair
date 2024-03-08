@@ -152,7 +152,7 @@ def main() -> int:
     fake_bug = Bug("original", proj.design.sources[0], proj.design.sources[0])
     bench = Benchmark(proj.name, proj.design, fake_bug, verilog_tb)
     run_conf = check_repairs.Config(proj_dir, proj_dir, "iverilog", False)
-    sim_res = check_sim(run_conf.sim, None, bench, proj.design.sources)
+    sim_res = check_sim(run_conf.sim, None, bench, proj.design.sources, dump_trace=True)
     print(f"{sim_res.emoji} {sim_res.fail_msg}")
     return 0 if sim_res.is_success else 1
 
