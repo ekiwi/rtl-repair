@@ -14,9 +14,6 @@ from dataclasses import dataclass
 from pathlib import Path
 import concurrent.futures
 
-# check to make sure we have the correct venv activated
-import pyverilog
-
 _root_dir = Path(__file__).parent.resolve()
 _prototype_dir = _root_dir / "prototype"
 _repair_py = _prototype_dir / "repair.py"
