@@ -145,24 +145,29 @@ cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/result.toml
 # diff of ground truth and buggy Verilog file
 cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/bug_diff.txt
 # diff of buggy and repaired Verilog file
-# Unfortunately there are some artifacts still left by our repair tool which make this diff somewhat hard to read.
-# In this particular case, we need to focus on the line starting with `assign update` and simplify the expression in our head.
 cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/padder_ssscrazy_buggy1.repaired.0.diff.txt
 ```
 
+_Note: Unfortunately there are some artifacts still left by our repair tool which makes the repair diff somewhat hard to read.
+In the particular case mentioned above, we need to focus on the line starting with `assign update` and simplify the expression in our head._
+
 ### Checking Repair Correctness
 
-_This step should take around ?? min._
+_This step should take around 60 min._
 
 We provide a script that performs all the correctness tests listed in Table 4. We run that on all results from the CirFix benchmark set.
 
 ```sh
+# takes ~30 min
 ./scripts/check_repairs.py --results=cirfix-repairs --working-dir=cirfix-repairs-check --sim=vcs
+# takes ~30 min
 ./scripts/check_repairs.py --results=rtl-repair-default --working-dir=rtl-repair-default-check --sim=vcs
 ```
 
+_Note 1: there is no parallelism built into the script. However, feel free to run both invocations in parallel, which is safe since each has its own independent `working-dir`._ 
 
-_Note: the checks do not work with the FPGA benchmark set because they rely on Verilog testbenches, whereas the FPGA benchmarks come with C++ testbenches for the Verilator simulator._
+_Note 2: the checks do not work with the FPGA benchmark set because they rely on Verilog testbenches, whereas the FPGA benchmarks come with C++ testbenches for the Verilator simulator._
+
 
 ### Generating Tables
 
@@ -178,4 +183,36 @@ We provide a script that generates LaTex versions of Tables 1, 2, 4 and 5 from t
   --rtlrepair-result-dir=rtl-repair-default \
   --rtlrepair-all-templates-result-dir=rtl-repair-all-templates \
   --rtlrepair-basic-synth-result-dir=rtl-repair-basic-synth \
+```
+
+### Demo (Optional)
+
+_This step takes around 2 min. Longer, if you would like to play some more with the tool._
+
+The artifact contains a small demo to explore the repair capabilities of RTL-Repair.
+In the `demo` folder you find:
+
+- a simple Verilog design from the CirFix benchmarks: `project/first_counter.v`
+- a simple testbench in the CSV format: `project/tb.csv`
+- a script to execute the testbench with `iverilog`: `./run_tb.py`
+  - this script will write pass/fail information to stdout
+  - this script also creates a wavedump in `project/dump.vcd` which can be viewer with [GTKWave](https://gtkwave.sourceforge.net/) or [Surfer](http://surfer-project.org/)
+- a script to execute a repair with rtl-repair: `./do_repair.py`
+
+To get started, try changing the reset condition in `project/first_counter.v`:
+```diff
+-  if(reset == 1'b1) begin
++  if(reset == 1'b0) begin
+```
+
+Then run `./do_repair.py` which should output:
+```
+success (0.32s)
+0) Possible repair with 1 changes:
+14c14
+<     if(reset == 1'b0) begin
+---
+>     if(reset == 1'b1) begin
+
+================================================================================
 ```

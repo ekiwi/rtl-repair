@@ -8,18 +8,19 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from pyverilog.vparser.parser import parse
-import pyverilog.vparser.ast as vast
 
 
-# add root dir in order to be able to load "benchmarks" module
+# add root dir in order to be able to load "benchmarks" and pyverilog modules
 _script_dir = Path(__file__).parent.resolve()
 sys.path.append(str(_script_dir.parent))
 from benchmarks import TraceTestbench, Design, load_project, pick_trace_testbench, Benchmark, Bug, \
     VerilogOracleTestbench
-from scripts.check_repairs import check_sim, parse_csv_line
+from benchmarks.run import parse_csv_line
+from scripts.check_repairs import check_sim
 from scripts import check_repairs
 from rtlrepair.utils import parse_width
+from pyverilog.vparser.parser import parse
+import pyverilog.vparser.ast as vast
 
 @dataclass
 class ToplevelInfo:
@@ -134,7 +135,7 @@ def trace_tb_to_verilog(filename: Path, tb: TraceTestbench, top: str, ports: lis
         # end
         print("endmodule // tb", file=ff)
 
-        return VerilogOracleTestbench("verilog_tb", [filename], out_file_name, tb.table)
+        return VerilogOracleTestbench(name="verilog_tb", sources=[filename], output=out_file_name, oracle=tb.table, bugs=[], tags=[])
 
 
 def main() -> int:
@@ -151,8 +152,8 @@ def main() -> int:
     # check the repair, i.e., the file the user is editing
     fake_bug = Bug("original", proj.design.sources[0], proj.design.sources[0])
     bench = Benchmark(proj.name, proj.design, fake_bug, verilog_tb)
-    run_conf = check_repairs.Config(proj_dir, proj_dir, "iverilog", False)
-    sim_res = check_sim(run_conf.sim, None, bench, proj.design.sources, dump_trace=True)
+    run_conf = check_repairs.Config(proj_dir, proj_dir, "iverilog", False, debug=True)
+    sim_res = check_sim(run_conf.sim, proj_dir,None, bench, proj.design.sources, dump_trace=True)
     print(f"{sim_res.emoji} {sim_res.fail_msg}")
     return 0 if sim_res.is_success else 1
 
