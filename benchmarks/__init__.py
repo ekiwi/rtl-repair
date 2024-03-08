@@ -393,7 +393,7 @@ def is_cirfix_paper_benchmark(benchmark: Benchmark) -> bool:
             benchmark.bug.name in cirfix_seeds[benchmark.project_name])
 
 def is_cirfix_paper_project(project: Project) -> bool:
-    return project.name in cirfix_seeds
+    return project.name in cirfix_seeds or project.name == 'sha3_padder'
 
 def is_fpga_debugging_benchmark(benchmark: Benchmark) -> bool:
     return benchmark.project_name in fpga_projects
