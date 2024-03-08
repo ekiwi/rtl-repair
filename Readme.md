@@ -49,7 +49,7 @@ Thus we require VCS to evaluate CirFix, to execute benchmarks when we check repa
 
 ## Artifact Setup
 
-_This step should take around 1min._
+_This step should take around 2 min._
 
 First we need to create a virtual environment in the root folder of the repository. This virtual environment needs to be activated in all later steps.
 
@@ -78,14 +78,13 @@ cd ../..
 
 ### OSDD Measurements
 
-_This step should take around 25min._
+_This step should take around 4 min._
 
 
 To measure the output / state divergence delta (OSDD) we need to first generate VCD traces of all ground truth and buggy designs. To do so, run the following:
 
 ```sh
 ./scripts/generate_vcd_traces.py --sim=vcs --timeout=25 --verbose vcd-traces
-# the second script takes much longer since it analyzes some large VCD traces in python .. sorry!
 ./scripts/calc_osdd.py --working-dir=vcd-traces
 # delete VCD files after analysis to save disk space
 rm vcd-traces/*.vcd
@@ -106,33 +105,68 @@ From the root folder please run the following (where `$N` is the number of threa
 
 ### RTL-Repair Repairs
 
+_This step should take around 40 min._
+
+
 We run RTL-Repair on the CirFix benchmarks in three different configurations as well as on benchmarks from a paper on debugging FPGA hardware designs:
 
 ```sh
+# takes ~7 min
 ./scripts/run_rtl_repair_experiment.py --working-dir=rtl-repair-default --clear --experiment=default
+# expected final output line: defaultdict(<class 'int'>, {'success': 17, 'cannot-repair': 10, 'no-repair': 1, 'timeout': 4})
+
+# takes ~14 min
 ./scripts/run_rtl_repair_experiment.py --working-dir=rtl-repair-all-templates --clear --experiment=all-templates
+# expected final output line: defaultdict(<class 'int'>, {'success': 17, 'cannot-repair': 14, 'no-repair': 1})
+
+# takes ~10 min
 ./scripts/run_rtl_repair_experiment.py --working-dir=rtl-repair-basic-synth --clear --experiment=basic-synth
+# expected final output line: defaultdict(<class 'int'>, {'success': 16, 'cannot-repair': 8, 'no-repair': 1, 'timeout': 7})
+
+# takes ~4 min
 ./scripts/run_rtl_repair_experiment.py --working-dir=rtl-repair-fpga --clear --experiment=fpga
+# expected final output line: defaultdict(<class 'int'>, {'success': 9, 'timeout': 3, 'cannot-repair': 1})
 ```
 
-_Note: there is no parallelism since RTL-Repair runs very quickly anyways._ 
+_Note 1: there is no parallelism built into the run script. However, feel free to run all four experiments in parallel, which is safe since each has its own independent `working-dir`._ 
 
-_Note 2: the `all-templates` and the `basic-synth` configuration are used in the ablation study in Table 5._
+_Note 2: error messages from failing repair attempts are expected since the run script does not intercept `stderr`._
+
+_Note 3: the `all-templates` and the `basic-synth` configuration are used in the ablation study in Table 5._
+
+
+#### Explore Repairs
+
+Have a look at some repair results. Like:
+
+```sh
+# machine readable results file for `sha3_s1` benchmark
+cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/result.toml
+# diff of ground truth and buggy Verilog file
+cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/bug_diff.txt
+# diff of buggy and repaired Verilog file
+# Unfortunately there are some artifacts still left by our repair tool which make this diff somewhat hard to read.
+# In this particular case, we need to focus on the line starting with `assign update` and simplify the expression in our head.
+cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/padder_ssscrazy_buggy1.repaired.0.diff.txt
+```
 
 ### Checking Repair Correctness
+
+_This step should take around ?? min._
 
 We provide a script that performs all the correctness tests listed in Table 4. We run that on all results from the CirFix benchmark set.
 
 ```sh
 ./scripts/check_repairs.py --results=cirfix-repairs --working-dir=cirfix-repairs-check --sim=vcs
-./scripts/check_repairs.py --results=rtl-repair-repairs --working-dir=rtl-repair-repairs-check --sim=vcs
+./scripts/check_repairs.py --results=rtl-repair-default --working-dir=rtl-repair-default-check --sim=vcs
 ```
 
-**TODO**: make this step use less space by not generating traces by default!
 
 _Note: the checks do not work with the FPGA benchmark set because they rely on Verilog testbenches, whereas the FPGA benchmarks come with C++ testbenches for the Verilator simulator._
 
 ### Generating Tables
+
+_This step should take around 2 min._
 
 We provide a script that generates LaTex versions of Tables 1, 2, 4 and 5 from the data we previously collected.
 
