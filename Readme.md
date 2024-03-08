@@ -1,5 +1,8 @@
 # RTL-Repair: Fast Symbolic Repair of Hardware Design Code
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10798649.svg)](https://doi.org/10.5281/zenodo.10798649)
+
+
 This artifact includes:
 - the code for our rtl-repair tool in: `rtlrepair` and `synth`
 - repair benchmarks from the CirFix paper: `benchmarks/cirfix`
@@ -12,7 +15,7 @@ This artifact includes:
 
 ### Python
 
-Please make sure that you have Python in version 3.10 or newer installed.
+Please make sure that you have Python in version 3.10 or newer installed. We have tested all scripts with `Python 3.10.6`.
 
 
 ### Rust
