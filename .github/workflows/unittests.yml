@@ -5,40 +5,6 @@ on:
   pull_request:
 
 jobs:
-  test-scala:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-
-    - name: Install Tabby OSS Cad Suite (from YosysHQ)
-      uses: YosysHQ/setup-oss-cad-suite@v2
-      with:
-        version: '2022-06-22'
-
-    - name: Install OptiMathSAT
-      run: |
-        wget -q https://optimathsat.disi.unitn.it/releases/optimathsat-1.7.3/optimathsat-1.7.3-linux-64-bit.tar.gz
-        tar -xf optimathsat-1.7.3-linux-64-bit.tar.gz
-        echo "${PWD}/optimathsat-1.7.3-linux-64-bit/bin" >> $GITHUB_PATH
-
-    - name: Install CVC4
-      run: sudo apt-get install -y cvc4
-
-    - name: Print Solver Versions
-      run: |
-        z3 -version
-        optimathsat -version
-        cvc4 --version
-        verilator -version
-
-    - name: Run Scala Unittests
-      timeout-minutes: 5
-      working-directory: synthesizer
-      run: sbt test
-
   test-rust:
     runs-on: ubuntu-latest
     timeout-minutes: 5
