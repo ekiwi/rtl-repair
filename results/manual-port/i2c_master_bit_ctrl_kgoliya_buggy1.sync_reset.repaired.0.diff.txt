@@ -1,0 +1,271 @@
+158,290c158,293
+<   always @(posedge clk) if(!nReset) begin
+<     c_state <= #1 idle;
+<     cmd_ack <= #1 1'b0;
+<     scl_oen <= #1 1'b1;
+<     sda_oen <= #1 1'b1;
+<     sda_chk <= #1 1'b0;
+<   end else if(rst | al) begin
+<     c_state <= #1 idle;
+<     cmd_ack <= #1 1'b0;
+<     scl_oen <= #1 1'b1;
+<     sda_oen <= #1 1'b1;
+<     sda_chk <= #1 1'b0;
+<   end else begin
+<     if(clk_en) case(c_state)
+<       idle: begin
+<         case(cmd)
+<           4'b0001: c_state <= #1 start_a;
+<           4'b0010: c_state <= #1 stop_a;
+<           4'b0100: c_state <= #1 wr_a;
+<           4'b1000: c_state <= #1 rd_a;
+<           default: c_state <= #1 idle;
+<         endcase
+<         scl_oen <= #1 scl_oen;
+<         sda_oen <= #1 sda_oen;
+<         sda_chk <= #1 1'b0;
+<       end
+<       start_a: begin
+<         c_state <= #1 start_b;
+<         scl_oen <= #1 scl_oen;
+<         sda_oen <= #1 1'b1;
+<         sda_chk <= #1 1'b0;
+<       end
+<       start_b: begin
+<         c_state <= #1 start_c;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b1;
+<         sda_chk <= #1 1'b0;
+<       end
+<       start_c: begin
+<         c_state <= #1 start_d;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b0;
+<         sda_chk <= #1 1'b0;
+<       end
+<       start_d: begin
+<         c_state <= #1 start_e;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b0;
+<         sda_chk <= #1 1'b0;
+<       end
+<       start_e: begin
+<         c_state <= #1 idle;
+<         cmd_ack <= #1 1'b1;
+<         scl_oen <= #1 1'b0;
+<         sda_oen <= #1 1'b0;
+<         sda_chk <= #1 1'b0;
+<       end
+<       stop_a: begin
+<         c_state <= #1 stop_b;
+<         scl_oen <= #1 1'b0;
+<         sda_oen <= #1 1'b0;
+<         sda_chk <= #1 1'b0;
+<       end
+<       stop_b: begin
+<         c_state <= #1 stop_c;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b0;
+<         sda_chk <= #1 1'b0;
+<       end
+<       stop_c: begin
+<         c_state <= #1 stop_d;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b0;
+<         sda_chk <= #1 1'b0;
+<       end
+<       stop_d: begin
+<         c_state <= #1 idle;
+<         cmd_ack <= #1 1'b1;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b1;
+<         sda_chk <= #1 1'b0;
+<       end
+<       rd_a: begin
+<         c_state <= #1 rd_b;
+<         scl_oen <= #1 1'b0;
+<         sda_oen <= #1 1'b1;
+<         sda_chk <= #1 1'b0;
+<       end
+<       rd_b: begin
+<         c_state <= #1 rd_c;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b1;
+<         sda_chk <= #1 1'b0;
+<       end
+<       rd_c: begin
+<         c_state <= #1 rd_d;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 1'b1;
+<         sda_chk <= #1 1'b0;
+<       end
+<       rd_d: begin
+<         c_state <= #1 idle;
+<         cmd_ack <= #1 1'b1;
+<         scl_oen <= #1 1'b0;
+<         sda_oen <= #1 1'b1;
+<         sda_chk <= #1 1'b0;
+<       end
+<       wr_a: begin
+<         c_state <= #1 wr_b;
+<         scl_oen <= #1 1'b0;
+<         sda_oen <= #1 din;
+<         sda_chk <= #1 1'b0;
+<       end
+<       wr_b: begin
+<         c_state <= #1 wr_c;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 din;
+<         sda_chk <= #1 1'b0;
+<       end
+<       wr_c: begin
+<         c_state <= #1 wr_d;
+<         scl_oen <= #1 1'b1;
+<         sda_oen <= #1 din;
+<         sda_chk <= #1 1'b1;
+<       end
+<       wr_d: begin
+<         c_state <= #1 idle;
+<         cmd_ack <= #1 1'b1;
+<         scl_oen <= #1 1'b0;
+<         sda_oen <= #1 din;
+<         sda_chk <= #1 1'b0;
+<       end
+<     endcase 
+---
+>   always @(posedge clk) begin
+>     if(1'b1 & 1'b1 & 1'b1 & 1'b1 & 1'b1) cmd_ack <= 1'b0; 
+>     if(!nReset) begin
+>       c_state <= #1 idle;
+>       cmd_ack <= #1 1'b0;
+>       scl_oen <= #1 1'b1;
+>       sda_oen <= #1 1'b1;
+>       sda_chk <= #1 1'b0;
+>     end else if(rst | al) begin
+>       c_state <= #1 idle;
+>       cmd_ack <= #1 1'b0;
+>       scl_oen <= #1 1'b1;
+>       sda_oen <= #1 1'b1;
+>       sda_chk <= #1 1'b0;
+>     end else begin
+>       if(clk_en) case(c_state)
+>         idle: begin
+>           case(cmd)
+>             4'b0001: c_state <= #1 start_a;
+>             4'b0010: c_state <= #1 stop_a;
+>             4'b0100: c_state <= #1 wr_a;
+>             4'b1000: c_state <= #1 rd_a;
+>             default: c_state <= #1 idle;
+>           endcase
+>           scl_oen <= #1 scl_oen;
+>           sda_oen <= #1 sda_oen;
+>           sda_chk <= #1 1'b0;
+>         end
+>         start_a: begin
+>           c_state <= #1 start_b;
+>           scl_oen <= #1 scl_oen;
+>           sda_oen <= #1 1'b1;
+>           sda_chk <= #1 1'b0;
+>         end
+>         start_b: begin
+>           c_state <= #1 start_c;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b1;
+>           sda_chk <= #1 1'b0;
+>         end
+>         start_c: begin
+>           c_state <= #1 start_d;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b0;
+>           sda_chk <= #1 1'b0;
+>         end
+>         start_d: begin
+>           c_state <= #1 start_e;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b0;
+>           sda_chk <= #1 1'b0;
+>         end
+>         start_e: begin
+>           c_state <= #1 idle;
+>           cmd_ack <= #1 1'b1;
+>           scl_oen <= #1 1'b0;
+>           sda_oen <= #1 1'b0;
+>           sda_chk <= #1 1'b0;
+>         end
+>         stop_a: begin
+>           c_state <= #1 stop_b;
+>           scl_oen <= #1 1'b0;
+>           sda_oen <= #1 1'b0;
+>           sda_chk <= #1 1'b0;
+>         end
+>         stop_b: begin
+>           c_state <= #1 stop_c;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b0;
+>           sda_chk <= #1 1'b0;
+>         end
+>         stop_c: begin
+>           c_state <= #1 stop_d;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b0;
+>           sda_chk <= #1 1'b0;
+>         end
+>         stop_d: begin
+>           c_state <= #1 idle;
+>           cmd_ack <= #1 1'b1;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b1;
+>           sda_chk <= #1 1'b0;
+>         end
+>         rd_a: begin
+>           c_state <= #1 rd_b;
+>           scl_oen <= #1 1'b0;
+>           sda_oen <= #1 1'b1;
+>           sda_chk <= #1 1'b0;
+>         end
+>         rd_b: begin
+>           c_state <= #1 rd_c;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b1;
+>           sda_chk <= #1 1'b0;
+>         end
+>         rd_c: begin
+>           c_state <= #1 rd_d;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 1'b1;
+>           sda_chk <= #1 1'b0;
+>         end
+>         rd_d: begin
+>           c_state <= #1 idle;
+>           cmd_ack <= #1 1'b1;
+>           scl_oen <= #1 1'b0;
+>           sda_oen <= #1 1'b1;
+>           sda_chk <= #1 1'b0;
+>         end
+>         wr_a: begin
+>           c_state <= #1 wr_b;
+>           scl_oen <= #1 1'b0;
+>           sda_oen <= #1 din;
+>           sda_chk <= #1 1'b0;
+>         end
+>         wr_b: begin
+>           c_state <= #1 wr_c;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 din;
+>           sda_chk <= #1 1'b0;
+>         end
+>         wr_c: begin
+>           c_state <= #1 wr_d;
+>           scl_oen <= #1 1'b1;
+>           sda_oen <= #1 din;
+>           sda_chk <= #1 1'b1;
+>         end
+>         wr_d: begin
+>           c_state <= #1 idle;
+>           cmd_ack <= #1 1'b1;
+>           scl_oen <= #1 1'b0;
+>           sda_oen <= #1 din;
+>           sda_chk <= #1 1'b0;
+>         end
+>       endcase 
+>     end

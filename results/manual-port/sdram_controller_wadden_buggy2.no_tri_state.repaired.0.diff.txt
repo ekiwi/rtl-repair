@@ -1,0 +1,8 @@
+210c210
+<         next = READ_NOP1;
+---
+>         next = 5'b11101;
+213c213
+<       READ_NOP1: begin
+---
+>       5'b11101: begin

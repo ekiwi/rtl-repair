@@ -1,0 +1,46 @@
+39,43c39,67
+<   localparam INIT_NOP1 = 5'b01000;localparam INIT_PRE1 = 5'b01001;localparam INIT_NOP1_1 = 5'b00101;localparam INIT_REF1 = 5'b01010;localparam INIT_NOP2 = 5'b01011;localparam INIT_REF2 = 5'b01100;localparam INIT_NOP3 = 5'b01101;localparam INIT_LOAD = 5'b01110;localparam INIT_NOP4 = 5'b01111;
+<   localparam REF_PRE = 5'b00001;localparam REF_NOP1 = 5'b00010;localparam REF_REF = 5'b00011;localparam REF_NOP2 = 5'b00100;
+<   localparam READ_ACT = 5'b10000;localparam READ_NOP1 = 5'b10001;localparam READ_CAS = 5'b10010;localparam READ_NOP2 = 5'b10011;localparam READ_READ = 5'b10100;
+<   localparam WRIT_ACT = 5'b11000;localparam WRIT_NOP1 = 5'b11001;localparam WRIT_CAS = 5'b11010;localparam WRIT_NOP2 = 5'b11011;
+<   localparam CMD_PALL = 8'b10010001;localparam CMD_REF = 8'b10001000;localparam CMD_NOP = 8'b10111000;localparam CMD_MRS = 8'b1000000x;localparam CMD_BACT = 8'b10011xxx;localparam CMD_READ = 8'b10101xx1;localparam CMD_WRIT = 8'b10100xx1;
+---
+>   localparam INIT_NOP1 = 5'b01000;
+>   localparam INIT_PRE1 = 5'b01001;
+>   localparam INIT_NOP1_1 = 5'b00101;
+>   localparam INIT_REF1 = 5'b01010;
+>   localparam INIT_NOP2 = 5'b01011;
+>   localparam INIT_REF2 = 5'b01100;
+>   localparam INIT_NOP3 = 5'b01101;
+>   localparam INIT_LOAD = 5'b01110;
+>   localparam INIT_NOP4 = 5'b01111;
+>   localparam REF_PRE = 5'b00001;
+>   localparam REF_NOP1 = 5'b00010;
+>   localparam REF_REF = 5'b00011;
+>   localparam REF_NOP2 = 5'b00100;
+>   localparam READ_ACT = 5'b10000;
+>   localparam READ_NOP1 = 5'b10001;
+>   localparam READ_CAS = 5'b10010;
+>   localparam READ_NOP2 = 5'b10011;
+>   localparam READ_READ = 5'b10100;
+>   localparam WRIT_ACT = 5'b11000;
+>   localparam WRIT_NOP1 = 5'b11001;
+>   localparam WRIT_CAS = 5'b11010;
+>   localparam WRIT_NOP2 = 5'b11011;
+>   localparam CMD_PALL = 8'b10010001;
+>   localparam CMD_REF = 8'b10001000;
+>   localparam CMD_NOP = 8'b10111000;
+>   localparam CMD_MRS = 8'b1000000x;
+>   localparam CMD_BACT = 8'b10011xxx;
+>   localparam CMD_READ = 8'b10101xx1;
+>   localparam CMD_WRIT = 8'b10100xx1;
+76c100,101
+<   wire data_mask_low;wire data_mask_high;
+---
+>   wire data_mask_low;
+>   wire data_mask_high;
+140a166
+>     next = 'd0;
+222a249,250
+>       end
+>       default: begin
