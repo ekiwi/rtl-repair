@@ -114,7 +114,7 @@ rm vcd-traces/*.vcd
 
 ### CirFix Repairs
 
-_This step should take around 24 h._
+_This step should take around 14 h (with 8 threads on a 16-core CPU)._
 
 
 We added a script which automatically runs CirFix on all benchmarks used in the original evaluation. This script can also parallelize the execution which speeds up the evaluation. Please use a conservative number of threads in order not to disadvantage CirFix. Half the number of physical cores on your machine is a good starting point, i.e., if your machine has 8 physical cores, use 4 threads.
@@ -175,23 +175,28 @@ In the particular case mentioned above, we need to focus on the line starting wi
 
 ### Checking Repair Correctness
 
-_This step should take around 60 min._
+_This step should take around 120 min (~40min if you can run the scripts in parallel)._
 
 We provide a script that performs all the correctness tests listed in Table 4. We run that on all results from the CirFix benchmark set.
 
 ```sh
-# takes ~30 min
+# takes ~39 min
 ./scripts/check_repairs.py --results=cirfix-repairs --working-dir=cirfix-repairs-check --sim=vcs
 # takes ~30 min
 ./scripts/check_repairs.py --results=rtl-repair-default --working-dir=rtl-repair-default-check --sim=vcs
+# takes ~30 min
+./scripts/check_repairs.py --results=rtl-repair-all-templates --working-dir=rtl-repair-all-templates-check --sim=vcs
+# takes ~30 min
+./scripts/check_repairs.py --results=rtl-repair-basic-synth --working-dir=rtl-repair-basic-synth-check --sim=vcs
+
 ```
 
-_Note 1: there is no parallelism built into the script. However, feel free to run both invocations in parallel, which is safe since each has its own independent `working-dir`._ 
+_Note 1: there is no parallelism built into the script. However, feel free to run all invocations in parallel, which is safe since each has its own independent `working-dir`. There are also no performance numbers taken in this step, so don't worry about interference from other tasks._ 
 
 _Note 2: the checks do not work with the FPGA benchmark set because they rely on Verilog testbenches, whereas the FPGA benchmarks come with C++ testbenches for the Verilator simulator._
 
 
-### Generating Tables
+### Generate Tables
 
 _This step should take around 2 min._
 
@@ -202,9 +207,9 @@ We provide a script that generates LaTex versions of Tables 1, 2, 4 and 5 from t
   --osdd-toml=vcd-traces/osdd.toml \
   --baseline-toml=vcd-traces/baseline_results.toml \
   --cirfix-result-dir=cirfix-repairs-check \
-  --rtlrepair-result-dir=rtl-repair-default \
-  --rtlrepair-all-templates-result-dir=rtl-repair-all-templates \
-  --rtlrepair-basic-synth-result-dir=rtl-repair-basic-synth \
+  --rtlrepair-result-dir=rtl-repair-default-check \
+  --rtlrepair-all-templates-result-dir=rtl-repair-all-templates-check \
+  --rtlrepair-basic-synth-result-dir=rtl-repair-basic-synth-check
 ```
 
 ### Demo (Optional)
