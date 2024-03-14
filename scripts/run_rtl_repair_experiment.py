@@ -53,12 +53,14 @@ ExpAllTemplates = 'all-templates'
 ExpBasicSynth = 'basic-synth'
 ExpPastKOne = 'past-k-1'
 ExpFpga = 'fpga'
+ExpFpgaAll = 'fpga-all'
 Configs: dict[str, ExpConfig] = {
     ExpDefault: ExpConfig(incremental=True, timeout=_timeout, all_templates=False),
     ExpAllTemplates: ExpConfig(incremental=True, timeout=_timeout, all_templates=True),
     ExpBasicSynth: ExpConfig(incremental=False, timeout=_timeout, all_templates=False),
     ExpPastKOne: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, past_k_step_size=1),
     ExpFpga: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, fpga_instead_of_cirfix_bench=True),
+    ExpFpgaAll: ExpConfig(incremental=True, timeout=_timeout, all_templates=True, fpga_instead_of_cirfix_bench=True),
 }
 Exps = list(Configs.keys())
 
