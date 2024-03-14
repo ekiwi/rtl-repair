@@ -135,7 +135,7 @@ def find_solver_version(solver: str) -> str:
 NoSynthStat = SynthStats(solver_time_ns=0, past_k=-1, future_k=-1)
 
 
-def try_template(config: Config, ast, prefix: str, template, statistics: dict, analysis: AnalysisResults) -> (
+def try_template(config: Config, ast, prefix: str, template, statistics: dict, analysis: AnalysisResults, solution_count: int) -> (
         Status, list):
     if config.opts.per_template_timeout is not None:
         signal.alarm(int(math.ceil(config.opts.per_template_timeout)))
@@ -180,7 +180,7 @@ def try_template(config: Config, ast, prefix: str, template, statistics: dict, a
         for ii, assignment in enumerate(assignments):
             # execute synthesized repair
             changes = do_repair(ast, assignment, blockified)
-            prefix = f"{config.benchmark.bug.buggy.stem}.repaired.{ii}"
+            prefix = f"{config.benchmark.bug.buggy.stem}.repaired.{ii+solution_count}"
             with open(template_dir / f"{prefix}.changes.txt", "w") as f:
                 f.write(f"{template_name}\n")
                 f.write(f"{len(changes)}\n")
@@ -213,7 +213,7 @@ def try_templates_in_sequence(config: Config, ast, statistics: dict, analysis: A
         prefix = f"{ii + 1}_"
         # we need to deep copy the ast since the template is going to modify it in place!
         ast_copy = copy.deepcopy(ast)
-        status, solutions = try_template(config, ast, prefix, template, statistics, analysis)
+        status, solutions = try_template(config, ast, prefix, template, statistics, analysis, len(all_solutions))
 
         # early exit if there is nothing to do or if we found a solution and aren't instructed to run all templates
         if status == Status.NoRepair or (not config.opts.run_all_templates and status == Status.Success):
