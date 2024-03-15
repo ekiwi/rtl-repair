@@ -1,13 +1,21 @@
 # Copyright 2022-2024 The Regents of the University of California
 # released under BSD 3-Clause License
 # author: Kevin Laeufer <laeufer@cs.berkeley.edu>
+import math
 
 import pyverilog.vparser.ast as vast
-from rtlrepair.utils import Namespace, serialize, parse_width
+from rtlrepair.utils import Namespace, serialize, parse_width, parse_verilog_int_literal
 from rtlrepair.visitor import AstVisitor
 
 _synth_var_prefix = "__synth_"
 _synth_change_prefix = "__synth_change_"
+
+
+def is_change_var(ident: vast.Node) -> bool:
+    return isinstance(ident, vast.Identifier) and ident.name.startswith(_synth_change_prefix)
+
+def is_synth_var(ident: vast.Node) -> bool:
+    return isinstance(ident, vast.Identifier) and ident.name.startswith(_synth_var_prefix)
 
 
 def _make_any_const(name: str, width: int) -> vast.Decl:
@@ -69,6 +77,26 @@ class RepairTemplate(AstVisitor):
         name = self._namespace.new_name(_synth_var_prefix + self.name)
         self.synth_vars.append((name, width))
         return name
+
+    def make_inversion(self, expr: vast.Node, free: bool = False):
+        """ generates an optional inversion of a boolean condition """
+        do_invert = self.make_synth_var(1) if free else self.make_change_var()
+        may_invert = vast.Xor(vast.Identifier(do_invert), expr)
+        return may_invert
+
+    def make_choice(self, exprs: list):
+        """ allows the synthesizer so choose one expression """
+        assert len(exprs) > 0
+        if len(exprs) == 1:
+            return exprs[0]
+        # select one expression
+        select_width = int(math.ceil(math.log2(len(exprs))))
+        selector = vast.Identifier(self.make_synth_var(select_width))
+        out = exprs[0]
+        for ii, other in enumerate(exprs[1:]):
+            ident = vast.IntConst(f"{select_width}'b{ii:b}")
+            out = vast.Cond(vast.Eq(selector, ident), other, out)
+        return out
 
     def visit_Decl(self, node: vast.Decl):
         # the only nodes we want to visit by default are wire assignment which result from statements like:
@@ -227,28 +255,77 @@ class RepairPass(AstVisitor):
         return width
 
     def visit_Cond(self, node: vast.Cond):
-        return self.visit_change_node(node)
+        if is_synth_var(node.cond):
+            return self.visit_change_node(node)
+        # match "make_choice" pattern
+        if isinstance(node.cond, vast.Eq) and is_synth_var(node.cond.left):
+            assert not is_change_var(node.cond.left), "unexpected change var in condition"
+            assert isinstance(node.cond.right, vast.IntConst)
+            (expected, _) = parse_verilog_int_literal(node.cond.right.value)
+            actual = self.get_synth_var_value(node.cond.left)
+            if expected == actual:
+                return self.visit(node.true_value)
+            else:
+                return self.visit(node.false_value)
+        return self.generic_visit(node)
 
     def visit_IfStatement(self, node: vast.IfStatement):
         return self.visit_change_node(node)
+
+    def visit_Xor(self, node: vast.Xor):
+        if not is_synth_var(node.left):
+            return self.generic_visit(node)
+        value = self.get_synth_var_value(node.left)
+        expr = self.visit(node.right)
+        if value == 0:
+            return expr
+        else:
+            changed = vast.Ulnot(expr)
+            if is_change_var(node.left):
+                self.record_change(node.lineno, expr, changed)
+            return changed
+
+    def visit_And(self, node: vast.And):
+        # check to see if the right hand side was a potential change
+        if isinstance(node.right, vast.Cond) and is_change_var(node.right.cond):
+            new_right = self.visit(node.right)
+            # did the change simplify to 1?
+            if isinstance(new_right, vast.IntConst) and parse_verilog_int_literal(new_right.value)[0] == 1:
+                return self.visit(node.left)
+            else:
+                return vast.And(self.visit(node.left), new_right)
+        return self.generic_visit(node)
+
+    def visit_Or(self, node: vast.Or):
+        # check to see if the right hand side was a potential change
+        if isinstance(node.right, vast.Cond) and is_change_var(node.right.cond):
+            new_right = self.visit(node.right)
+            # did the change simplify to 0?
+            if isinstance(new_right, vast.IntConst) and parse_verilog_int_literal(new_right.value)[0] == 0:
+                return self.visit(node.left)
+            else:
+                return vast.Or(self.visit(node.left), new_right)
+        return self.generic_visit(node)
+
+
+    def get_synth_var_value(self, ident: vast.Identifier) -> int:
+        assert is_synth_var(ident)
+        if ident.name in self.assignment:
+            return self.assignment[ident.name]
+        else:
+            # sometimes a synthesis var seems to be optimized out, or we do not get the assignment for another reason
+            return 0
+
 
     def visit_change_node(self, node):
         """ unified change function for statement and expression changes
             implements synthesizer choice (created by make_change or make_change_stmt)
         """
         assert isinstance(node, vast.IfStatement) or isinstance(node, vast.Cond)
-        if not isinstance(node.cond, vast.Identifier):
-            return self.generic_visit(node)
-        is_change_var = node.cond.name.startswith(_synth_change_prefix)
-        is_synth_var = node.cond.name.startswith(_synth_var_prefix)
-        if not (is_change_var or is_synth_var):
+        if not is_synth_var(node.cond):
             return self.generic_visit(node)
         # we found a synthesis change, now we need to plug in the original or the old expression
-        if node.cond.name in self.assignment:
-            value = self.assignment[node.cond.name]
-        else:
-            # sometimes a synthesis var seems to be optimized out, or we do not get the assignment for another reason
-            value = 0
+        value = self.get_synth_var_value(node.cond)
         if isinstance(node, vast.Cond):
             false_node, true_node = node.false_value, node.true_value
         else:
@@ -256,9 +333,8 @@ class RepairPass(AstVisitor):
         if value == 1:
             changed = self.visit(true_node)
             # record the change if we are dealing with a change var
-            if is_change_var:
-                line = str(node.lineno)
-                self.changes.append((line, serialize(false_node), serialize(changed)))
+            if is_change_var(node.cond):
+                self.record_change(node.lineno, false_node, changed)
             return changed
         else:
             visited = self.visit(false_node)
@@ -266,6 +342,10 @@ class RepairPass(AstVisitor):
             if visited is None:
                 return _empty_block
             return visited
+
+    def record_change(self, line: int, old: vast.Node, new: vast.Node):
+        self.changes.append((str(line), serialize(old), serialize(new)))
+
 
     def visit_Identifier(self, node: vast.Identifier):
         """ substitute synthesis variable with value """

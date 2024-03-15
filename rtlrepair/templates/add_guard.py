@@ -4,9 +4,9 @@
 import math
 
 from rtlrepair.repair import RepairTemplate
-from rtlrepair.analysis import InferWidths, AnalysisResults, get_lvars
+from rtlrepair.analysis import AnalysisResults, get_lvars
 from rtlrepair.templates.assign_const import ProcessAnalyzer
-from rtlrepair.utils import Namespace, ensure_block
+from rtlrepair.utils import Namespace
 import pyverilog.vparser.ast as vast
 
 
@@ -92,8 +92,7 @@ class AddGuard(RepairTemplate):
             - 1 for adding guard a
             - 1 for adding guard b
         """
-        do_invert = self.make_change_var()
-        may_invert = vast.Xor(vast.Identifier(do_invert), expr)
+        may_invert = self.make_inversion(expr)
         if len(atoms) == 0:
             return may_invert
         a = self.build_guard_item(atoms)
@@ -104,18 +103,9 @@ class AddGuard(RepairTemplate):
         return vast.And(may_invert, may_a_or_b)
 
     def build_guard_item(self, atoms: list[vast.Node]) -> vast.Node:
-        assert len(atoms) > 0
-        out = atoms[0]
-        if len(atoms) > 1:
-            # select one atom
-            select_width = int(math.ceil(math.log2(len(atoms))))
-            selector = vast.Identifier(self.make_synth_var(select_width))
-            for ii, other in enumerate(atoms[1:]):
-                ident = vast.IntConst(f"{select_width}'b{ii:b}")
-                out = vast.Cond(vast.Eq(selector, ident), other, out)
+        out = self.make_choice(atoms)
         # may invert for free
-        do_invert = self.make_synth_var(1)
-        return vast.Xor(vast.Identifier(do_invert), out)
+        return self.make_inversion(out, free=True)
 
 
 def find_atoms(lvars: set[str], a: AnalysisResults) -> list[vast.Node]:
