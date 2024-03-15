@@ -266,15 +266,13 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: correct repair
         changes = self.synth_success(flip_flop_dir, "wadden_buggy1", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        # TODO: add guard does not correctly report changes
-        self.assertEqual(0, changes)
+        self.assertEqual(1, changes)
 
     def test_flip_flop_wadden2(self):
         # CirFix: correct repair
         changes = self.synth_success(flip_flop_dir, "wadden_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        # TODO: add guard does not correctly report changes
-        self.assertEqual(0, changes)
+        self.assertEqual(2, changes)
 
     def test_fsm_full_ssscrazy1(self):
         # CirFix: incorrect repair
@@ -319,8 +317,7 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         # CirFix: correct repair
         changes = self.synth_success(left_shift_dir, "wadden_buggy2", solver=self.solver, init=self.init,
                                      incremental=self.incremental, timeout=self.timeout)
-        # TODO: add guard does not correctly report changes
-        self.assertEqual(0, changes)
+        self.assertEqual(1, changes)
 
     def test_mux_kgoliya1(self):
         # CirFix: timeout
