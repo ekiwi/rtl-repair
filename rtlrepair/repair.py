@@ -214,8 +214,7 @@ def do_repair(ast: vast.Source, assignment: dict, blockified: list) -> list:
 
     # sanity check the number of changes against the number of change variables that are set to 1
     change_count = sum(v for  n,v in assignment.items() if n.startswith(_synth_change_prefix))
-    if len(changes) != change_count:
-        print(f"WARN: changes might be miscounted: {len(changes)} != {change_count} (# change vars set to 1)")
+    assert len(changes) == change_count, f"changes might be miscounted: {len(changes)} != {change_count} (# change vars set to 1)"
 
     return changes
 
