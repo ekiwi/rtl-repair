@@ -237,6 +237,45 @@ We provide a script that generates LaTex versions of Tables 1, 2, 4 and 5 from t
 
 Now we want to compare the results from the tables generated in the previous step to the results reported in the paper.
 
+The performance numbers should roughly match the ones reported in the paper. Some variation is expected because the reproduction is run on a different machine. Different versions of VCS or different VCS license setups might also affect results.
+
+#### Table 1: RTL-Repair vs State-of-the-Art Tool
+
+```sh
+cat tables/performance_statistics_table.txt
+```
+
+_Note: If your experiments ran on a faster machine, you might see fewer timeouts._
+
+#### Table 2: Output / State Divergence Delta Evaluation
+
+```sh
+cat tables/osdd_table.txt
+```
+
+**Known Issue**: We forgot to update this table after changing our tool for the major revision. Thus some of the repair windows and RTL-Repair results are different. We will update the table for the camera ready version.
+
+
+#### Table 4: Repair Correctness Evaluation
+
+```sh
+cat tables/correctness_table.txt
+```
+
+#### Table 5: Repair Speed Evaluation
+
+```sh
+cat tables/ablation_table.txt
+```
+
+**Known Issue**: there is a bug in the artifact version of `rtl-repair` which prevents the correct number of changes to be reported for the `Add Guard` repair template. The number of changes for `flop_w1`, `flop_w2` and `shift_w1` should be 1, 2 and 1 respectively.
+
+_Note: If your experiments ran on a faster machine, you might see fewer timeouts._
+
+#### Table 6: Open Source Bug Results
+
+Unfortunately this table was created manually. To check the results, have a look at the `result.toml` in your `rtl-repair-fpga` folder.
+
 ### Demo (Optional)
 
 _This step takes around 2 min. Longer, if you would like to play some more with the tool._
