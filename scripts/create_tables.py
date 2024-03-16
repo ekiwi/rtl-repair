@@ -110,7 +110,7 @@ def _join_latex_cells(cells: list[str], cell_width: list[int], latex: bool) -> s
     last_ii = len(cells) - 1
     for ii, (cell, width) in enumerate(zip(cells, cell_width)):
         is_last = ii == last_ii
-        if latex:
+        if latex or is_last:
             out += cell.ljust(width, ' ')
         if not is_last:
             multicol_param, content = _analyze_multicol(cell)
