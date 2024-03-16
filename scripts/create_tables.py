@@ -103,19 +103,22 @@ def _analyze_multicol(cell: str) -> (Optional[int], str):
     else:
         return None, None
 
-def _join_latex_cells(cells: list[str]) -> str:
+def _join_latex_cells(cells: list[str], cell_width: list[int], latex: bool) -> str:
     """" Takes multicolumn cells into account and connects them with a space instead of a & """
     out = ""
     multicols = 0
     last_ii = len(cells) - 1
-    for ii, cell in enumerate(cells):
+    for ii, (cell, width) in enumerate(zip(cells, cell_width)):
         is_last = ii == last_ii
-        out += cell
+        if latex:
+            out += cell.ljust(width, ' ')
         if not is_last:
-            multicol_param, _ = _analyze_multicol(cell)
+            multicol_param, content = _analyze_multicol(cell)
             if multicol_param is not None:
                 assert multicols == 0
                 multicols = multicol_param - 1
+            if not latex:
+                out += (cell if content is None else content).ljust(width, ' ')
             if multicols > 0:
                 out += "   "
                 multicols -= 1
@@ -123,12 +126,22 @@ def _join_latex_cells(cells: list[str]) -> str:
                 out += " & "
     return out
 
-def _render_latex_row(column_width: list[int], row: list[str], is_last: bool, right_cols_to_comment: int, separator: str = "\\\\") -> str:
-    padded = [cell.ljust(width, ' ') for width, cell in zip(column_width, row)]
-    content = padded if right_cols_to_comment == 0 else padded[0:-right_cols_to_comment]
-    comments = [] if right_cols_to_comment == 0 else padded[-right_cols_to_comment:]
+def _split_right(lst: list, from_right: int) -> (list, list):
+    assert from_right >= 0
+    if from_right == 0:
+        return lst, []
+    else:
+        return lst[:-from_right], lst[-from_right:]
+
+def _render_latex_row(column_width: list[int], row: list[str], is_last: bool, right_cols_to_comment: int, latex: bool, separator: str = "\\\\") -> str:
+    if not latex:
+        separator = ""
+    #padded = [cell.ljust(width, ' ') for width, cell in zip(column_width, row)]
+    content, comments = _split_right(row, right_cols_to_comment)
+    width_content, width_comments = _split_right(column_width, right_cols_to_comment)
     comment_sep = "" if len(comments) == 0 else "  % "
-    line = _join_latex_cells(content) + " " + separator + comment_sep + _join_latex_cells(comments)
+    line = (_join_latex_cells(content,  width_content, latex) + " " + separator + comment_sep +
+            _join_latex_cells(comments, width_comments, latex))
     return line
 
 NoRepair = "○"
@@ -160,14 +173,23 @@ def _rot_centered(cell: str) -> str:
         columns, content = 1, cell
     return "\\multicolumn{" + str(columns) + "}{c}{\\rot{" + content + "}}"
 
-def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment: int = 0, rot_header: bool = False) -> str:
+def render_table(table: list[list[str]], has_header: bool, latex: bool, right_cols_to_comment: int = 0, rot_header: bool = False) -> str:
     if len(table) == 0:
         return ""
     column_count = len(table[0])
     assert column_count > right_cols_to_comment >= 0
 
     # stringify and escape all cells
-    table = [[_latex_escape(str(cell)) for cell in row] for row in table]
+    if latex:
+        table = [[_latex_escape(str(cell)) for cell in row] for row in table]
+    else:
+        table = [[str(cell) for cell in row] for row in table]
+
+    # if we are not rendering latex, we remove the right most rows instead of commenting them out
+    if not latex and right_cols_to_comment > 0:
+        table = [row[:-right_cols_to_comment] for row in table]
+        column_count = len(table[0])
+        right_cols_to_comment = 0
 
     # determine number and size of columns
     column_width = [0] * column_count
@@ -175,27 +197,33 @@ def render_latex(table: list[list[str]], has_header: bool, right_cols_to_comment
         assert len(row) == len(column_width),\
         f"Expected all rows to have {len(column_width)} columns, but this one has {len(row)}:\n{row}"
         for ii, cell in enumerate(row):
-            column_width[ii] = max(column_width[ii], len(cell))
+            if not latex:
+                _, content = _analyze_multicol(cell)
+                width = len(cell) if content is None else len(content)
+            else:
+                width = len(cell)
+            column_width[ii] = max(column_width[ii], width)
 
     if has_header:
         header = table[0]
-        if rot_header:
+        if rot_header and latex:
             # rotate AND center
             header = [header[0]] + [_rot_centered(h) for h in header[1:]]
         table = table[1:]
 
     last_col_ii = column_count - 1
-    rows = [_render_latex_row(column_width, row, (ii==last_col_ii), right_cols_to_comment)
+    rows = [_render_latex_row(column_width, row, (ii==last_col_ii), right_cols_to_comment, latex=latex)
             for ii, row in enumerate(table)]
     table_str = "\n".join(rows) + "\n"
 
     if has_header:
-        table_str = _render_latex_row(column_width, header, len(rows) == 0, right_cols_to_comment, separator="\\\\ \\midrule") + "\n" + table_str
+        table_str = _render_latex_row(column_width, header, len(rows) == 0, right_cols_to_comment, latex=latex, separator="\\\\ \\midrule") + "\n" + table_str
 
     # add tabular environment
-    start_tab = "\\begin{tabular}{" + ''.join('r' * len(column_width)) +"}"
-    end_tab = "\\end{tabular}"
-    table_str = start_tab + "\n" + table_str + end_tab + "\n"
+    if latex:
+        start_tab = "\\begin{tabular}{" + ''.join('r' * len(column_width)) +"}"
+        end_tab = "\\end{tabular}"
+        table_str = start_tab + "\n" + table_str + end_tab + "\n"
 
     return table_str
 
@@ -268,11 +296,11 @@ def sort_rows_by_benchmark_column(what: str, rows: list[list[str]]) -> list[list
     return sorted_rows
 
 def multirow(num: int, value: str) -> str:
-    return "\multirow[t]{" + str(num) + "}{*}{" + value + "}"
+    return "\\multirow[t]{" + str(num) + "}{*}{" + value + "}"
 
 def multicol(num: int, value: str) -> list[str]:
     assert num >= 1, str(num)
-    return ["\multicolumn{" + str(num) + "}{c}{" + value + "}"] + [""] * (num - 1)
+    return ["\\multicolumn{" + str(num) + "}{c}{" + value + "}"] + [""] * (num - 1)
 
 def check_to_emoji(checked_repairs: list, check_name: str) -> str:
     assert check_name in Checks
@@ -639,27 +667,38 @@ def main():
 
     results = load_results(conf)
 
+    bench_table = benchmark_description_table(conf)
     write_to(conf.working_dir / "benchmark_description_table.tex",
-             render_latex(benchmark_description_table(conf), has_header=True))
+            render_table(bench_table, latex=True, has_header=True))
+    write_to(conf.working_dir / "benchmark_description_table.txt",
+             render_table(bench_table, latex=False, has_header=True))
 
     if conf.osdd_toml is not None:
+        t = osdd_table(conf, results)
         write_to(conf.working_dir / "osdd_table.tex",
-             render_latex(osdd_table(conf, results), has_header=True, right_cols_to_comment=1))
+                 render_table(t, latex=True, has_header=True, right_cols_to_comment=1))
+        write_to(conf.working_dir / "osdd_table.txt",
+                 render_table(t, latex=False, has_header=True, right_cols_to_comment=1))
 
-    write_to(conf.working_dir / "correctness_table.tex",
-             render_latex(correctness_table(results), has_header=True))
+    ct = correctness_table(results)
+    write_to(conf.working_dir / "correctness_table.tex", render_table(ct, latex=True, has_header=True))
+    write_to(conf.working_dir / "correctness_table.txt", render_table(ct, latex=False, has_header=True))
 
     performance_statistics = {}
-    write_to(conf.working_dir / "performance_table.tex",
-             render_latex(performance_table(results, performance_statistics), has_header=True))
-    write_to(conf.working_dir / "performance_statistics_table.tex",
-             render_latex(performance_statistics_table(performance_statistics), has_header=True))
-    write_to(conf.working_dir / "repair_statistics_table.tex",
-             render_latex(repair_statistics_table(performance_statistics), has_header=True))
+    pt = performance_table(results, performance_statistics)
+    write_to(conf.working_dir / "performance_table.tex", render_table(pt, latex=True, has_header=True))
+    write_to(conf.working_dir / "performance_table.txt", render_table(pt, latex=False, has_header=True))
+    pst = performance_statistics_table(performance_statistics)
+    write_to(conf.working_dir / "performance_statistics_table.tex", render_table(pst, latex=True, has_header=True))
+    write_to(conf.working_dir / "performance_statistics_table.txt", render_table(pst, latex=False, has_header=True))
+    rst = repair_statistics_table(performance_statistics)
+    write_to(conf.working_dir / "repair_statistics_table.tex", render_table(rst, latex=True, has_header=True))
+    write_to(conf.working_dir / "repair_statistics_table.txt", render_table(rst, latex=False, has_header=True))
 
-    write_to(conf.working_dir / "ablation_table.tex",
-             render_latex(ablation_table(results), has_header=True, rot_header=True))
-    pass
+    at = ablation_table(results)
+    write_to(conf.working_dir / "ablation_table.tex", render_table(at, latex=True, has_header=True, rot_header=True))
+    write_to(conf.working_dir / "ablation_table.txt", render_table(at, latex=False, has_header=True, rot_header=True))
+
 
 if __name__ == '__main__':
     main()
