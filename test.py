@@ -355,6 +355,11 @@ class TestCirFixBenchmarksIncremental(SynthesisTest):
         self.synth_cannot_repair(sd_dir / "no_tri_state.toml", "wadden_buggy1", solver=self.solver, init=self.init,
                                  incremental=self.incremental, timeout=self.timeout)
 
+    def test_sdram_wadden1_basic_synth(self):
+        # with a big enough timeout, the basic synth finds the solution
+        self.synth_success(sd_dir / "no_tri_state.toml", "wadden_buggy1", solver=self.solver, init=self.init,
+                                 incremental=False, timeout=120)
+
     def test_sdram_wadden2(self):
         # CirFix: timeout
         changes = self.synth_success(sd_dir / "no_tri_state.toml", "wadden_buggy2", solver=self.solver, init=self.init,
