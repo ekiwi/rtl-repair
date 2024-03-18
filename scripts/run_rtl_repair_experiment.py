@@ -30,7 +30,7 @@ _verbose_synth = True
 # the FPGA benchmarks all have testbenches from Verilator which assume a zero init
 _init_fpga = 'zero'
 # the FPGA benchmarks benefit from running with yices2
-_solver_fpga = 'yices2'
+_solver_fpga = 'bitwuzla'
 
 @dataclass
 class ExpConfig:
