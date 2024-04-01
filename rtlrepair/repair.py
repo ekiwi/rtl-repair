@@ -335,7 +335,15 @@ class RepairPass(AstVisitor):
         """
         assert isinstance(node, vast.IfStatement) or isinstance(node, vast.Cond)
         if not is_synth_var(node.cond):
-            return self.generic_visit(node)
+            if is_value(node.cond, 1) or not isinstance(node, vast.IfStatement):
+                return self.generic_visit(node)
+            else:
+                # check to see if the condition simplifies to one (because it was a combination of change variables)
+                node = self.generic_visit(node)
+                if is_value(node.cond, 1):
+                    return node.true_statement
+                else:
+                    return node
         # we found a synthesis change, now we need to plug in the original or the old expression
         value = self.get_synth_var_value(node.cond)
         if isinstance(node, vast.Cond):
