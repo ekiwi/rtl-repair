@@ -156,7 +156,7 @@ module i2c_master_bit_ctrl
   parameter [17:0] wr_d = 18'b1_0000_0000_0000_0000;
 
   always @(posedge clk) begin
-    if(1'b1 & 1'b1 & 1'b1 & 1'b1 & 1'b1) cmd_ack <= 1'b0; 
+    cmd_ack <= 1'b0;
     if(!nReset) begin
       c_state <= #1 idle;
       cmd_ack <= #1 1'b0;

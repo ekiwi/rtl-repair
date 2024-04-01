@@ -134,7 +134,7 @@
 <     endcase 
 ---
 >   always @(posedge clk) begin
->     if(1'b1 & 1'b1 & 1'b1 & 1'b1 & 1'b1) cmd_ack <= 1'b0; 
+>     cmd_ack <= 1'b0;
 >     if(!nReset) begin
 >       c_state <= #1 idle;
 >       cmd_ack <= #1 1'b0;

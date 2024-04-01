@@ -47,14 +47,11 @@ Verilator 4.225 devel rev v4.224-91-g0eeb40b9
 $ bitwuzla --version
 1.0-prerelease
 
-$ yices-smt2 --version
-Yices 2.6.4
-
 $ iverilog -v
 Icarus Verilog version 12.0 (devel) (s20150603-1556-g542da1166)
 
 $ yosys -version
-Yosys 0.20+42 (git sha1 1c36f4cc2, clang 10.0.0-4ubuntu1 -fPIC -Os)
+Yosys 0.18+29
 ```
 
 ### Commercial Verilog Simulator: VCS
@@ -172,8 +169,6 @@ cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/bug_diff.txt
 cat rtl-repair-default/sha3_padder_ssscrazy_buggy1_oracle-full/padder_ssscrazy_buggy1.repaired.0.diff.txt
 ```
 
-_Note: Unfortunately there are some artifacts still left by our repair tool which makes the repair diff somewhat hard to read.
-In the particular case mentioned above, we need to focus on the line starting with `assign update` and simplify the expression in our head._
 
 ### Port Repairs to Original Code
 
@@ -253,8 +248,6 @@ _Note: If your experiments ran on a faster machine, you might see fewer timeouts
 cat tables/osdd_table.txt
 ```
 
-**Known Issue**: We forgot to update this table after changing our tool for the major revision. Thus some of the repair windows and RTL-Repair results are different. We will update the table for the camera ready version.
-
 
 #### Table 4: Repair Correctness Evaluation
 
@@ -268,7 +261,6 @@ cat tables/correctness_table.txt
 cat tables/ablation_table.txt
 ```
 
-**Known Issue**: there is a bug in the artifact version of `rtl-repair` which prevents the correct number of changes to be reported for the `Add Guard` repair template. The number of changes for `flop_w1`, `flop_w2` and `shift_w1` should be 1, 2 and 1 respectively.
 
 _Note: If your experiments ran on a faster machine, you might see fewer timeouts._
 
