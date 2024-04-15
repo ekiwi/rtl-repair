@@ -31,6 +31,7 @@ _verbose_synth = True
 _init_fpga = 'zero'
 # the FPGA benchmarks benefit from running with yices2
 _solver_fpga = 'bitwuzla'
+_timeout_fpga = 120
 
 @dataclass
 class ExpConfig:
@@ -60,9 +61,9 @@ Configs: dict[str, ExpConfig] = {
     ExpAllTemplates: ExpConfig(incremental=True, timeout=_timeout, all_templates=True),
     ExpBasicSynth: ExpConfig(incremental=False, timeout=_timeout, all_templates=False),
     ExpPastKOne: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, past_k_step_size=1),
-    ExpFpga: ExpConfig(incremental=True, timeout=_timeout, all_templates=False, fpga_instead_of_cirfix_bench=True),
-    ExpFpgaAll: ExpConfig(incremental=True, timeout=_timeout, all_templates=True, fpga_instead_of_cirfix_bench=True),
-    ExpFpgaBasicSynth: ExpConfig(incremental=False, timeout=_timeout, all_templates=False, fpga_instead_of_cirfix_bench=True),
+    ExpFpga: ExpConfig(incremental=True, timeout=_timeout_fpga, all_templates=False, fpga_instead_of_cirfix_bench=True),
+    ExpFpgaAll: ExpConfig(incremental=True, timeout=_timeout_fpga, all_templates=True, fpga_instead_of_cirfix_bench=True),
+    ExpFpgaBasicSynth: ExpConfig(incremental=False, timeout=_timeout_fpga, all_templates=False, fpga_instead_of_cirfix_bench=True),
 }
 Exps = list(Configs.keys())
 
