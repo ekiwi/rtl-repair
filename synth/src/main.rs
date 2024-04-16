@@ -119,7 +119,8 @@ fn main() {
     );
 
     // load system
-    let (mut ctx, mut sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
+    let (mut ctx, mut sys) = btor2::parse_file(&args.design)
+        .unwrap_or_else(|| panic!("Failed to load btor2 file `{}`!", args.design));
 
     // simplify system
     replace_anonymous_inputs_with_zero(&mut ctx, &mut sys);
@@ -341,19 +342,9 @@ fn print_no_repair(synth_vars: &RepairVars, ctx: &Context) {
     print_result(&res, synth_vars, ctx);
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Stats {
     final_past_k: StepInt,
     final_future_k: StepInt,
     solver_time: u64,
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Self {
-            final_past_k: 0,
-            final_future_k: 0,
-            solver_time: 0,
-        }
-    }
 }
