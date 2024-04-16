@@ -193,7 +193,7 @@ where
     }
 }
 
-fn test_repair<S, E>(
+pub fn test_repair<S, E>(
     rctx: &mut RepairContext<S, E>,
     snapshots: &mut HashMap<StepInt, S::SnapshotId>,
     verbose: bool,
@@ -214,7 +214,7 @@ where
     rctx.tb.run(&mut rctx.sim, &conf, false)
 }
 
-fn constrain_changes<S, E>(
+pub fn constrain_changes<S, E>(
     rctx: &mut RepairContext<S, E>,
     num_changes: u32,
     start_step: StepInt,
@@ -228,7 +228,7 @@ where
     Ok(())
 }
 
-fn update_sim_state_to_step<S, E>(
+pub fn update_sim_state_to_step<S, E>(
     rctx: &mut RepairContext<S, E>,
     snapshots: &mut HashMap<StepInt, S::SnapshotId>,
     verbose: bool,

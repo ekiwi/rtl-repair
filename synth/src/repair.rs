@@ -14,6 +14,7 @@ use std::str::FromStr;
 
 pub type Result<T> = std::io::Result<T>;
 
+#[derive(Debug, PartialEq)]
 pub enum RepairStatus {
     CannotRepair,
     NoRepair,
