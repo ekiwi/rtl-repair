@@ -101,8 +101,16 @@ where
             for offset in 0..window_size {
                 // derive past and future k
                 let past_k = window_size - 1 - offset;
+                if past_k >= self.conf.fail_at {
+                    // window does not fit on the left
+                    continue;
+                }
                 // println!("window_size={window_size}, past_k={past_k}, offset={offset}");
                 let future_k = window_size - 1 - past_k;
+                if self.conf.fail_at + future_k > self.rctx.tb.step_count() {
+                    // window does not fit on the right
+                    continue;
+                }
                 assert_eq!(past_k + future_k + 1, window_size);
                 let c = WindowConf {
                     past_k,
