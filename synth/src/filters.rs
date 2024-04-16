@@ -19,11 +19,11 @@ pub fn can_be_repaired_from_arbitrary_state<S: Simulator, E: TransitionSystemEnc
     rctx.smt_ctx.push_many(1)?;
 
     // start encoding
-    rctx.enc.init_at(rctx.ctx, rctx.smt_ctx, fail_at)?;
+    rctx.enc.init_at(rctx.ctx, &mut rctx.smt_ctx, fail_at)?;
 
     // apply output / input constraints
     rctx.tb
-        .apply_constraints(rctx.ctx, rctx.smt_ctx, rctx.enc, fail_at, fail_at)?;
+        .apply_constraints(rctx.ctx, &mut rctx.smt_ctx, &mut rctx.enc, fail_at, fail_at)?;
 
     // let's seee if a solution exists
     let r = rctx.smt_ctx.check()?;
