@@ -179,7 +179,7 @@ where
                             correct_repair_tries: Some((failures_at.len() + 1) as u64),
                             correct_repair_ns,
                         };
-                        return Ok((stats, make_result(Some(repair), &window)));
+                        return Ok((stats, make_result(Some(repair), window)));
                     }
                     Some(fail) => {
                         if verbose {
@@ -192,7 +192,7 @@ where
                 self.rctx.synth_vars.block_assignment(
                     self.rctx.ctx,
                     &mut self.rctx.smt_ctx,
-                    &mut self.rctx.enc,
+                    &self.rctx.enc,
                     &repair,
                     step_range.start,
                 )?;
@@ -200,7 +200,7 @@ where
                     Response::Sat => Some(self.rctx.synth_vars.read_assignment(
                         self.rctx.ctx,
                         &mut self.rctx.smt_ctx,
-                        &mut self.rctx.enc,
+                        &self.rctx.enc,
                         step_range.start,
                     )),
                     Response::Unsat | Response::Unknown => None,
@@ -212,7 +212,7 @@ where
                 correct_repair_tries: None,
                 correct_repair_ns: None,
             };
-            Ok((stats, make_result(None, &window)))
+            Ok((stats, make_result(None, window)))
         } else {
             // no repair found
             let stats = Stats {
@@ -220,7 +220,7 @@ where
                 correct_repair_tries: None,
                 correct_repair_ns: None,
             };
-            Ok((stats, make_result(None, &window)))
+            Ok((stats, make_result(None, window)))
         }
     }
 }

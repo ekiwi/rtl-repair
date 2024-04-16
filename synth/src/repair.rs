@@ -52,12 +52,12 @@ pub fn constrain_changes<S: Simulator, E: TransitionSystemEncoding>(
         rctx.change_count_ref,
         start_step,
     );
-    let constraint = rctx.smt_ctx.eq(
+    // constraint
+    rctx.smt_ctx.eq(
         change_count_expr,
         rctx.smt_ctx
             .binary(change_count_width as usize, num_changes),
-    );
-    constraint
+    )
 }
 
 pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding>(
@@ -200,7 +200,7 @@ impl RepairVars {
     }
 
     pub fn is_repair_var(&self, other: ExprRef) -> bool {
-        self.change.contains(&other) || self.free.iter().find(|(e, _)| *e == other).is_some()
+        self.change.contains(&other) || self.free.iter().any(|(e, _)| *e == other)
     }
 
     pub fn apply_to_sim(&self, sim: &mut impl Simulator, assignment: &RepairAssignment) {
