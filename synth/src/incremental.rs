@@ -61,7 +61,13 @@ where
             }
 
             // check to see if we can reproduce the error with the simulator
-            self.update_sim_state_to_step(step_range.start);
+            let verbose = self.verbose();
+            update_sim_state_to_step(
+                &mut self.rctx,
+                &mut self.snapshots,
+                verbose,
+                step_range.start,
+            );
             let conf = RunConfig {
                 start: step_range.start,
                 stop: StopAt::first_fail_or_step(step_range.end),
@@ -74,7 +80,13 @@ where
             self.rctx.smt_ctx.push_many(1)?;
 
             // restore correct starting state for SMT encoding
-            self.update_sim_state_to_step(step_range.start);
+            let verbose = self.verbose();
+            update_sim_state_to_step(
+                &mut self.rctx,
+                &mut self.snapshots,
+                verbose,
+                step_range.start,
+            );
 
             // generate one minimal repair
             let r =
@@ -84,7 +96,7 @@ where
 
             if let Some((r0, num_changes)) = r {
                 // add a "permanent" change count constraint
-                self.constrain_changes(num_changes, step_range.start)?;
+                constrain_changes(&mut self.rctx, num_changes, step_range.start)?;
 
                 // iterate over possible solutions
                 let mut maybe_repair = Some(r0);
@@ -97,7 +109,10 @@ where
                                 .get_change_names(self.rctx.ctx, &repair)
                         );
                     }
-                    match self.test_repair(&repair).first_fail_at {
+                    let verbose = self.verbose();
+                    match test_repair(&mut self.rctx, &mut self.snapshots, verbose, &repair)
+                        .first_fail_at
+                    {
                         None => {
                             // success, we found a solution
                             correct_solutions.push(repair.clone());
@@ -176,54 +191,78 @@ where
     fn verbose(&self) -> bool {
         self.rctx.verbose
     }
+}
 
-    fn test_repair(&mut self, repair: &RepairAssignment) -> RunResult {
-        let start_step = 0;
-        self.update_sim_state_to_step(start_step);
-        self.rctx
-            .synth_vars
-            .apply_to_sim(&mut self.rctx.sim, repair);
-        let conf = RunConfig {
-            start: start_step,
-            stop: StopAt::first_fail(),
-        };
-        self.rctx.tb.run(&mut self.rctx.sim, &conf, false)
-    }
+fn test_repair<S, E>(
+    rctx: &mut RepairContext<S, E>,
+    snapshots: &mut HashMap<StepInt, S::SnapshotId>,
+    verbose: bool,
+    repair: &RepairAssignment,
+) -> RunResult
+where
+    S: Simulator,
+    E: TransitionSystemEncoding,
+    S::SnapshotId: Clone,
+{
+    let start_step = 0;
+    update_sim_state_to_step(rctx, snapshots, verbose, start_step);
+    rctx.synth_vars.apply_to_sim(&mut rctx.sim, repair);
+    let conf = RunConfig {
+        start: start_step,
+        stop: StopAt::first_fail(),
+    };
+    rctx.tb.run(&mut rctx.sim, &conf, false)
+}
 
-    fn constrain_changes(&mut self, num_changes: u32, start_step: StepInt) -> Result<()> {
-        let constraint = constrain_changes(&mut self.rctx, num_changes, start_step);
-        self.rctx.smt_ctx.assert(constraint)?;
-        Ok(())
-    }
+fn constrain_changes<S, E>(
+    rctx: &mut RepairContext<S, E>,
+    num_changes: u32,
+    start_step: StepInt,
+) -> Result<()>
+where
+    S: Simulator,
+    E: TransitionSystemEncoding,
+{
+    let constraint = crate::repair::constrain_changes(rctx, num_changes, start_step);
+    rctx.smt_ctx.assert(constraint)?;
+    Ok(())
+}
 
-    fn update_sim_state_to_step(&mut self, step: StepInt) {
-        assert!(step < self.rctx.tb.step_count());
-        if let Some(snapshot_id) = self.snapshots.get(&step) {
-            self.rctx.sim.restore_snapshot(snapshot_id.clone());
-        } else {
-            // find nearest step, _before_ the step we are going for
-            let mut nearest_step = 0;
-            let mut nearest_id = self.snapshots[&0].clone();
-            for (other_step, snapshot_id) in self.snapshots.iter() {
-                if *other_step < step && *other_step > nearest_step {
-                    nearest_step = *other_step;
-                    nearest_id = snapshot_id.clone();
-                }
+fn update_sim_state_to_step<S, E>(
+    rctx: &mut RepairContext<S, E>,
+    snapshots: &mut HashMap<StepInt, S::SnapshotId>,
+    verbose: bool,
+    step: StepInt,
+) where
+    S: Simulator,
+    E: TransitionSystemEncoding,
+    S::SnapshotId: Clone,
+{
+    assert!(step < rctx.tb.step_count());
+    if let Some(snapshot_id) = snapshots.get(&step) {
+        rctx.sim.restore_snapshot(snapshot_id.clone());
+    } else {
+        // find nearest step, _before_ the step we are going for
+        let mut nearest_step = 0;
+        let mut nearest_id = snapshots[&0].clone();
+        for (other_step, snapshot_id) in snapshots.iter() {
+            if *other_step < step && *other_step > nearest_step {
+                nearest_step = *other_step;
+                nearest_id = snapshot_id.clone();
             }
-
-            // go from nearest snapshot to the point where we want to take a snapshot
-            self.rctx.sim.restore_snapshot(nearest_id);
-            let run_conf = RunConfig {
-                start: nearest_step,
-                stop: StopAt::step(step),
-            };
-            let verbose = self.verbose();
-            self.rctx.tb.run(&mut self.rctx.sim, &run_conf, verbose);
-
-            // remember the state in case we need to go back
-            let new_snapshot = self.rctx.sim.take_snapshot();
-            self.snapshots.insert(step, new_snapshot.clone());
         }
+
+        // go from nearest snapshot to the point where we want to take a snapshot
+        rctx.sim.restore_snapshot(nearest_id);
+        let run_conf = RunConfig {
+            start: nearest_step,
+            stop: StopAt::step(step),
+        };
+        rctx.tb.run(&mut rctx.sim, &run_conf, verbose);
+
+        // remember the state in case we need to go back
+        let new_snapshot = rctx.sim.take_snapshot();
+        snapshots.insert(step, new_snapshot.clone());
     }
 }
 
