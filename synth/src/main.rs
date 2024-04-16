@@ -211,7 +211,7 @@ fn main() {
         return;
     }
 
-    let error_snapshot = if args.incremental {
+    let error_snapshot = if args.incremental || args.windowing {
         Some(sim.take_snapshot())
     } else {
         None
@@ -226,7 +226,8 @@ fn main() {
     let fail_at = res.first_fail_at.unwrap();
 
     // start solver
-    let (smt_ctx, enc) = start_solver(&args, &mut ctx, &sys).expect("Failed to start SMT solver!");
+    let (smt_ctx, enc) = start_solver(&args.solver.cmd(), args.smt_dump.as_deref(), &mut ctx, &sys)
+        .expect("Failed to start SMT solver!");
 
     let mut repair_ctx = RepairContext {
         ctx: &mut ctx,
@@ -269,10 +270,16 @@ fn main() {
             .expect("failed to execute incremental synthesizer")
     } else if args.windowing {
         let conf = WindowingConf {
+            cmd: args.solver.cmd(),
+            dump_smt: args.smt_dump.clone(),
             fail_at,
             max_repair_window_size: args.max_repair_window_size,
         };
-        let mut rep = Windowing::new(repair_ctx, conf).expect("failed to create windowing solver");
+        let mut snapshots = HashMap::new();
+        snapshots.insert(0, start_state);
+        snapshots.insert(res.first_fail_at.unwrap(), error_snapshot.unwrap());
+        let mut rep =
+            Windowing::new(repair_ctx, conf, snapshots).expect("failed to create windowing solver");
         rep.run().expect("failed to execute windowing exploration")
     } else {
         basic_repair(repair_ctx).expect("failed to execute basic synthesizer")
@@ -286,12 +293,13 @@ fn main() {
     print_result(&repair, &synth_vars, &ctx);
 }
 
-fn start_solver(
-    args: &Args,
+pub fn start_solver(
+    cmd: &SmtSolverCmd,
+    smt_dump: Option<&str>,
     ctx: &mut Context,
     sys: &TransitionSystem,
 ) -> std::io::Result<(smt::Context, UnrollSmtEncoding)> {
-    let mut smt_ctx = create_smt_ctx(&args.solver.cmd(), args.smt_dump.as_deref())?;
+    let mut smt_ctx = create_smt_ctx(cmd, smt_dump)?;
     let enc = UnrollSmtEncoding::new(ctx, sys, true);
     enc.define_header(&mut smt_ctx)?;
     Ok((smt_ctx, enc))
