@@ -139,7 +139,7 @@ where
                     self.rctx.synth_vars.block_assignment(
                         self.rctx.ctx,
                         &mut self.rctx.smt_ctx,
-                        &mut self.rctx.enc,
+                        &self.rctx.enc,
                         &repair,
                         step_range.start,
                     )?;
@@ -147,7 +147,7 @@ where
                         Response::Sat => Some(self.rctx.synth_vars.read_assignment(
                             self.rctx.ctx,
                             &mut self.rctx.smt_ctx,
-                            &mut self.rctx.enc,
+                            &self.rctx.enc,
                             step_range.start,
                         )),
                         Response::Unsat | Response::Unknown => None,
@@ -317,7 +317,7 @@ impl RepairWindow {
         past_step_size: StepInt,
         max_window_size: StepInt,
     ) -> bool {
-        let old = self.clone();
+        let old = *self;
         // when no solution is found, we update the past K
         // in order to get a more accurate starting state
         if failures.is_empty() {

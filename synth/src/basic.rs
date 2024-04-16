@@ -54,13 +54,8 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
     }
 
     let start_apply_const = std::time::Instant::now();
-    rctx.tb.apply_constraints(
-        rctx.ctx,
-        &mut rctx.smt_ctx,
-        &mut rctx.enc,
-        start_step,
-        end_step,
-    )?;
+    rctx.tb
+        .apply_constraints(rctx.ctx, &mut rctx.smt_ctx, &rctx.enc, start_step, end_step)?;
     if rctx.verbose {
         println!(
             "Took {:?} to apply constraints",
@@ -91,7 +86,7 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
 
     let solution =
         rctx.synth_vars
-            .read_assignment(rctx.ctx, &mut rctx.smt_ctx, &mut rctx.enc, start_step);
+            .read_assignment(rctx.ctx, &mut rctx.smt_ctx, &rctx.enc, start_step);
     check_assuming_end(&mut rctx.smt_ctx, &rctx.solver)?;
     Ok(Some((solution, min_num_changes)))
 }
