@@ -36,7 +36,7 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
     let end_step = end_step_option.unwrap_or(rctx.tb.step_count() - 1);
 
     // start encoding
-    rctx.enc.init_at(rctx.ctx, rctx.smt_ctx, start_step)?;
+    rctx.enc.init_at(rctx.ctx, &mut rctx.smt_ctx, start_step)?;
 
     // constrain starting state to that from the simulator
     constrain_starting_state(rctx, start_step)?;
@@ -44,7 +44,7 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
     let start_unroll = std::time::Instant::now();
     // unroll system and constrain inputs and outputs
     for _ in start_step..end_step {
-        rctx.enc.unroll(rctx.ctx, rctx.smt_ctx)?;
+        rctx.enc.unroll(rctx.ctx, &mut rctx.smt_ctx)?;
     }
     if rctx.verbose {
         println!(
@@ -54,8 +54,13 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
     }
 
     let start_apply_const = std::time::Instant::now();
-    rctx.tb
-        .apply_constraints(rctx.ctx, rctx.smt_ctx, rctx.enc, start_step, end_step)?;
+    rctx.tb.apply_constraints(
+        rctx.ctx,
+        &mut rctx.smt_ctx,
+        &mut rctx.enc,
+        start_step,
+        end_step,
+    )?;
     if rctx.verbose {
         println!(
             "Took {:?} to apply constraints",
@@ -84,9 +89,9 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
         println!("Found a minimal solution with {min_num_changes} changes.")
     }
 
-    let solution = rctx
-        .synth_vars
-        .read_assignment(rctx.ctx, rctx.smt_ctx, rctx.enc, start_step);
-    check_assuming_end(rctx.smt_ctx, &rctx.solver)?;
+    let solution =
+        rctx.synth_vars
+            .read_assignment(rctx.ctx, &mut rctx.smt_ctx, &mut rctx.enc, start_step);
+    check_assuming_end(&mut rctx.smt_ctx, &rctx.solver)?;
     Ok(Some((solution, min_num_changes)))
 }

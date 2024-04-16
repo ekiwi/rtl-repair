@@ -215,18 +215,17 @@ fn main() {
     let fail_at = res.first_fail_at.unwrap();
 
     // start solver
-    let (mut smt_ctx, mut enc) =
-        start_solver(&args, &mut ctx, &sys).expect("Failed to start SMT solver!");
+    let (smt_ctx, enc) = start_solver(&args, &mut ctx, &sys).expect("Failed to start SMT solver!");
 
     let mut repair_ctx = RepairContext {
         ctx: &mut ctx,
         sys: &sys,
-        sim: &mut sim,
+        sim,
         synth_vars: &synth_vars,
         tb: &tb,
         change_count_ref,
-        smt_ctx: &mut smt_ctx,
-        enc: &mut enc,
+        smt_ctx,
+        enc,
         solver: args.solver.cmd(),
         verbose: args.verbose,
     };

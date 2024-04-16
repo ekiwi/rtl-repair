@@ -29,12 +29,12 @@ pub struct RepairResult {
 pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding> {
     pub ctx: &'a mut Context,
     pub sys: &'a TransitionSystem,
-    pub sim: &'a mut S,
+    pub sim: S,
     pub synth_vars: &'a RepairVars,
     pub tb: &'a Testbench,
     pub change_count_ref: ExprRef,
-    pub smt_ctx: &'a mut smt::Context,
-    pub enc: &'a mut E,
+    pub smt_ctx: smt::Context,
+    pub enc: E,
     pub solver: SmtSolverCmd,
     pub verbose: bool,
 }
@@ -45,9 +45,12 @@ pub fn constrain_changes<S: Simulator, E: TransitionSystemEncoding>(
     start_step: StepInt,
 ) -> smt::SExpr {
     let change_count_width = rctx.change_count_ref.get_bv_type(rctx.ctx).unwrap();
-    let change_count_expr =
-        rctx.enc
-            .get_at(rctx.ctx, rctx.smt_ctx, rctx.change_count_ref, start_step);
+    let change_count_expr = rctx.enc.get_at(
+        rctx.ctx,
+        &mut rctx.smt_ctx,
+        rctx.change_count_ref,
+        start_step,
+    );
     let constraint = rctx.smt_ctx.eq(
         change_count_expr,
         rctx.smt_ctx
@@ -63,7 +66,7 @@ pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding>(
     let mut num_changes = 1u32;
     loop {
         let constraint = constrain_changes(rctx, num_changes, start_step);
-        match check_assuming(rctx.smt_ctx, constraint, &rctx.solver)? {
+        match check_assuming(&mut rctx.smt_ctx, constraint, &rctx.solver)? {
             smt::Response::Sat => {
                 // found a solution
                 return Ok(num_changes);
@@ -72,7 +75,7 @@ pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding>(
             smt::Response::Unknown => panic!("SMT solver returned unknown!"),
         }
         // remove assertion for next round
-        check_assuming_end(rctx.smt_ctx, &rctx.solver)?;
+        check_assuming_end(&mut rctx.smt_ctx, &rctx.solver)?;
         num_changes += 1;
     }
 }
@@ -88,18 +91,18 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
     {
         let symbol = rctx
             .enc
-            .get_at(rctx.ctx, rctx.smt_ctx, state.symbol, start_step);
+            .get_at(rctx.ctx, &mut rctx.smt_ctx, state.symbol, start_step);
         match state.symbol.get_type(rctx.ctx) {
             Type::BV(_) => {
                 let value = rctx.sim.get(state.symbol).unwrap();
-                let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
+                let value_expr = value_to_smt_expr(&mut rctx.smt_ctx, value);
                 rctx.smt_ctx.assert(rctx.smt_ctx.eq(symbol, value_expr))?;
             }
             Type::Array(tpe) => {
                 let elements = 1u64 << tpe.index_width;
                 for index in 0..elements {
                     let value = rctx.sim.get_element(state.symbol, index).unwrap();
-                    let value_expr = value_to_smt_expr(rctx.smt_ctx, value);
+                    let value_expr = value_to_smt_expr(&mut rctx.smt_ctx, value);
                     let index_expr = if tpe.index_width == 1 {
                         if index == 0 {
                             rctx.smt_ctx.false_()

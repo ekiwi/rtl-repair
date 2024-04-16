@@ -66,7 +66,8 @@ where
                 start: step_range.start,
                 stop: StopAt::first_fail_or_step(step_range.end),
             };
-            let res = self.rctx.tb.run(self.rctx.sim, &conf, self.verbose());
+            let verbose = self.verbose();
+            let res = self.rctx.tb.run(&mut self.rctx.sim, &conf, verbose);
             assert_eq!(res.first_fail_at, Some(self.conf.fail_at), "{conf:?}");
 
             // start new SMT context to make it easy to later revert everything
@@ -122,16 +123,16 @@ where
                     // try to find a different solution
                     self.rctx.synth_vars.block_assignment(
                         self.rctx.ctx,
-                        self.rctx.smt_ctx,
-                        self.rctx.enc,
+                        &mut self.rctx.smt_ctx,
+                        &mut self.rctx.enc,
                         &repair,
                         step_range.start,
                     )?;
                     maybe_repair = match self.rctx.smt_ctx.check()? {
                         Response::Sat => Some(self.rctx.synth_vars.read_assignment(
                             self.rctx.ctx,
-                            self.rctx.smt_ctx,
-                            self.rctx.enc,
+                            &mut self.rctx.smt_ctx,
+                            &mut self.rctx.enc,
                             step_range.start,
                         )),
                         Response::Unsat | Response::Unknown => None,
@@ -179,12 +180,14 @@ where
     fn test_repair(&mut self, repair: &RepairAssignment) -> RunResult {
         let start_step = 0;
         self.update_sim_state_to_step(start_step);
-        self.rctx.synth_vars.apply_to_sim(self.rctx.sim, repair);
+        self.rctx
+            .synth_vars
+            .apply_to_sim(&mut self.rctx.sim, repair);
         let conf = RunConfig {
             start: start_step,
             stop: StopAt::first_fail(),
         };
-        self.rctx.tb.run(self.rctx.sim, &conf, false)
+        self.rctx.tb.run(&mut self.rctx.sim, &conf, false)
     }
 
     fn constrain_changes(&mut self, num_changes: u32, start_step: StepInt) -> Result<()> {
@@ -214,7 +217,8 @@ where
                 start: nearest_step,
                 stop: StopAt::step(step),
             };
-            self.rctx.tb.run(self.rctx.sim, &run_conf, self.verbose());
+            let verbose = self.verbose();
+            self.rctx.tb.run(&mut self.rctx.sim, &run_conf, verbose);
 
             // remember the state in case we need to go back
             let new_snapshot = self.rctx.sim.take_snapshot();
