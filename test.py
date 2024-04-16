@@ -209,10 +209,11 @@ class TestFpgaDebugBenchmarks(SynthesisTest):
 
     def test_c1(self):
         """ SD-SPI driver from ZipCPU. Missing condition in `if`. Fails after 101 cycles. """
-        # TODO: why does this fail now?
+        # fails with yices
         self.synth_cannot_repair(zip_cpu_sdspi_dir, "c1", solver="yices2", init="zero", incremental=True, timeout=120)
-        #changes = self.synth_success(zip_cpu_sdspi_dir, "c1", solver="yices2", init="zero", incremental=True, timeout=120)
-        #self.assertEqual(changes, 1)
+        # succeeds with bitwuzla
+        changes = self.synth_success(zip_cpu_sdspi_dir, "c1", solver="bitwuzla", init="zero", incremental=True, timeout=120)
+        self.assertEqual(changes, 1)
 
     def test_c3(self):
         """ SD-SPI driver from ZipCPU. Missing delay register. Fails after 6 cycles. """
