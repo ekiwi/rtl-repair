@@ -212,7 +212,7 @@ where
                 correct_repair_tries: None,
                 correct_repair_ns: None,
             };
-            Ok((stats, make_result(None, &window)));
+            Ok((stats, make_result(None, &window)))
         } else {
             // no repair found
             let stats = Stats {
@@ -220,7 +220,7 @@ where
                 correct_repair_tries: None,
                 correct_repair_ns: None,
             };
-            Ok((stats, make_result(None, &window)));
+            Ok((stats, make_result(None, &window)))
         }
     }
 }
