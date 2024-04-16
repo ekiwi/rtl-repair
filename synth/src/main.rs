@@ -1,4 +1,4 @@
-// Copyright 2023 The Regents of the University of California
+// Copyright 2023-2024 The Regents of the University of California
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 mod basic;
@@ -6,6 +6,7 @@ mod filters;
 mod incremental;
 mod repair;
 mod testbench;
+mod windowing;
 
 use crate::basic::basic_repair;
 use crate::filters::can_be_repaired_from_arbitrary_state;
@@ -14,6 +15,7 @@ use crate::repair::{
     add_change_count, create_smt_ctx, RepairContext, RepairResult, RepairStatus, RepairVars,
 };
 use crate::testbench::*;
+use crate::windowing::{Windowing, WindowingConf};
 use clap::{arg, Parser, ValueEnum};
 use easy_smt as smt;
 use libpatron::ir::{
@@ -81,6 +83,8 @@ struct Args {
         help = "the maximum number of incorrect solution to try before enlarging the repair window"
     )]
     max_incorrect_solutions_per_window_size: Option<usize>,
+    #[arg(long, help = "run a exhaustive exploration of window sizes")]
+    windowing: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -107,6 +111,12 @@ pub enum Init {
 
 fn main() {
     let args = Args::parse();
+
+    // make sure we do not have conflicting flags
+    assert!(
+        !(args.incremental && args.windowing),
+        "Cannot do incremental repair + windowing exploration at the same time!"
+    );
 
     // load system
     let (mut ctx, mut sys) = btor2::parse_file(&args.design).expect("Failed to load btor2 file!");
@@ -256,6 +266,13 @@ fn main() {
             .expect("failed to create incremental solver");
         rep.run()
             .expect("failed to execute incremental synthesizer")
+    } else if args.windowing {
+        let conf = WindowingConf {
+            fail_at,
+            max_repair_window_size: args.max_repair_window_size,
+        };
+        let mut rep = Windowing::new(repair_ctx, conf).expect("failed to create windowing solver");
+        rep.run().expect("failed to execute windowing exploration")
     } else {
         basic_repair(repair_ctx).expect("failed to execute basic synthesizer")
     };
