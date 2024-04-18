@@ -5,8 +5,8 @@ mod basic;
 mod filters;
 mod incremental;
 mod repair;
+mod studies;
 mod testbench;
-mod windowing;
 
 use crate::basic::basic_repair;
 use crate::filters::can_be_repaired_from_arbitrary_state;
@@ -14,8 +14,8 @@ use crate::incremental::{IncrementalConf, IncrementalRepair};
 use crate::repair::{
     add_change_count, create_smt_ctx, RepairContext, RepairResult, RepairStatus, RepairVars,
 };
+use crate::studies::windowing::{Windowing, WindowingConf};
 use crate::testbench::*;
-use crate::windowing::{Windowing, WindowingConf};
 use clap::{arg, Parser, ValueEnum};
 use easy_smt as smt;
 use libpatron::ir::{
