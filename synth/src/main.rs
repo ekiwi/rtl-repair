@@ -14,6 +14,7 @@ use crate::incremental::{IncrementalConf, IncrementalRepair};
 use crate::repair::{
     add_change_count, create_smt_ctx, RepairContext, RepairResult, RepairStatus, RepairVars,
 };
+use crate::studies::unrolling::unrolling;
 use crate::studies::windowing::{Windowing, WindowingConf};
 use crate::testbench::*;
 use clap::{arg, Parser, ValueEnum};
@@ -84,7 +85,12 @@ struct Args {
     )]
     max_incorrect_solutions_per_window_size: Option<usize>,
     #[arg(long, help = "run a exhaustive exploration of window sizes")]
-    windowing: bool,
+    study_windowing: bool,
+    #[arg(
+        long,
+        help = "run a exhaustive exploration of different unrolling lengths"
+    )]
+    study_unrolling: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -109,14 +115,29 @@ pub enum Init {
     Any, // not really supported
 }
 
+#[derive(Debug, PartialEq)]
+enum RepairCommand {
+    BasicRepair,
+    IncrementalRepair,
+    WindowingStudy,
+    UnrollingStudy,
+}
+
+impl RepairCommand {
+    fn from_args(a: &Args) -> Self {
+        match (a.incremental, a.study_unrolling, a.study_windowing) {
+            (false, false, false) => RepairCommand::BasicRepair,
+            (true, false, false) => RepairCommand::IncrementalRepair,
+            (false, true, false) => RepairCommand::UnrollingStudy,
+            (false, false, true) => RepairCommand::WindowingStudy,
+            _ => panic!("Can only select one of incremental, study-unrolling or study-windowing"),
+        }
+    }
+}
+
 fn main() {
     let args = Args::parse();
-
-    // make sure we do not have conflicting flags
-    assert!(
-        !(args.incremental && args.windowing),
-        "Cannot do incremental repair + windowing exploration at the same time!"
-    );
+    let cmd = RepairCommand::from_args(&args);
 
     // load system
     let (mut ctx, mut sys) = btor2::parse_file(&args.design)
@@ -211,7 +232,7 @@ fn main() {
         return;
     }
 
-    let error_snapshot = if args.incremental || args.windowing {
+    let error_snapshot = if cmd != RepairCommand::BasicRepair {
         Some(sim.take_snapshot())
     } else {
         None
@@ -253,37 +274,46 @@ fn main() {
         return;
     }
 
-    let repair = if args.incremental {
-        let incremental_conf = IncrementalConf {
-            fail_at,
-            pask_k_step_size: args.pask_k_step_size,
-            max_repair_window_size: args.max_repair_window_size,
-            max_solutions: 1,
-            max_incorrect_solutions_per_window_size: args.max_incorrect_solutions_per_window_size,
-        };
-        let mut snapshots = HashMap::new();
-        snapshots.insert(0, start_state);
-        snapshots.insert(res.first_fail_at.unwrap(), error_snapshot.unwrap());
-        let mut rep = IncrementalRepair::new(repair_ctx, &incremental_conf, snapshots)
-            .expect("failed to create incremental solver");
-        rep.run()
-            .expect("failed to execute incremental synthesizer")
-    } else if args.windowing {
-        let conf = WindowingConf {
-            cmd: args.solver.cmd(),
-            dump_smt: args.smt_dump.clone(),
-            fail_at,
-            max_repair_window_size: args.max_repair_window_size,
-        };
-        let mut snapshots = HashMap::new();
-        snapshots.insert(0, start_state);
-        snapshots.insert(res.first_fail_at.unwrap(), error_snapshot.unwrap());
-        let mut rep =
-            Windowing::new(repair_ctx, conf, snapshots).expect("failed to create windowing solver");
-        rep.run().expect("failed to execute windowing exploration")
-    } else {
-        basic_repair(repair_ctx).expect("failed to execute basic synthesizer")
+    let repair = match cmd {
+        RepairCommand::BasicRepair => {
+            basic_repair(repair_ctx).expect("failed to execute basic synthesizer")
+        }
+        RepairCommand::IncrementalRepair => {
+            let incremental_conf = IncrementalConf {
+                fail_at,
+                pask_k_step_size: args.pask_k_step_size,
+                max_repair_window_size: args.max_repair_window_size,
+                max_solutions: 1,
+                max_incorrect_solutions_per_window_size: args
+                    .max_incorrect_solutions_per_window_size,
+            };
+            let mut snapshots = HashMap::new();
+            snapshots.insert(0, start_state);
+            snapshots.insert(res.first_fail_at.unwrap(), error_snapshot.unwrap());
+            let mut rep = IncrementalRepair::new(repair_ctx, &incremental_conf, snapshots)
+                .expect("failed to create incremental solver");
+            rep.run()
+                .expect("failed to execute incremental synthesizer")
+        }
+        RepairCommand::WindowingStudy => {
+            let conf = WindowingConf {
+                cmd: args.solver.cmd(),
+                dump_smt: args.smt_dump.clone(),
+                fail_at,
+                max_repair_window_size: args.max_repair_window_size,
+            };
+            let mut snapshots = HashMap::new();
+            snapshots.insert(0, start_state);
+            snapshots.insert(res.first_fail_at.unwrap(), error_snapshot.unwrap());
+            let mut rep = Windowing::new(repair_ctx, conf, snapshots)
+                .expect("failed to create windowing solver");
+            rep.run().expect("failed to execute windowing exploration")
+        }
+        RepairCommand::UnrollingStudy => {
+            unrolling(repair_ctx).expect("failed to run unrolling study")
+        }
     };
+
     let synth_duration = std::time::Instant::now() - start_synth;
     if args.verbose {
         println!("Synthesizer took {synth_duration:?}");
