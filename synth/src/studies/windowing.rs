@@ -32,14 +32,20 @@ pub struct Windowing<'a, S: Simulator, E: TransitionSystemEncoding> {
     snapshots: HashMap<StepInt, S::SnapshotId>,
 }
 
+// possible outcomes:
+// 1. no repair found
+// 2. no correct repair found
+
 #[derive(Debug, Serialize)]
 struct Stats {
-    /// time it took to sample the first minimal repair
-    minimal_repair_candidate_ns: Option<u128>,
-    /// number of minimal repairs sampled before we found a correct repair
-    correct_repair_tries: Option<u64>,
-    /// time to find a correct repair
-    correct_repair_ns: Option<u128>,
+    /// minimum number of changes, None if no repair found
+    min_repair_size: Option<u64>,
+    /// number of minimal repairs that were samples
+    min_repairs_samples: u64,
+    /// whether a correct repair was found
+    success: bool,
+    /// overall time in ns
+    time_ns: u128,
 }
 
 #[derive(Debug, Serialize)]
@@ -167,7 +173,6 @@ where
 
         // generate one minimal repair
         let r = generate_minimal_repair(&mut self.rctx, step_range.start, Some(step_range.end))?;
-        let minimal_repair_candidate_ns = start.elapsed().as_nanos();
         let mut failures_at = Vec::new();
 
         if let Some((r0, num_changes)) = r {
@@ -181,11 +186,12 @@ where
                     .first_fail_at
                 {
                     None => {
-                        let correct_repair_ns = Some(start.elapsed().as_nanos());
+                        let time_ns = start.elapsed().as_nanos();
                         let stats = Stats {
-                            minimal_repair_candidate_ns: Some(minimal_repair_candidate_ns),
-                            correct_repair_tries: Some((failures_at.len() + 1) as u64),
-                            correct_repair_ns,
+                            min_repair_size: Some(num_changes as u64),
+                            min_repairs_samples: (failures_at.len() + 1) as u64,
+                            success: true,
+                            time_ns,
                         };
                         return Ok((stats, make_result(Some(repair), window)));
                     }
@@ -215,18 +221,22 @@ where
                 };
             }
             // no correct repair found
+            let time_ns = start.elapsed().as_nanos();
             let stats = Stats {
-                minimal_repair_candidate_ns: Some(minimal_repair_candidate_ns),
-                correct_repair_tries: None,
-                correct_repair_ns: None,
+                min_repair_size: Some(num_changes as u64),
+                min_repairs_samples: failures_at.len() as u64,
+                success: false,
+                time_ns,
             };
             Ok((stats, make_result(None, window)))
         } else {
             // no repair found
+            let time_ns = start.elapsed().as_nanos();
             let stats = Stats {
-                minimal_repair_candidate_ns: None,
-                correct_repair_tries: None,
-                correct_repair_ns: None,
+                min_repair_size: None,
+                min_repairs_samples: failures_at.len() as u64,
+                success: false,
+                time_ns,
             };
             Ok((stats, make_result(None, window)))
         }
