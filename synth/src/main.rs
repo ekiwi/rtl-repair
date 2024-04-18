@@ -310,7 +310,8 @@ fn main() {
             rep.run().expect("failed to execute windowing exploration")
         }
         RepairCommand::UnrollingStudy => {
-            unrolling(repair_ctx).expect("failed to run unrolling study")
+            unrolling(repair_ctx, &args.solver.cmd(), args.smt_dump.as_deref())
+                .expect("failed to run unrolling study")
         }
     };
 
