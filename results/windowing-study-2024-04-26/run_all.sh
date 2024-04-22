@@ -7,4 +7,4 @@
 ./c1_unroll.sh &
 ./i2c_k1_unroll.sh &
 ./sdram_w1_unroll.sh &
-./sdram_w2_unroll.sh &
+./sdram_w2_unroll.sh
