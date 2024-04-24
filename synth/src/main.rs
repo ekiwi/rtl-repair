@@ -309,10 +309,13 @@ fn main() {
                 .expect("failed to create windowing solver");
             rep.run().expect("failed to execute windowing exploration")
         }
-        RepairCommand::UnrollingStudy => {
-            unrolling(repair_ctx, &args.solver.cmd(), args.smt_dump.as_deref())
-                .expect("failed to run unrolling study")
-        }
+        RepairCommand::UnrollingStudy => unrolling(
+            repair_ctx,
+            &args.solver.cmd(),
+            args.smt_dump.as_deref(),
+            fail_at,
+        )
+        .expect("failed to run unrolling study"),
     };
 
     let synth_duration = std::time::Instant::now() - start_synth;

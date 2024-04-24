@@ -32,6 +32,7 @@ pub fn unrolling<S>(
     mut rctx: RepairContext<S, UnrollSmtEncoding>,
     cmd: &SmtSolverCmd,
     dump_smt: Option<&str>,
+    first_fail_at: StepInt,
 ) -> crate::repair::Result<RepairResult>
 where
     S: Simulator,
@@ -41,7 +42,7 @@ where
     let start_state = rctx.sim.take_snapshot();
     let mut res = None;
     let tb_len = rctx.tb.step_count();
-    for end_step in 0..tb_len {
+    for end_step in first_fail_at..tb_len {
         // start new smt solver to isolate performance
         (rctx.smt_ctx, rctx.enc) = start_solver(cmd, dump_smt, rctx.ctx, rctx.sys)?;
         let start = Instant::now();
