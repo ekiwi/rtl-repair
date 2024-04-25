@@ -1,4 +1,3 @@
-WARN: any init is not actually supported! Random init will be performed instead!
 {"tb_len":637,"end_step":131,"success":false,"first_fail_at":133,"time_ns":9099368734,"min_repair_size":1}
 {"tb_len":637,"end_step":132,"success":false,"first_fail_at":133,"time_ns":11315518325,"min_repair_size":2}
 {"tb_len":637,"end_step":133,"success":false,"first_fail_at":136,"time_ns":24071093005,"min_repair_size":2}
@@ -388,21 +387,3 @@ WARN: any init is not actually supported! Random init will be performed instead!
 {"tb_len":637,"end_step":517,"success":true,"first_fail_at":null,"time_ns":157936355894,"min_repair_size":2}
 {"tb_len":637,"end_step":518,"success":true,"first_fail_at":null,"time_ns":163113694339,"min_repair_size":2}
 {"tb_len":637,"end_step":519,"success":true,"first_fail_at":null,"time_ns":212210523426,"min_repair_size":2}
-{"tb_len":637,"end_step":520,"success":true,"first_fail_at":null,"time_ns":56784449032,"min_repair_size":2}
-{"tb_len":637,"end_step":521,"success":true,"first_fail_at":null,"time_ns":144242870217,"min_repair_size":2}
-{"tb_len":637,"end_step":522,"success":true,"first_fail_at":null,"time_ns":159805411114,"min_repair_size":2}
-{"tb_len":637,"end_step":523,"success":true,"first_fail_at":null,"time_ns":200844422566,"min_repair_size":2}
-{"tb_len":637,"end_step":524,"success":true,"first_fail_at":null,"time_ns":438401218903,"min_repair_size":2}
-{"tb_len":637,"end_step":525,"success":true,"first_fail_at":null,"time_ns":515958061689,"min_repair_size":2}
-{"tb_len":637,"end_step":526,"success":true,"first_fail_at":null,"time_ns":484935672221,"min_repair_size":2}
-{"tb_len":637,"end_step":527,"success":true,"first_fail_at":null,"time_ns":1832392654463,"min_repair_size":2}
-{"tb_len":637,"end_step":528,"success":true,"first_fail_at":null,"time_ns":225485931549,"min_repair_size":2}
-{"tb_len":637,"end_step":529,"success":true,"first_fail_at":null,"time_ns":500194939646,"min_repair_size":2}
-{"tb_len":637,"end_step":530,"success":true,"first_fail_at":null,"time_ns":446781164439,"min_repair_size":2}
-{"tb_len":637,"end_step":531,"success":true,"first_fail_at":null,"time_ns":788520970270,"min_repair_size":2}
-{"tb_len":637,"end_step":532,"success":true,"first_fail_at":null,"time_ns":473283291078,"min_repair_size":2}
-{"tb_len":637,"end_step":533,"success":true,"first_fail_at":null,"time_ns":1524601288460,"min_repair_size":2}
-{"tb_len":637,"end_step":534,"success":true,"first_fail_at":null,"time_ns":570601679881,"min_repair_size":2}
-{"tb_len":637,"end_step":535,"success":true,"first_fail_at":null,"time_ns":1882276370343,"min_repair_size":2}
-{"tb_len":637,"end_step":536,"success":true,"first_fail_at":null,"time_ns":12390092436075,"min_repair_size":2}
-{"tb_len":637,"end_step":537,"success":true,"first_fail_at":null,"time_ns":11806095391650,"min_repair_size":2}
