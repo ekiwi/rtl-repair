@@ -51,4 +51,3 @@ WARN: any init is not actually supported! Random init will be performed instead!
 {"tb_len":171957,"end_step":1287,"success":true,"first_fail_at":null,"time_ns":1004296115277,"min_repair_size":1}
 {"tb_len":171957,"end_step":1288,"success":true,"first_fail_at":null,"time_ns":691281873141,"min_repair_size":1}
 {"tb_len":171957,"end_step":1289,"success":false,"first_fail_at":2360,"time_ns":768744800955,"min_repair_size":1}
-{"tb_len":171957,"end_step":1290,"success":false,"first_fail_at":2360,"time_ns":4906967094326,"min_repair_size":1}
