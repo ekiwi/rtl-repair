@@ -7,9 +7,11 @@
 
 use crate::basic::generate_minimal_repair;
 use crate::repair::{RepairContext, RepairResult, RepairStatus};
-use crate::start_solver;
+use crate::restart_solver;
 use crate::testbench::{RunConfig, StepInt, StopAt};
 use patronus::mc::UnrollSmtEncoding;
+use patronus::sim::Simulator;
+use patronus::smt::SolverContext;
 use serde::Serialize;
 use std::time::Instant;
 
@@ -29,10 +31,8 @@ struct Stats {
     min_repair_size: Option<u64>,
 }
 
-pub fn unrolling<S>(
-    mut rctx: RepairContext<S, UnrollSmtEncoding>,
-    cmd: &SmtSolverCmd,
-    dump_smt: Option<&str>,
+pub fn unrolling<S, C: SolverContext>(
+    mut rctx: RepairContext<S, UnrollSmtEncoding, C>,
     first_fail_at: StepInt,
 ) -> crate::repair::Result<RepairResult>
 where
@@ -45,7 +45,7 @@ where
     let tb_len = rctx.tb.step_count();
     for end_step in first_fail_at..tb_len {
         // start new smt solver to isolate performance
-        (rctx.smt_ctx, rctx.enc) = start_solver(cmd, dump_smt, rctx.ctx, rctx.sys)?;
+        rctx.enc = restart_solver(rctx.ctx, rctx.sys, &mut rctx.smt_ctx)?;
         let start = Instant::now();
         res = generate_minimal_repair(&mut rctx, 0, Some(end_step))?;
         let time_ns = start.elapsed().as_nanos();

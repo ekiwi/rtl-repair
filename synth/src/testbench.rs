@@ -3,19 +3,21 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::repair::{bit_string_to_smt, classify_state, CHANGE_COUNT_OUTPUT_NAME};
-use num_bigint::BigUint;
-use patronus::expr::{ExprRef, WidthInt};
+use crate::repair::{classify_state, CHANGE_COUNT_OUTPUT_NAME};
+use baa::{BitVecOps, BitVecValue};
+use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus::mc::TransitionSystemEncoding;
-use std::collections::HashMap;
+use patronus::sim::{InitKind, Simulator};
+use patronus::smt::SolverContext;
+use patronus::system::TransitionSystem;
 
 pub type Result<T> = std::io::Result<T>;
 pub type StepInt = u64;
 
 pub struct Testbench {
     /// contains for each time step: inputs, then outputs
-    data: Vec<Word>,
-    step_words: usize,
+    /// `None` indicates that the value is not constraint, i.e., it is `x`
+    data: Vec<Option<BitVecValue>>,
     ios: Vec<IOInfo>,
     /// signals to print for debugging
     signals_to_print: Vec<(String, ExprRef)>,
@@ -26,7 +28,6 @@ pub struct Testbench {
 struct IOInfo {
     expr: ExprRef,
     cell_id: usize,
-    words: usize,
     width: WidthInt,
     is_input: bool,
     name: String,
@@ -103,8 +104,7 @@ impl Testbench {
         // read header to find I/O mapping
         let mut header_tokens = Vec::new();
         let header_len = parse_line(&mmap, &mut header_tokens);
-        let name_to_ref = sys.generate_name_to_ref(ctx);
-        let mut ios = read_header(&header_tokens, &name_to_ref, ctx, sys, verbose)?;
+        let mut ios = read_header(&header_tokens, ctx, sys, verbose)?;
 
         // see if we are missing any inputs from the testbench
         let missing_ios = find_missing_ios(ctx, sys, &ios, verbose);
@@ -119,15 +119,12 @@ impl Testbench {
         // read data
         let data = read_body(header_len, mmap, &ios);
 
-        // derive data layout
-        let step_words = ios.iter().map(|io| io.words).sum::<usize>();
-
         // generate signals to print if we are instructed to do so
         let mut signals_to_print = vec![];
         if verbose && trace_sim {
-            for (_, state) in sys.states() {
+            for state in sys.states.iter() {
                 let expr = state.symbol;
-                let name = expr.get_symbol_name(ctx).unwrap();
+                let name = ctx.get_symbol_name(expr).unwrap();
                 if !classify_state(name).is_synth_var() && expr.get_type(ctx).is_bit_vector() {
                     signals_to_print.push((name.to_string(), expr));
                 }
@@ -137,7 +134,6 @@ impl Testbench {
 
         let tb = Self {
             data,
-            step_words,
             ios,
             signals_to_print,
             missing_outputs,
@@ -152,31 +148,32 @@ impl Testbench {
 
     /// Replaces all X assignments to inputs with a random or zero value.
     pub fn define_inputs(&mut self, kind: InitKind) {
-        let mut gen = InitValueGenerator::from_kind(kind);
+        //let mut gen = InitValueGenerator::from_kind(kind);
         for step_id in 0..self.step_count() {
             let range = self.step_range(step_id);
-            let words = &mut self.data[range];
-            let mut offset = 0;
-            for io in self.ios.iter() {
+            let values = &mut self.data[range];
+            debug_assert_eq!(self.ios.len(), values.len());
+            for (io, value) in self.ios.iter().zip(values.iter_mut()) {
                 if io.is_input {
-                    let io_words = &mut words[offset..(offset + io.words)];
-                    if is_x(io_words) {
-                        let data_words = &mut io_words[0..width_to_words(io.width)];
-                        gen.assign(data_words, io.width, 1);
+                    if value.is_none() {
+                        // let data_words = &mut io_words[0..width_to_words(io.width)];
+                        // gen.assign(data_words, io.width, 1);
+                        todo!("generate init value!")
                     }
                 }
-                offset += io.words;
             }
         }
     }
 
     fn step_range(&self, step_id: StepInt) -> std::ops::Range<usize> {
         let usize_id = step_id as usize;
-        (usize_id * self.step_words)..((usize_id + 1) * self.step_words)
+        let values_per_step = self.ios.len();
+        (usize_id * values_per_step)..((usize_id + 1) * values_per_step)
     }
 
     pub fn step_count(&self) -> StepInt {
-        self.data.len() as StepInt / self.step_words as StepInt
+        let values_per_step = self.ios.len();
+        self.data.len() as StepInt / values_per_step as StepInt
     }
 
     pub fn run(&self, sim: &mut impl Simulator, conf: &RunConfig, verbose: bool) -> RunResult {
@@ -220,49 +217,40 @@ impl Testbench {
         &self,
         step_id: StepInt,
         sim: &mut impl Simulator,
-        words: &[Word],
+        io_values: &[Option<BitVecValue>],
         failures: &mut Vec<Failure>,
         verbose: bool,
     ) {
         // apply inputs
-        let mut offset = 0;
-        for io in self.ios.iter() {
+        debug_assert_eq!(io_values.len(), self.ios.len());
+        for (io, maybe_value) in self.ios.iter().zip(io_values.iter()) {
             if io.is_input {
-                let io_words = &words[offset..(offset + io.words)];
-                if !is_x(io_words) {
-                    let non_x_num_words = width_to_words(io.width);
-                    let non_x_words = &io_words[0..non_x_num_words];
-                    sim.set(io.expr, ValueRef::new(non_x_words, io.width));
+                if let Some(value) = maybe_value {
+                    sim.set(io.expr, value);
                 }
             }
-            offset += io.words;
         }
 
         // calculate the output values
         sim.update();
 
-        // print values if the option is enables
+        // print values if the option is enabled
         if !self.signals_to_print.is_empty() {
             println!();
             for (name, expr) in self.signals_to_print.iter() {
-                if let Some(value_ref) = sim.get(*expr) {
-                    let value = value_ref.to_bit_string();
-                    println!("{name}@{step_id} = {value}")
+                if let Some(value) = sim.get(*expr) {
+                    println!("{name}@{step_id} = {}", value.to_bit_str())
                 }
             }
         }
 
         // check outputs
-        let mut offset = 0;
-        for io in self.ios.iter() {
+        debug_assert_eq!(io_values.len(), self.ios.len());
+        for (io, maybe_value) in self.ios.iter().zip(io_values.iter()) {
             if !io.is_input {
-                let io_words = &words[offset..(offset + io.words)];
-                if !is_x(io_words) {
+                if let Some(expected_value) = maybe_value {
                     let actual_value = sim.get(io.expr).unwrap();
-                    let non_x_num_words = width_to_words(io.width);
-                    let non_x_words = &io_words[0..non_x_num_words];
-                    let expected_value = ValueRef::new(non_x_words, io.width);
-                    if expected_value != actual_value {
+                    if *expected_value != actual_value {
                         failures.push(Failure {
                             step: step_id,
                             signal: io.expr,
@@ -271,62 +259,56 @@ impl Testbench {
                             println!(
                                 "{}@{step_id}: {} vs. {} (E/A)",
                                 io.name,
-                                expected_value.to_bit_string(),
-                                actual_value.to_bit_string()
+                                expected_value.to_bit_str(),
+                                actual_value.to_bit_str()
                             );
                         }
                     }
                 }
             }
-            offset += io.words;
         }
     }
 
     pub fn apply_constraints(
         &self,
-        ctx: &Context,
-        smt_ctx: &mut easy_smt::Context,
+        ctx: &mut Context,
+        smt_ctx: &mut impl SolverContext,
         enc: &impl TransitionSystemEncoding,
         start_step: StepInt,
         end_step: StepInt,
-    ) -> std::io::Result<()> {
+    ) -> patronus::smt::Result<()> {
         for step_id in start_step..(end_step + 1) {
             let range = self.step_range(step_id);
-            let words = &self.data[range];
+            let io_values = &self.data[range];
 
             // we can encode everything into a single assert or into multiple asserts
             let single_assert = false;
 
             // apply all io constraints in this step
-            let mut offset = 0;
             let mut constraints = Vec::with_capacity(self.ios.len());
-            for io in self.ios.iter() {
-                let io_words = &words[offset..(offset + io.words)];
-                if !is_x(io_words) {
-                    let non_x_num_words = width_to_words(io.width);
-                    let non_x_words = &io_words[0..non_x_num_words];
-                    let value = ValueRef::new(non_x_words, io.width).to_bit_string();
-                    let value_expr = bit_string_to_smt(smt_ctx, &value);
-                    let io_at_step = enc.get_at(ctx, smt_ctx, io.expr, step_id);
-                    let constraint = smt_ctx.eq(io_at_step, value_expr);
+            debug_assert_eq!(io_values.len(), self.ios.len());
+            for (io, maybe_value) in self.ios.iter().zip(io_values.iter()) {
+                if let Some(value) = maybe_value {
+                    let value_expr = ctx.bv_lit(value);
+                    let io_at_step = enc.get_at(ctx, io.expr, step_id);
+                    let constraint = ctx.equal(io_at_step, value_expr);
                     if single_assert {
                         constraints.push(constraint);
                     } else {
-                        smt_ctx.assert(constraint)?;
+                        smt_ctx.assert(ctx, constraint)?;
                     }
                 }
-                offset += io.words;
             }
             if !constraints.is_empty() {
-                smt_ctx.assert(smt_ctx.and_many(constraints))?;
+                let constr = constraints
+                    .into_iter()
+                    .reduce(|a, b| ctx.and(a, b))
+                    .unwrap();
+                smt_ctx.assert(ctx, constr)?;
             }
         }
         Ok(())
     }
-}
-
-fn is_x(words: &[Word]) -> bool {
-    words.iter().all(|w| *w == Word::MAX)
 }
 
 fn is_cell_x(token: &[u8]) -> bool {
@@ -340,30 +322,30 @@ fn find_missing_ios(
     verbose: bool,
 ) -> Vec<IOInfo> {
     let mut out = Vec::new();
-    for (sys_io, sys_io_info) in sys.get_signals(|s| s.is_input() || s.is_output()) {
-        let included = ios.iter().any(|i| i.expr == sys_io);
+    let inputs = sys
+        .inputs
+        .iter()
+        .map(|&i| (i, ctx.get_symbol_name(i).unwrap(), true));
+    let outputs = sys
+        .outputs
+        .iter()
+        .map(|o| (o.expr, ctx[o.name].as_str(), false));
+    for (io_expr, io_name, is_input) in inputs.chain(outputs) {
+        let included = ios.iter().any(|i| i.expr == io_expr);
         if !included {
-            let name = sys_io
-                .get_symbol_name(ctx)
-                .unwrap_or_else(|| ctx.get(sys_io_info.name.unwrap()));
-            if name != CHANGE_COUNT_OUTPUT_NAME {
-                let width = sys_io.get_bv_type(ctx).unwrap();
+            if io_name != CHANGE_COUNT_OUTPUT_NAME {
+                let width = io_expr.get_bv_type(ctx).unwrap();
 
                 if verbose {
-                    let tpe = if sys_io_info.is_input() {
-                        "Input"
-                    } else {
-                        "Output"
-                    };
-                    println!("{tpe} `{name}` : bv<{width}> is missing from the testbench.");
+                    let tpe = if is_input { "Input" } else { "Output" };
+                    println!("{tpe} `{io_name}` : bv<{width}> is missing from the testbench.");
                 }
                 out.push(IOInfo {
-                    expr: sys_io,
+                    expr: io_expr,
                     cell_id: usize::MAX,
-                    words: width_to_words(width + 1), // one extra bit to indicate X
                     width,
-                    is_input: sys_io_info.is_input(),
-                    name: name.to_string(),
+                    is_input,
+                    name: io_name.to_string(),
                 })
             }
         }
@@ -371,7 +353,7 @@ fn find_missing_ios(
     out
 }
 
-fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word> {
+fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Option<BitVecValue>> {
     let mut data = Vec::new();
     let mut pos = header_len;
     let mut tokens = Vec::with_capacity(32);
@@ -383,13 +365,16 @@ fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word
                 // read and write words to data
                 let is_missing = io.cell_id == usize::MAX;
                 if is_missing {
-                    push_x(io, &mut data);
+                    data.push(None);
                 } else {
                     let cell = tokens[io.cell_id];
                     if is_cell_x(cell) {
-                        push_x(io, &mut data);
+                        data.push(None);
                     } else {
-                        push_from_dec(io, &mut data, cell);
+                        let cell = std::str::from_utf8(cell).unwrap();
+                        let value = BitVecValue::from_str_radix(cell, 10, io.width)
+                            .expect("failed to parse decimal value");
+                        data.push(Some(value));
                     }
                 }
             }
@@ -398,34 +383,8 @@ fn read_body(header_len: usize, mmap: memmap2::Mmap, ios: &[IOInfo]) -> Vec<Word
     data
 }
 
-fn push_x(io: &IOInfo, data: &mut Vec<Word>) {
-    for _ in 0..io.words {
-        data.push(Word::MAX);
-    }
-}
-
-fn dec_cell_to_big_uint(cell: &[u8]) -> Option<BigUint> {
-    let digits = cell.iter().map(|d| d - b'0').collect::<Vec<_>>();
-    BigUint::from_radix_be(&digits, 10)
-}
-
-fn push_from_dec(io: &IOInfo, data: &mut Vec<Word>, dec_ascii: &[u8]) {
-    let big = dec_cell_to_big_uint(dec_ascii).expect("Failed to parse cell data!");
-    let mut word_count = 0;
-    for digit in big.iter_u64_digits() {
-        data.push(digit);
-        word_count += 1;
-    }
-    debug_assert!(word_count <= io.words);
-    // msb zeros
-    for _ in word_count..io.words {
-        data.push(0);
-    }
-}
-
 fn read_header(
     tokens: &[&[u8]],
-    name_to_ref: &HashMap<String, ExprRef>,
     ctx: &Context,
     sys: &TransitionSystem,
     verbose: bool,
@@ -433,32 +392,27 @@ fn read_header(
     let mut out = Vec::new();
     for (cell_id, cell) in tokens.iter().enumerate() {
         let name = String::from_utf8_lossy(cell);
-        if let Some(signal_ref) = name_to_ref.get(name.as_ref()) {
-            let signal = sys.get_signal(*signal_ref).unwrap();
-            let is_io = signal.is_input() || signal.is_output();
-            if signal.is_input() && signal.is_output() {
+        let input = sys.lookup_input(ctx, &name);
+        let output = sys.lookup_output(ctx, &name);
+        let expr_ref = input.or(output);
+
+        if let Some(expr_ref) = expr_ref {
+            if input.is_some() && output.is_some() {
                 todo!("deal correctly with signals that are both, input and output");
             }
-            if is_io {
-                let width = signal_ref.get_bv_type(ctx).unwrap();
-                out.push(IOInfo {
-                    expr: *signal_ref,
-                    cell_id,
-                    words: width_to_words(width + 1), // one extra bit to indicate X
-                    width,
-                    is_input: signal.kind == SignalKind::Input,
-                    name: name.to_string(),
-                })
-            } else if verbose {
-                println!("Ignoring column {name}.");
-            }
+            let width = expr_ref.get_bv_type(ctx).unwrap();
+            out.push(IOInfo {
+                expr: expr_ref,
+                cell_id,
+                width,
+                is_input: input.is_some(),
+                name: name.to_string(),
+            })
+        } else if verbose {
+            println!("Ignoring column {name}.");
         }
     }
     Ok(out)
-}
-
-fn width_to_words(width: WidthInt) -> usize {
-    (width).div_ceil(Word::BITS) as usize
 }
 
 fn parse_line<'a>(data: &'a [u8], out: &mut Vec<&'a [u8]>) -> usize {
@@ -499,21 +453,6 @@ fn trim(data: &[u8]) -> &[u8] {
             let from_end = data.iter().rev().position(|c| !is_whitespace(*c)).unwrap();
             let end = data.len() - from_end;
             &data[start..end]
-        }
-    }
-}
-
-// debug function
-#[allow(dead_code)]
-pub fn print_states(ctx: &Context, sys: &TransitionSystem, sim: &impl Simulator) {
-    for (_, state) in sys.states() {
-        if state.symbol.get_type(ctx).is_bit_vector() {
-            let value_ref = sim.get(state.symbol).unwrap();
-            let value = value_ref.to_bit_string();
-            let name = state.symbol.get_symbol_name(ctx).unwrap();
-            if !classify_state(name).is_synth_var() {
-                println!("{name} = {value}")
-            }
         }
     }
 }

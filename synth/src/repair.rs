@@ -5,17 +5,16 @@
 
 use crate::testbench::{StepInt, Testbench};
 use crate::Stats;
-use easy_smt as smt;
-use num_bigint::BigUint;
-use num_traits::identities::Zero;
-use patronus::expr::{ExprRef, WidthInt};
+use baa::{BitVecOps, BitVecValue};
+use patronus::expr::{Context, ExprRef, Type, TypeCheck, WidthInt};
 use patronus::mc::*;
 use patronus::sim::Simulator;
-use patronus::smt::{Logic, SmtLibSolver, Solver, SolverContext};
+use patronus::smt::{CheckSatResponse, Logic, SmtLibSolver, Solver, SolverContext};
+use patronus::system::TransitionSystem;
 use serde_json::json;
 use std::str::FromStr;
 
-pub type Result<T> = std::io::Result<T>;
+pub type Result<T> = patronus::smt::Result<T>;
 
 #[derive(Debug, PartialEq)]
 pub enum RepairStatus {
@@ -30,53 +29,45 @@ pub struct RepairResult {
     pub solutions: Vec<RepairAssignment>,
 }
 
-pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding> {
+pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding, C: SolverContext> {
     pub ctx: &'a mut Context,
     pub sys: &'a TransitionSystem,
     pub sim: S,
     pub synth_vars: &'a RepairVars,
     pub tb: &'a Testbench,
     pub change_count_ref: ExprRef,
-    pub smt_ctx: smt::Context,
+    pub smt_ctx: C,
     pub enc: E,
-    pub solver: SmtSolverCmd,
+    pub solver: SmtLibSolver,
     pub verbose: bool,
 }
 
-pub fn constrain_changes<S: Simulator, E: TransitionSystemEncoding>(
-    rctx: &mut RepairContext<S, E>,
+pub fn constrain_changes<S: Simulator, E: TransitionSystemEncoding, C: SolverContext>(
+    rctx: &mut RepairContext<S, E, C>,
     num_changes: u32,
     start_step: StepInt,
-) -> smt::SExpr {
+) -> ExprRef {
     let change_count_width = rctx.change_count_ref.get_bv_type(rctx.ctx).unwrap();
-    let change_count_expr = rctx.enc.get_at(
-        rctx.ctx,
-        &mut rctx.smt_ctx,
-        rctx.change_count_ref,
-        start_step,
-    );
+    let change_count_expr = rctx.enc.get_at(rctx.ctx, rctx.change_count_ref, start_step);
     // constraint
-    rctx.smt_ctx.eq(
-        change_count_expr,
-        rctx.smt_ctx
-            .binary(change_count_width as usize, num_changes),
-    )
+    let num_changes_expr = rctx.ctx.bit_vec_val(num_changes, change_count_width);
+    rctx.ctx.equal(change_count_expr, num_changes_expr)
 }
 
-pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding>(
-    rctx: &mut RepairContext<S, E>,
+pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding, C: SolverContext>(
+    rctx: &mut RepairContext<S, E, C>,
     start_step: StepInt,
 ) -> Result<u32> {
     let mut num_changes = 1u32;
     loop {
         let constraint = constrain_changes(rctx, num_changes, start_step);
         match check_assuming(&mut rctx.smt_ctx, constraint, &rctx.solver)? {
-            smt::Response::Sat => {
+            CheckSatResponse::Sat => {
                 // found a solution
                 return Ok(num_changes);
             }
-            smt::Response::Unsat => {}
-            smt::Response::Unknown => panic!("SMT solver returned unknown!"),
+            CheckSatResponse::Unsat => {}
+            CheckSatResponse::Unknown => panic!("SMT solver returned unknown!"),
         }
         // remove assertion for next round
         check_assuming_end(&mut rctx.smt_ctx, &rctx.solver)?;
@@ -84,8 +75,8 @@ pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding>(
     }
 }
 
-pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
-    rctx: &mut RepairContext<S, E>,
+pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding, C: SolverContext>(
+    rctx: &mut RepairContext<S, E, C>,
     start_step: StepInt,
 ) -> Result<()> {
     for (_, state) in rctx
@@ -125,20 +116,6 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding>(
     Ok(())
 }
 
-fn value_to_smt_expr(smt_ctx: &mut smt::Context, value: ValueRef) -> smt::SExpr {
-    // currently this will only work for scalar values
-    let bits = value.to_bit_string();
-    bit_string_to_smt(smt_ctx, &bits)
-}
-
-pub fn bit_string_to_smt(smt_ctx: &mut smt::Context, bits: &str) -> smt::SExpr {
-    match bits {
-        "0" => smt_ctx.false_(),
-        "1" => smt_ctx.true_(),
-        other => smt_ctx.atom(format!("#b{}", other)),
-    }
-}
-
 pub fn create_smt_ctx(
     solver: &SmtLibSolver,
     dump_file: Option<&str>,
@@ -148,22 +125,22 @@ pub fn create_smt_ctx(
     } else {
         None
     };
-    let mut smt_ctx = solver.start(replay_file).unwrap();
-    set_logic(&mut smt_ctx, solver)?;
+    let mut smt_ctx = solver.start(replay_file)?;
+    set_logic(&mut smt_ctx)?;
     Ok(smt_ctx)
 }
 
 /// sets the correct logic depending on the solver we are using
-fn set_logic(smt_ctx: &mut impl SolverContext, cmd: &SmtLibSolver) -> Result<()> {
+pub fn set_logic(smt_ctx: &mut impl SolverContext) -> Result<()> {
     // z3 only supports the non-standard as-const array syntax when the logic is set to ALL
-    let logic = if cmd.name() == "z3" {
+    let logic = if smt_ctx.name() == "z3" {
         Logic::All
-    } else if cmd.supports_uf() {
+    } else if smt_ctx.supports_uf() {
         Logic::QfAufbv
     } else {
         Logic::QfAbv
     };
-    Ok(smt_ctx.set_logic(logic).unwrap())
+    smt_ctx.set_logic(logic)
 }
 
 pub struct RepairVars {
@@ -208,23 +185,23 @@ impl RepairVars {
 
     pub fn apply_to_sim(&self, sim: &mut impl Simulator, assignment: &RepairAssignment) {
         for (sym, value) in self.change.iter().zip(assignment.change.iter()) {
-            let num_value = if *value { 1 } else { 0 };
-            sim.set(*sym, ValueRef::new(&[num_value], 1));
+            if *value {
+                sim.set(*sym, &BitVecValue::new_true());
+            } else {
+                sim.set(*sym, &BitVecValue::new_false());
+            }
         }
-        for ((sym, width), value) in self.free.iter().zip(assignment.free.iter()) {
-            sim.set(*sym, (&Value::from_big_uint(value, *width)).into());
+        for ((sym, _), value) in self.free.iter().zip(assignment.free.iter()) {
+            sim.set(*sym, value);
         }
     }
 
     pub fn clear_in_sim(&self, sim: &mut impl Simulator) {
         for sym in self.change.iter() {
-            sim.set(*sym, ValueRef::new(&[0], 1));
+            sim.set(*sym, &BitVecValue::new_false());
         }
         for (sym, width) in self.free.iter() {
-            sim.set(
-                *sym,
-                (&Value::from_big_uint(&BigUint::zero(), *width)).into(),
-            );
+            sim.set(*sym, &BitVecValue::zero(*width));
         }
     }
 
@@ -247,19 +224,19 @@ impl RepairVars {
 
     pub fn read_assignment(
         &self,
-        ctx: &Context,
-        smt_ctx: &mut smt::Context,
+        ctx: &mut Context,
+        smt_ctx: &mut impl SolverContext,
         enc: &impl TransitionSystemEncoding,
         start_step: StepInt,
     ) -> RepairAssignment {
         let mut change = Vec::with_capacity(self.change.len());
         for sym in self.change.iter() {
             // repair variables do not change, we can just always read the value at the first cycle
-            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, start_step);
-            let res = get_smt_value(smt_ctx, smt_sym, sym.get_type(ctx))
-                .expect("Failed to read change variable!");
-            if let WitnessValue::Scalar(value, width) = res {
-                assert_eq!(width, 1);
+            let smt_sym = enc.get_at(ctx, *sym, start_step);
+            let res =
+                get_smt_value(ctx, smt_ctx, smt_sym).expect("Failed to read change variable!");
+            if let baa::Value::BitVec(value) = res {
+                assert_eq!(value.width(), 1);
                 change.push(!value.is_zero());
             } else {
                 panic!("should not get an array value!");
@@ -268,10 +245,9 @@ impl RepairVars {
         let mut free = Vec::with_capacity(self.free.len());
         for (sym, _width) in self.free.iter() {
             // repair variables do not change, we can just always read the value at the first cycle
-            let smt_sym = enc.get_at(ctx, smt_ctx, *sym, start_step);
-            let res = get_smt_value(smt_ctx, smt_sym, sym.get_type(ctx))
-                .expect("Failed to read free variable!");
-            if let WitnessValue::Scalar(value, _) = res {
+            let smt_sym = enc.get_at(ctx, *sym, start_step);
+            let res = get_smt_value(ctx, smt_ctx, smt_sym).expect("Failed to read free variable!");
+            if let baa::Value::BitVec(value) = res {
                 free.push(value);
             } else {
                 panic!("should not get an array value!");
@@ -283,7 +259,7 @@ impl RepairVars {
     pub fn block_assignment(
         &self,
         ctx: &Context,
-        smt_ctx: &mut smt::Context,
+        smt_ctx: &mut impl SolverContext,
         enc: &impl TransitionSystemEncoding,
         assignment: &RepairAssignment,
         start_step: StepInt,
@@ -295,7 +271,7 @@ impl RepairVars {
             .zip(assignment.change.iter())
             .map(|(sym, value)| {
                 // repair variables do not change, we can just always read the value at the first cycle
-                let smt_sym = enc.get_at(ctx, smt_ctx, *sym, start_step);
+                let smt_sym = enc.get_at(ctx, *sym, start_step);
                 if *value {
                     smt_sym
                 } else {
@@ -305,7 +281,7 @@ impl RepairVars {
             .collect::<Vec<_>>();
         let assignment_constraint = smt_ctx.and_many(constraints);
         let no_assignment = smt_ctx.not(assignment_constraint);
-        smt_ctx.assert(no_assignment)
+        smt_ctx.assert(ctx, no_assignment)
     }
 
     pub fn get_change_names(&self, ctx: &Context, assignment: &RepairAssignment) -> Vec<String> {
@@ -348,7 +324,7 @@ pub fn classify_state(name: &str) -> StateType {
 #[derive(Debug, Clone)]
 pub struct RepairAssignment {
     pub change: Vec<bool>,
-    pub free: Vec<BigUint>,
+    pub free: Vec<BitVecValue>,
 }
 
 pub const CHANGE_COUNT_OUTPUT_NAME: &str = "__change_count";
@@ -361,7 +337,7 @@ pub fn add_change_count(
     let max_change_count_value = change.len() as u64;
     let width = std::cmp::max(u64::BITS - max_change_count_value.leading_zeros(), 1);
     let sum = match change.len() {
-        0 => ctx.bv_lit(0, width),
+        0 => ctx.zero(width),
         1 => ctx.zero_extend(change[0], width - 1),
         _ => {
             let extended = change
@@ -371,12 +347,6 @@ pub fn add_change_count(
             extended.into_iter().reduce(|a, b| ctx.add(a, b)).unwrap()
         }
     };
-    let name_ref = ctx.add_node(CHANGE_COUNT_OUTPUT_NAME);
-    sys.add_signal(
-        sum,
-        SignalKind::Node,
-        SignalLabels::output(),
-        Some(name_ref),
-    );
+    sys.add_output(ctx, CHANGE_COUNT_OUTPUT_NAME.into(), sum);
     sum
 }

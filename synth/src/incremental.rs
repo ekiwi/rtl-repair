@@ -7,9 +7,9 @@ use crate::basic::generate_minimal_repair;
 use crate::repair::*;
 use crate::testbench::{RunConfig, RunResult, StepInt, StopAt};
 use crate::Stats;
-use easy_smt::Response;
 use patronus::mc::*;
 use patronus::sim::Simulator;
+use patronus::smt::{CheckSatResponse, SolverContext};
 use std::collections::HashMap;
 use std::fmt::Debug;
 
@@ -26,19 +26,19 @@ pub struct IncrementalConf {
     pub max_incorrect_solutions_per_window_size: Option<usize>,
 }
 
-pub struct IncrementalRepair<'a, S: Simulator, E: TransitionSystemEncoding> {
-    rctx: RepairContext<'a, S, E>,
+pub struct IncrementalRepair<'a, S: Simulator, E: TransitionSystemEncoding, C: SolverContext> {
+    rctx: RepairContext<'a, S, E, C>,
     conf: &'a IncrementalConf,
     snapshots: HashMap<StepInt, S::SnapshotId>,
 }
 
-impl<'a, S: Simulator, E: TransitionSystemEncoding> IncrementalRepair<'a, S, E>
+impl<'a, S: Simulator, E: TransitionSystemEncoding, C: SolverContext> IncrementalRepair<'a, S, E, C>
 where
     S: Simulator,
     <S as Simulator>::SnapshotId: Clone + Debug,
 {
     pub fn new(
-        rctx: RepairContext<'a, S, E>,
+        rctx: RepairContext<'a, S, E, C>,
         conf: &'a IncrementalConf,
         snapshots: HashMap<StepInt, S::SnapshotId>,
     ) -> Result<Self> {
@@ -78,7 +78,7 @@ where
             assert_eq!(res.first_fail_at, Some(self.conf.fail_at), "{conf:?}");
 
             // start new SMT context to make it easy to later revert everything
-            self.rctx.smt_ctx.push_many(1)?;
+            self.rctx.smt_ctx.push()?;
 
             // restore correct starting state for SMT encoding
             let verbose = self.verbose();
@@ -144,20 +144,20 @@ where
                         &repair,
                         step_range.start,
                     )?;
-                    maybe_repair = match self.rctx.smt_ctx.check()? {
-                        Response::Sat => Some(self.rctx.synth_vars.read_assignment(
+                    maybe_repair = match self.rctx.smt_ctx.check_sat()? {
+                        CheckSatResponse::Sat => Some(self.rctx.synth_vars.read_assignment(
                             self.rctx.ctx,
                             &mut self.rctx.smt_ctx,
                             &self.rctx.enc,
                             step_range.start,
                         )),
-                        Response::Unsat | Response::Unknown => None,
+                        CheckSatResponse::Unsat | CheckSatResponse::Unknown => None,
                     };
                 }
             } else {
                 println!("No repair found for current window size!");
             }
-            self.rctx.smt_ctx.pop_many(1)?;
+            self.rctx.smt_ctx.pop()?;
 
             if !correct_solutions.is_empty() {
                 return Ok(make_result(Some(correct_solutions), &window));
@@ -194,8 +194,8 @@ where
     }
 }
 
-pub fn test_repair<S, E>(
-    rctx: &mut RepairContext<S, E>,
+pub fn test_repair<S, E, C>(
+    rctx: &mut RepairContext<S, E, C>,
     snapshots: &mut HashMap<StepInt, S::SnapshotId>,
     verbose: bool,
     repair: &RepairAssignment,
@@ -204,6 +204,7 @@ where
     S: Simulator,
     E: TransitionSystemEncoding,
     S::SnapshotId: Clone,
+    C: SolverContext,
 {
     let start_step = 0;
     update_sim_state_to_step(rctx, snapshots, verbose, start_step);
@@ -215,22 +216,23 @@ where
     rctx.tb.run(&mut rctx.sim, &conf, false)
 }
 
-pub fn constrain_changes<S, E>(
-    rctx: &mut RepairContext<S, E>,
+pub fn constrain_changes<S, E, C>(
+    rctx: &mut RepairContext<S, E, C>,
     num_changes: u32,
     start_step: StepInt,
 ) -> Result<()>
 where
     S: Simulator,
     E: TransitionSystemEncoding,
+    C: SolverContext,
 {
     let constraint = crate::repair::constrain_changes(rctx, num_changes, start_step);
-    rctx.smt_ctx.assert(constraint)?;
+    rctx.smt_ctx.assert(rctx.ctx, constraint)?;
     Ok(())
 }
 
-pub fn update_sim_state_to_step<S, E>(
-    rctx: &mut RepairContext<S, E>,
+pub fn update_sim_state_to_step<S, E, C>(
+    rctx: &mut RepairContext<S, E, C>,
     snapshots: &mut HashMap<StepInt, S::SnapshotId>,
     verbose: bool,
     step: StepInt,
@@ -238,6 +240,7 @@ pub fn update_sim_state_to_step<S, E>(
     S: Simulator,
     E: TransitionSystemEncoding,
     S::SnapshotId: Clone,
+    C: SolverContext,
 {
     assert!(step < rctx.tb.step_count());
     if let Some(snapshot_id) = snapshots.get(&step) {

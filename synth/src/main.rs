@@ -12,18 +12,18 @@ use crate::basic::basic_repair;
 use crate::filters::can_be_repaired_from_arbitrary_state;
 use crate::incremental::{IncrementalConf, IncrementalRepair};
 use crate::repair::{
-    add_change_count, create_smt_ctx, RepairContext, RepairResult, RepairStatus, RepairVars,
+    add_change_count, create_smt_ctx, set_logic, RepairContext, RepairResult, RepairStatus,
+    RepairVars,
 };
 use crate::studies::unrolling::unrolling;
 use crate::studies::windowing::{Windowing, WindowingConf};
 use crate::testbench::*;
 use clap::{arg, Parser, ValueEnum};
-use easy_smt as smt;
 use patronus::btor2;
 use patronus::expr::{Context, SerializableIrNode};
 use patronus::mc::{TransitionSystemEncoding, UnrollSmtEncoding};
-use patronus::sim::{Interpreter, Simulator};
-use patronus::smt::{SmtLibSolver, BITWUZLA, YICES2};
+use patronus::sim::{InitKind, Interpreter, Simulator};
+use patronus::smt::{SmtLibSolver, SolverContext, BITWUZLA, YICES2};
 use patronus::system::transform::{replace_anonymous_inputs_with_zero, simplify_expressions};
 use patronus::system::TransitionSystem;
 use serde_json::json;
@@ -171,7 +171,7 @@ fn main() {
     // init free variables
     match args.init {
         Init::Zero => {
-            sim.init();
+            sim.init(InitKind::Zero);
             tb.define_inputs(InitKind::Zero);
         }
         Init::Random => {
@@ -307,13 +307,9 @@ fn main() {
                 .expect("failed to create windowing solver");
             rep.run().expect("failed to execute windowing exploration")
         }
-        RepairCommand::UnrollingStudy => unrolling(
-            repair_ctx,
-            &args.solver.cmd(),
-            args.smt_dump.as_deref(),
-            fail_at,
-        )
-        .expect("failed to run unrolling study"),
+        RepairCommand::UnrollingStudy => {
+            unrolling(repair_ctx, fail_at).expect("failed to run unrolling study")
+        }
     };
 
     let synth_duration = std::time::Instant::now() - start_synth;
@@ -330,11 +326,23 @@ pub fn start_solver(
     smt_dump: Option<&str>,
     ctx: &mut Context,
     sys: &TransitionSystem,
-) -> std::io::Result<(smt::Context, UnrollSmtEncoding)> {
+) -> patronus::smt::Result<(impl SolverContext, UnrollSmtEncoding)> {
     let mut smt_ctx = create_smt_ctx(cmd, smt_dump)?;
     let enc = UnrollSmtEncoding::new(ctx, sys, true);
     enc.define_header(&mut smt_ctx)?;
     Ok((smt_ctx, enc))
+}
+
+pub fn restart_solver(
+    ctx: &mut Context,
+    sys: &TransitionSystem,
+    smt_ctx: &mut impl SolverContext,
+) -> patronus::smt::Result<UnrollSmtEncoding> {
+    smt_ctx.restart()?;
+    set_logic(smt_ctx)?;
+    let enc = UnrollSmtEncoding::new(ctx, sys, true);
+    enc.define_header(smt_ctx)?;
+    Ok(enc)
 }
 
 fn print_result(result: &RepairResult, synth_vars: &RepairVars, ctx: &Context) {

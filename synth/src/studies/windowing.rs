@@ -9,17 +9,18 @@
 use crate::basic::generate_minimal_repair;
 use crate::incremental::{constrain_changes, test_repair, update_sim_state_to_step};
 use crate::repair::{RepairAssignment, RepairContext, RepairResult, RepairStatus, Result};
-use crate::start_solver;
+use crate::restart_solver;
 use crate::testbench::{RunConfig, StepInt, StopAt};
-use easy_smt::Response;
 use patronus::mc::{TransitionSystemEncoding, UnrollSmtEncoding};
+use patronus::sim::Simulator;
+use patronus::smt::{CheckSatResponse, SmtLibSolver, SolverContext};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Instant;
 
 pub struct WindowingConf {
-    pub cmd: SmtSolverCmd,
+    pub cmd: SmtLibSolver,
     pub dump_smt: Option<String>,
     /// Information about the first cycle in which the bug manifests.
     pub fail_at: StepInt,
@@ -27,8 +28,8 @@ pub struct WindowingConf {
     pub max_repair_window_size: StepInt,
 }
 
-pub struct Windowing<'a, S: Simulator, E: TransitionSystemEncoding> {
-    rctx: RepairContext<'a, S, E>,
+pub struct Windowing<'a, S: Simulator, E: TransitionSystemEncoding, C: SolverContext> {
+    rctx: RepairContext<'a, S, E, C>,
     conf: WindowingConf,
     snapshots: HashMap<StepInt, S::SnapshotId>,
 }
@@ -75,13 +76,14 @@ struct Line {
     stats: Stats,
 }
 
-impl<'a, S: Simulator> Windowing<'a, S, UnrollSmtEncoding>
+impl<'a, S: Simulator, C> Windowing<'a, S, UnrollSmtEncoding, C>
 where
     S: Simulator,
     <S as Simulator>::SnapshotId: Clone + Debug,
+    C: SolverContext,
 {
     pub fn new(
-        rctx: RepairContext<'a, S, UnrollSmtEncoding>,
+        rctx: RepairContext<'a, S, UnrollSmtEncoding, C>,
         conf: WindowingConf,
         snapshots: HashMap<StepInt, S::SnapshotId>,
     ) -> Result<Self> {
@@ -165,12 +167,7 @@ where
         );
 
         // start new smt solver to isolate performance
-        (self.rctx.smt_ctx, self.rctx.enc) = start_solver(
-            &self.conf.cmd,
-            self.conf.dump_smt.as_deref(),
-            self.rctx.ctx,
-            self.rctx.sys,
-        )?;
+        self.rctx.enc = restart_solver(self.rctx.ctx, self.rctx.sys, &mut self.rctx.smt_ctx)?;
 
         // generate one minimal repair
         let r = generate_minimal_repair(&mut self.rctx, step_range.start, Some(step_range.end))?;
@@ -211,14 +208,14 @@ where
                     &repair,
                     step_range.start,
                 )?;
-                maybe_repair = match self.rctx.smt_ctx.check()? {
-                    Response::Sat => Some(self.rctx.synth_vars.read_assignment(
+                maybe_repair = match self.rctx.smt_ctx.check_sat()? {
+                    CheckSatResponse::Sat => Some(self.rctx.synth_vars.read_assignment(
                         self.rctx.ctx,
                         &mut self.rctx.smt_ctx,
                         &self.rctx.enc,
                         step_range.start,
                     )),
-                    Response::Unsat | Response::Unknown => None,
+                    CheckSatResponse::Unsat | CheckSatResponse::Unknown => None,
                 };
             }
             // no correct repair found

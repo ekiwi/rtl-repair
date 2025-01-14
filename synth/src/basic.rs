@@ -6,12 +6,12 @@
 use crate::repair::*;
 use crate::testbench::StepInt;
 use crate::Stats;
-use easy_smt as smt;
 use patronus::mc::*;
 use patronus::sim::Simulator;
+use patronus::smt::{CheckSatResponse, SolverContext};
 
-pub fn basic_repair<S: Simulator, E: TransitionSystemEncoding>(
-    mut rctx: RepairContext<S, E>,
+pub fn basic_repair<S: Simulator, E: TransitionSystemEncoding, C: SolverContext>(
+    mut rctx: RepairContext<S, E, C>,
 ) -> Result<RepairResult> {
     let res = generate_minimal_repair(&mut rctx, 0, None)?;
     let stats = Stats::default();
@@ -29,8 +29,8 @@ pub fn basic_repair<S: Simulator, E: TransitionSystemEncoding>(
     }
 }
 
-pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
-    rctx: &mut RepairContext<S, E>,
+pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding, C: SolverContext>(
+    rctx: &mut RepairContext<S, E, C>,
     start_step: StepInt,
     end_step_option: Option<StepInt>,
 ) -> Result<Option<(RepairAssignment, u32)>> {
@@ -66,17 +66,17 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding>(
 
     // check to see if a solution exists
     let start_check = std::time::Instant::now();
-    let r = rctx.smt_ctx.check()?;
+    let r = rctx.smt_ctx.check_sat()?;
     let check_duration = std::time::Instant::now() - start_check;
     if rctx.verbose {
         println!("Check-Sat took {check_duration:?}");
     }
     match r {
         // cannot find a repair
-        smt::Response::Unsat | smt::Response::Unknown => {
+        CheckSatResponse::Unsat | CheckSatResponse::Unknown => {
             return Ok(None);
         }
-        smt::Response::Sat => {} // OK, continue
+        CheckSatResponse::Sat => {} // OK, continue
     }
 
     // find a minimal repair
