@@ -61,7 +61,7 @@ pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding, C: SolverCont
     let mut num_changes = 1u32;
     loop {
         let constraint = constrain_changes(rctx, num_changes, start_step);
-        match check_assuming(&mut rctx.smt_ctx, constraint, &rctx.solver)? {
+        match check_assuming(rctx.ctx, &mut rctx.smt_ctx, [constraint], &rctx.solver)? {
             CheckSatResponse::Sat => {
                 // found a solution
                 return Ok(num_changes);
@@ -84,34 +84,11 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding, C: So
         .states()
         .filter(|(_, s)| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
     {
-        let symbol = rctx
-            .enc
-            .get_at(rctx.ctx, &mut rctx.smt_ctx, state.symbol, start_step);
-        match state.symbol.get_type(rctx.ctx) {
-            Type::BV(_) => {
-                let value = rctx.sim.get(state.symbol).unwrap();
-                let value_expr = value_to_smt_expr(&mut rctx.smt_ctx, value);
-                rctx.smt_ctx.assert(rctx.smt_ctx.eq(symbol, value_expr))?;
-            }
-            Type::Array(tpe) => {
-                let elements = 1u64 << tpe.index_width;
-                for index in 0..elements {
-                    let value = rctx.sim.get_element(state.symbol, index).unwrap();
-                    let value_expr = value_to_smt_expr(&mut rctx.smt_ctx, value);
-                    let index_expr = if tpe.index_width == 1 {
-                        if index == 0 {
-                            rctx.smt_ctx.false_()
-                        } else {
-                            rctx.smt_ctx.true_()
-                        }
-                    } else {
-                        rctx.smt_ctx.binary(tpe.index_width as usize, index)
-                    };
-                    let read = rctx.smt_ctx.select(symbol, index_expr);
-                    rctx.smt_ctx.assert(rctx.smt_ctx.eq(read, value_expr))?;
-                }
-            }
-        }
+        let symbol = rctx.enc.get_at(rctx.ctx, state.symbol, start_step);
+        let value = rctx.sim.get(state.symbol).unwrap();
+        let smt_value = rctx.ctx.lit(&value);
+        let is_equal = rctx.ctx.equal(symbol, smt_value);
+        rctx.smt_ctx.assert(rctx.ctx, is_equal)?;
     }
     Ok(())
 }
@@ -215,7 +192,7 @@ impl RepairVars {
         }
         for ((sym, _width), value) in self.free.iter().zip(assignment.free.iter()) {
             let num_value = serde_json::Number::from_str(&value.to_string()).unwrap();
-            let sym_name = sym.get_symbol_name(ctx).unwrap().to_string();
+            let sym_name = ctx.get_symbol_name(sym).unwrap().to_string();
             out.insert(sym_name, json!(num_value));
         }
 
@@ -258,12 +235,12 @@ impl RepairVars {
 
     pub fn block_assignment(
         &self,
-        ctx: &Context,
+        ctx: &mut Context,
         smt_ctx: &mut impl SolverContext,
         enc: &impl TransitionSystemEncoding,
         assignment: &RepairAssignment,
         start_step: StepInt,
-    ) -> std::io::Result<()> {
+    ) -> patronus::smt::Result<()> {
         // disallow this particular combination of change variables
         let constraints = self
             .change
@@ -275,12 +252,16 @@ impl RepairVars {
                 if *value {
                     smt_sym
                 } else {
-                    smt_ctx.not(smt_sym)
+                    ctx.not(smt_sym)
                 }
             })
             .collect::<Vec<_>>();
-        let assignment_constraint = smt_ctx.and_many(constraints);
-        let no_assignment = smt_ctx.not(assignment_constraint);
+        debug_assert!(!constraints.is_empty());
+        let assignment_constraint = constraints
+            .into_iter()
+            .reduce(|a, b| ctx.and(a, b))
+            .unwrap();
+        let no_assignment = ctx.not(assignment_constraint);
         smt_ctx.assert(ctx, no_assignment)
     }
 
@@ -288,7 +269,7 @@ impl RepairVars {
         let mut out = vec![];
         for (sym, value) in self.change.iter().zip(assignment.change.iter()) {
             if *value {
-                out.push(sym.get_symbol_name(ctx).unwrap().to_string());
+                out.push(ctx.get_symbol_name(*sym).unwrap().to_string());
             }
         }
         out
