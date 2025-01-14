@@ -1,6 +1,7 @@
 // Copyright 2024 The Regents of the University of California
+// Copyright 2025 Cornell University
 // released under BSD 3-Clause License
-// author: Kevin Laeufer <laeufer@berkeley.edu>
+// author: Kevin Laeufer <laeufer@cornell.edu>
 //
 // This is not a real synthesizer implementation.
 // Instead we are trying to find out which windows sizes can solve a synthesis problem.
@@ -11,7 +12,7 @@ use crate::repair::{RepairAssignment, RepairContext, RepairResult, RepairStatus,
 use crate::start_solver;
 use crate::testbench::{RunConfig, StepInt, StopAt};
 use easy_smt::Response;
-use libpatron::mc::{Simulator, SmtSolverCmd, TransitionSystemEncoding, UnrollSmtEncoding};
+use patronus::mc::{TransitionSystemEncoding, UnrollSmtEncoding};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Debug;

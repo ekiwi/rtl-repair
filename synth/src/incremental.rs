@@ -1,16 +1,17 @@
 // Copyright 2023-2024 The Regents of the University of California
+// Copyright 2025 Cornell University
 // released under BSD 3-Clause License
-// author: Kevin Laeufer <laeufer@berkeley.edu>
+// author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::basic::generate_minimal_repair;
+use crate::repair::*;
 use crate::testbench::{RunConfig, RunResult, StepInt, StopAt};
+use crate::Stats;
 use easy_smt::Response;
-use libpatron::mc::*;
+use patronus::mc::*;
+use patronus::sim::Simulator;
 use std::collections::HashMap;
 use std::fmt::Debug;
-
-use crate::repair::*;
-use crate::Stats;
 
 pub struct IncrementalConf {
     /// Information about the first cycle in which the bug manifests.

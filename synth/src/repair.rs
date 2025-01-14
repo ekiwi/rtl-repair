@@ -1,14 +1,17 @@
 // Copyright 2023-2024 The Regents of the University of California
+// Copyright 2025 Cornell University
 // released under BSD 3-Clause License
-// author: Kevin Laeufer <laeufer@berkeley.edu>
+// author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::testbench::{StepInt, Testbench};
 use crate::Stats;
 use easy_smt as smt;
-use libpatron::ir::*;
-use libpatron::mc::*;
 use num_bigint::BigUint;
 use num_traits::identities::Zero;
+use patronus::expr::{ExprRef, WidthInt};
+use patronus::mc::*;
+use patronus::sim::Simulator;
+use patronus::smt::{Logic, SmtLibSolver, Solver, SolverContext};
 use serde_json::json;
 use std::str::FromStr;
 
@@ -136,31 +139,31 @@ pub fn bit_string_to_smt(smt_ctx: &mut smt::Context, bits: &str) -> smt::SExpr {
     }
 }
 
-pub fn create_smt_ctx(solver: &SmtSolverCmd, dump_file: Option<&str>) -> Result<smt::Context> {
+pub fn create_smt_ctx(
+    solver: &SmtLibSolver,
+    dump_file: Option<&str>,
+) -> Result<impl SolverContext> {
     let replay_file = if let Some(filename) = dump_file {
         Some(std::fs::File::create(filename)?)
     } else {
         None
     };
-    let mut smt_ctx = smt::ContextBuilder::new()
-        .solver(solver.name, solver.args)
-        .replay_file(replay_file)
-        .build()?;
+    let mut smt_ctx = solver.start(replay_file).unwrap();
     set_logic(&mut smt_ctx, solver)?;
     Ok(smt_ctx)
 }
 
 /// sets the correct logic depending on the solver we are using
-fn set_logic(smt_ctx: &mut smt::Context, cmd: &SmtSolverCmd) -> Result<()> {
+fn set_logic(smt_ctx: &mut impl SolverContext, cmd: &SmtLibSolver) -> Result<()> {
     // z3 only supports the non-standard as-const array syntax when the logic is set to ALL
-    let logic = if cmd.name == "z3" {
-        "ALL"
-    } else if cmd.supports_uf {
-        "QF_AUFBV"
+    let logic = if cmd.name() == "z3" {
+        Logic::All
+    } else if cmd.supports_uf() {
+        Logic::QfAufbv
     } else {
-        "QF_ABV"
+        Logic::QfAbv
     };
-    smt_ctx.set_logic(logic)
+    Ok(smt_ctx.set_logic(logic).unwrap())
 }
 
 pub struct RepairVars {

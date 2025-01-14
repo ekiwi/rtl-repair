@@ -1,13 +1,14 @@
 // Copyright 2023-2024 The Regents of the University of California
+// Copyright 2025 Cornell University
 // released under BSD 3-Clause License
-// author: Kevin Laeufer <laeufer@berkeley.edu>
-
-use easy_smt as smt;
-use libpatron::mc::*;
+// author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::repair::*;
 use crate::testbench::StepInt;
 use crate::Stats;
+use easy_smt as smt;
+use patronus::mc::*;
+use patronus::sim::Simulator;
 
 pub fn basic_repair<S: Simulator, E: TransitionSystemEncoding>(
     mut rctx: RepairContext<S, E>,

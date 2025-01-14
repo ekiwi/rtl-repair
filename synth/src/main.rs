@@ -19,15 +19,13 @@ use crate::studies::windowing::{Windowing, WindowingConf};
 use crate::testbench::*;
 use clap::{arg, Parser, ValueEnum};
 use easy_smt as smt;
-use libpatron::ir::{
-    replace_anonymous_inputs_with_zero, simplify_expressions, Context, SerializableIrNode,
-    TransitionSystem,
-};
-use libpatron::mc::{
-    Simulator, SmtSolverCmd, TransitionSystemEncoding, UnrollSmtEncoding, BITWUZLA_CMD, YICES2_CMD,
-};
-use libpatron::sim::interpreter::InitKind;
-use libpatron::*;
+use patronus::btor2;
+use patronus::expr::{Context, SerializableIrNode};
+use patronus::mc::{TransitionSystemEncoding, UnrollSmtEncoding};
+use patronus::sim::{Interpreter, Simulator};
+use patronus::smt::{SmtLibSolver, BITWUZLA, YICES2};
+use patronus::system::transform::{replace_anonymous_inputs_with_zero, simplify_expressions};
+use patronus::system::TransitionSystem;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -100,10 +98,10 @@ pub enum Solver {
 }
 
 impl Solver {
-    pub fn cmd(&self) -> SmtSolverCmd {
+    pub fn cmd(&self) -> SmtLibSolver {
         match self {
-            Solver::Bitwuzla => BITWUZLA_CMD,
-            Solver::Yices2 => YICES2_CMD,
+            Solver::Bitwuzla => BITWUZLA,
+            Solver::Yices2 => YICES2,
         }
     }
 }
@@ -164,7 +162,7 @@ fn main() {
     }
 
     let sim_ctx = ctx.clone();
-    let mut sim = sim::interpreter::Interpreter::new(&sim_ctx, &sys);
+    let mut sim = Interpreter::new(&sim_ctx, &sys);
 
     // load testbench
     let mut tb = Testbench::load(&ctx, &sys, &args.testbench, args.verbose, args.trace_sim)
@@ -173,7 +171,7 @@ fn main() {
     // init free variables
     match args.init {
         Init::Zero => {
-            sim.init(InitKind::Zero);
+            sim.init();
             tb.define_inputs(InitKind::Zero);
         }
         Init::Random => {
@@ -328,7 +326,7 @@ fn main() {
 }
 
 pub fn start_solver(
-    cmd: &SmtSolverCmd,
+    cmd: &SmtLibSolver,
     smt_dump: Option<&str>,
     ctx: &mut Context,
     sys: &TransitionSystem,

@@ -1,11 +1,13 @@
 // Copyright 2023-2024 The Regents of the University of California
+// Copyright 2025 Cornell University
 // released under BSD 3-Clause License
-// author: Kevin Laeufer <laeufer@berkeley.edu>
+// author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::repair::RepairContext;
 use crate::testbench::StepInt;
 use easy_smt::Response;
-use libpatron::mc::{Simulator, TransitionSystemEncoding};
+use patronus::mc::TransitionSystemEncoding;
+use patronus::sim::Simulator;
 
 /// Quick check with no unrolling which can tell if there is no way to repair the design with
 /// the provided repair variables.

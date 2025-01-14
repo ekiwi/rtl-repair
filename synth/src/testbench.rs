@@ -1,19 +1,15 @@
 // Copyright 2023-2024 The Regents of the University of California
+// Copyright 2025 Cornell University
 // released under BSD 3-Clause License
-// author: Kevin Laeufer <laeufer@berkeley.edu>
+// author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::repair::{bit_string_to_smt, classify_state, CHANGE_COUNT_OUTPUT_NAME};
-use libpatron::ir::*;
-use libpatron::mc::{Simulator, TransitionSystemEncoding};
-use libpatron::sim::interpreter::{InitKind, InitValueGenerator};
 use num_bigint::BigUint;
+use patronus::expr::{ExprRef, WidthInt};
+use patronus::mc::TransitionSystemEncoding;
 use std::collections::HashMap;
 
 pub type Result<T> = std::io::Result<T>;
-
-// TODO: make Word in libpatron public
-pub type Word = u64;
-
 pub type StepInt = u64;
 
 pub struct Testbench {

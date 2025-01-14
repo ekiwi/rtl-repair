@@ -1,6 +1,7 @@
 // Copyright 2024 The Regents of the University of California
+// Copyright 2025 Cornell University
 // released under BSD 3-Clause License
-// author: Kevin Laeufer <laeufer@berkeley.edu>
+// author: Kevin Laeufer <laeufer@cornell.edu>
 //
 // we study how the length of unrolling affects the basic synthesis approach
 
@@ -8,7 +9,7 @@ use crate::basic::generate_minimal_repair;
 use crate::repair::{RepairContext, RepairResult, RepairStatus};
 use crate::start_solver;
 use crate::testbench::{RunConfig, StepInt, StopAt};
-use libpatron::mc::{Simulator, SmtSolverCmd, UnrollSmtEncoding};
+use patronus::mc::UnrollSmtEncoding;
 use serde::Serialize;
 use std::time::Instant;
 
