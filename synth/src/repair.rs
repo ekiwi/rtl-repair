@@ -85,7 +85,7 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding, C: So
         .filter(|s| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
     {
         let symbol = rctx.enc.get_at(rctx.ctx, state.symbol, start_step);
-        let value = rctx.sim.get(state.symbol).unwrap();
+        let value = rctx.sim.get(state.symbol);
         let smt_value = rctx.ctx.lit(value);
         let is_equal = rctx.ctx.equal(symbol, smt_value);
         rctx.smt_ctx.assert(rctx.ctx, is_equal)?;

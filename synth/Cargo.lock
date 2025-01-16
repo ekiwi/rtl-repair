@@ -62,9 +62,9 @@ dependencies = [
 
 [[package]]
 name = "baa"
-version = "0.16.0"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40d4492a0c39a5286a28e99628afceb95566c04fe265b1cabac90ef11bae34ab"
+checksum = "14713e122d046378e9e5d74e833d1e1cf277705dd0290eb74f2be3c283ff4d76"
 
 [[package]]
 name = "boolean_expression"

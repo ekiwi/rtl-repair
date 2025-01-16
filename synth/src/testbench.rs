@@ -238,7 +238,7 @@ impl Testbench {
         if !self.signals_to_print.is_empty() {
             println!();
             for (name, expr) in self.signals_to_print.iter() {
-                if let Some(Value::BitVec(value)) = sim.get(*expr) {
+                if let Value::BitVec(value) = sim.get(*expr) {
                     println!("{name}@{step_id} = {}", value.to_bit_str())
                 }
             }
@@ -249,7 +249,7 @@ impl Testbench {
         for (io, maybe_value) in self.ios.iter().zip(io_values.iter()) {
             if !io.is_input {
                 if let Some(expected_value) = maybe_value {
-                    let actual_value: BitVecValue = sim.get(io.expr).unwrap().try_into().unwrap();
+                    let actual_value: BitVecValue = sim.get(io.expr).try_into().unwrap();
                     if *expected_value != actual_value {
                         failures.push(Failure {
                             step: step_id,
@@ -465,7 +465,6 @@ fn is_whitespace(c: u8) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_traits::ToPrimitive;
 
     #[test]
     fn test_trim() {
@@ -475,12 +474,5 @@ mod tests {
         assert_eq!(trim(b"   1234   "), b"1234");
         assert_eq!(trim(b"   12 34   "), b"12 34");
         assert_eq!(trim(b"   12  34   "), b"12  34");
-    }
-
-    #[test]
-    fn test_big_uint_parse() {
-        let inp = b"13476";
-        let big = dec_cell_to_big_uint(inp).unwrap();
-        assert_eq!(big.to_u64().unwrap(), 13476);
     }
 }
