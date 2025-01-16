@@ -4,7 +4,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::repair::{classify_state, CHANGE_COUNT_OUTPUT_NAME};
-use baa::{BitVecOps, BitVecValue};
+use baa::{BitVecOps, BitVecValue, Value};
 use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus::mc::TransitionSystemEncoding;
 use patronus::sim::{InitKind, Simulator};
@@ -238,7 +238,7 @@ impl Testbench {
         if !self.signals_to_print.is_empty() {
             println!();
             for (name, expr) in self.signals_to_print.iter() {
-                if let Some(value) = sim.get(*expr) {
+                if let Some(Value::BitVec(value)) = sim.get(*expr) {
                     println!("{name}@{step_id} = {}", value.to_bit_str())
                 }
             }
@@ -249,7 +249,7 @@ impl Testbench {
         for (io, maybe_value) in self.ios.iter().zip(io_values.iter()) {
             if !io.is_input {
                 if let Some(expected_value) = maybe_value {
-                    let actual_value = sim.get(io.expr).unwrap();
+                    let actual_value: BitVecValue = sim.get(io.expr).unwrap().try_into().unwrap();
                     if *expected_value != actual_value {
                         failures.push(Failure {
                             step: step_id,

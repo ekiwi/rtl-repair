@@ -257,7 +257,6 @@ fn main() {
         change_count_ref,
         smt_ctx,
         enc,
-        solver: args.solver.cmd(),
         verbose: args.verbose,
     };
 
@@ -295,8 +294,6 @@ fn main() {
         }
         RepairCommand::WindowingStudy => {
             let conf = WindowingConf {
-                cmd: args.solver.cmd(),
-                dump_smt: args.smt_dump.clone(),
                 fail_at,
                 max_repair_window_size: args.max_repair_window_size,
             };

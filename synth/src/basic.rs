@@ -88,6 +88,6 @@ pub fn generate_minimal_repair<S: Simulator, E: TransitionSystemEncoding, C: Sol
     let solution =
         rctx.synth_vars
             .read_assignment(rctx.ctx, &mut rctx.smt_ctx, &rctx.enc, start_step);
-    check_assuming_end(&mut rctx.smt_ctx, &rctx.solver)?;
+    check_assuming_end(&mut rctx.smt_ctx)?;
     Ok(Some((solution, min_num_changes)))
 }

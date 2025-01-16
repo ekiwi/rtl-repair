@@ -13,15 +13,13 @@ use crate::restart_solver;
 use crate::testbench::{RunConfig, StepInt, StopAt};
 use patronus::mc::{TransitionSystemEncoding, UnrollSmtEncoding};
 use patronus::sim::Simulator;
-use patronus::smt::{CheckSatResponse, SmtLibSolver, SolverContext};
+use patronus::smt::{CheckSatResponse, SolverContext};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Instant;
 
 pub struct WindowingConf {
-    pub cmd: SmtLibSolver,
-    pub dump_smt: Option<String>,
     /// Information about the first cycle in which the bug manifests.
     pub fail_at: StepInt,
     /// The maximum size of the repair window.

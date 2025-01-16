@@ -6,7 +6,7 @@
 use crate::testbench::{StepInt, Testbench};
 use crate::Stats;
 use baa::{BitVecOps, BitVecValue};
-use patronus::expr::{Context, ExprRef, Type, TypeCheck, WidthInt};
+use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus::mc::*;
 use patronus::sim::Simulator;
 use patronus::smt::{CheckSatResponse, Logic, SmtLibSolver, Solver, SolverContext};
@@ -38,7 +38,6 @@ pub struct RepairContext<'a, S: Simulator, E: TransitionSystemEncoding, C: Solve
     pub change_count_ref: ExprRef,
     pub smt_ctx: C,
     pub enc: E,
-    pub solver: SmtLibSolver,
     pub verbose: bool,
 }
 
@@ -61,7 +60,7 @@ pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding, C: SolverCont
     let mut num_changes = 1u32;
     loop {
         let constraint = constrain_changes(rctx, num_changes, start_step);
-        match check_assuming(rctx.ctx, &mut rctx.smt_ctx, [constraint], &rctx.solver)? {
+        match check_assuming(rctx.ctx, &mut rctx.smt_ctx, [constraint])? {
             CheckSatResponse::Sat => {
                 // found a solution
                 return Ok(num_changes);
@@ -70,7 +69,7 @@ pub fn minimize_changes<S: Simulator, E: TransitionSystemEncoding, C: SolverCont
             CheckSatResponse::Unknown => panic!("SMT solver returned unknown!"),
         }
         // remove assertion for next round
-        check_assuming_end(&mut rctx.smt_ctx, &rctx.solver)?;
+        check_assuming_end(&mut rctx.smt_ctx)?;
         num_changes += 1;
     }
 }
@@ -79,14 +78,15 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding, C: So
     rctx: &mut RepairContext<S, E, C>,
     start_step: StepInt,
 ) -> Result<()> {
-    for (_, state) in rctx
+    for state in rctx
         .sys
-        .states()
-        .filter(|(_, s)| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
+        .states
+        .iter()
+        .filter(|s| s.init.is_none() && !rctx.synth_vars.is_repair_var(s.symbol))
     {
         let symbol = rctx.enc.get_at(rctx.ctx, state.symbol, start_step);
         let value = rctx.sim.get(state.symbol).unwrap();
-        let smt_value = rctx.ctx.lit(&value);
+        let smt_value = rctx.ctx.lit(value);
         let is_equal = rctx.ctx.equal(symbol, smt_value);
         rctx.smt_ctx.assert(rctx.ctx, is_equal)?;
     }
@@ -96,7 +96,7 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding, C: So
 pub fn create_smt_ctx(
     solver: &SmtLibSolver,
     dump_file: Option<&str>,
-) -> Result<impl SolverContext> {
+) -> Result<impl SolverContext + 'static> {
     let replay_file = if let Some(filename) = dump_file {
         Some(std::fs::File::create(filename)?)
     } else {
@@ -134,8 +134,8 @@ impl RepairVars {
         let mut change = Vec::new();
         let mut free = Vec::new();
 
-        for (_, state) in sys.states() {
-            let name = state.symbol.get_symbol_name(ctx).unwrap();
+        for state in sys.states.iter() {
+            let name = ctx.get_symbol_name(state.symbol).unwrap();
             match classify_state(name) {
                 StateType::ChangeVar => {
                     assert_eq!(
@@ -187,12 +187,12 @@ impl RepairVars {
 
         for (sym, value) in self.change.iter().zip(assignment.change.iter()) {
             let num_value = if *value { 1 } else { 0 };
-            let sym_name = sym.get_symbol_name(ctx).unwrap().to_string();
+            let sym_name = ctx.get_symbol_name(*sym).unwrap().to_string();
             out.insert(sym_name, json!(num_value));
         }
         for ((sym, _width), value) in self.free.iter().zip(assignment.free.iter()) {
-            let num_value = serde_json::Number::from_str(&value.to_string()).unwrap();
-            let sym_name = ctx.get_symbol_name(sym).unwrap().to_string();
+            let num_value = serde_json::Number::from_str(&value.to_dec_str()).unwrap();
+            let sym_name = ctx.get_symbol_name(*sym).unwrap().to_string();
             out.insert(sym_name, json!(num_value));
         }
 
