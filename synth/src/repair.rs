@@ -5,7 +5,7 @@
 
 use crate::testbench::{StepInt, Testbench};
 use crate::Stats;
-use baa::{BitVecOps, BitVecValue};
+use baa::{ArrayOps, ArrayValue, BitVecOps, BitVecValue};
 use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus::mc::*;
 use patronus::sim::Simulator;
@@ -86,9 +86,23 @@ pub fn constrain_starting_state<S: Simulator, E: TransitionSystemEncoding, C: So
     {
         let symbol = rctx.enc.get_at(rctx.ctx, state.symbol, start_step);
         let value = rctx.sim.get(state.symbol);
-        let smt_value = rctx.ctx.lit(value);
-        let is_equal = rctx.ctx.equal(symbol, smt_value);
-        rctx.smt_ctx.assert(rctx.ctx, is_equal)?;
+        let is_array = symbol.get_type(rctx.ctx).is_array();
+        if is_array && !rctx.smt_ctx.supports_const_array() {
+            // special code path for yices2 which does not support (as const)
+            let value: ArrayValue = value.try_into().unwrap();
+            for ii in 0..(value.num_elements() as u64) {
+                let index = BitVecValue::from_u64(ii, value.index_width());
+                let data = value.select(&index);
+                let is_equal = rctx
+                    .ctx
+                    .build(|c| c.equal(c.array_read(symbol, c.bv_lit(&index)), c.bv_lit(&data)));
+                rctx.smt_ctx.assert(rctx.ctx, is_equal)?;
+            }
+        } else {
+            let smt_value = rctx.ctx.lit(value);
+            let is_equal = rctx.ctx.equal(symbol, smt_value);
+            rctx.smt_ctx.assert(rctx.ctx, is_equal)?;
+        }
     }
     Ok(())
 }

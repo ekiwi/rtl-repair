@@ -62,9 +62,9 @@ dependencies = [
 
 [[package]]
 name = "baa"
-version = "0.16.7"
+version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a96cdb761b9db6fe95a704ed2e4a8b50c80de80daa7288a6bb5e48663b28f60"
+checksum = "78d4aedfd6dacc646ce271c8149dce74ebd442f19ffb296ddd896eb3565c2401"
 dependencies = [
  "rand",
 ]
