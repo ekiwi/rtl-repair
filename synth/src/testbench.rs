@@ -5,9 +5,9 @@
 
 use crate::repair::{classify_state, CHANGE_COUNT_OUTPUT_NAME};
 use baa::{BitVecOps, BitVecValue, Value};
-use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
+use patronus::expr::{Context, ExprRef, Type, TypeCheck, WidthInt};
 use patronus::mc::TransitionSystemEncoding;
-use patronus::sim::{InitKind, Simulator};
+use patronus::sim::{InitKind, InitValueGenerator, Simulator};
 use patronus::smt::SolverContext;
 use patronus::system::TransitionSystem;
 
@@ -148,7 +148,7 @@ impl Testbench {
 
     /// Replaces all X assignments to inputs with a random or zero value.
     pub fn define_inputs(&mut self, kind: InitKind) {
-        //let mut gen = InitValueGenerator::from_kind(kind);
+        let mut gen = InitValueGenerator::from_kind(kind);
         for step_id in 0..self.step_count() {
             let range = self.step_range(step_id);
             let values = &mut self.data[range];
@@ -156,9 +156,7 @@ impl Testbench {
             for (io, value) in self.ios.iter().zip(values.iter_mut()) {
                 if io.is_input {
                     if value.is_none() {
-                        // let data_words = &mut io_words[0..width_to_words(io.width)];
-                        // gen.assign(data_words, io.width, 1);
-                        todo!("generate init value!")
+                        *value = Some(gen.gen(Type::BV(io.width)).try_into().unwrap());
                     }
                 }
             }
