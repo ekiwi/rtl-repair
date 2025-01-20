@@ -38,8 +38,10 @@ def _check_exists(working_dir: Path, sources: list):
         assert working_dir.exists(), f"directory {working_dir} does not exist"
 
 def _require_yosys():
-    r = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE)
-    assert r.returncode == 0, f"failed to find yosys {r}"
+    # try both versions of the version argument
+    r1 = subprocess.run(["yosys", "-version"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    r2 = subprocess.run(["yosys", "--version"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert r1.returncode == 0 or r2.returncode == 0, f"failed to find yosys {r1} {r2}"
 
 def _read_sources(sources: list, top: str, include: Path = None) -> list:
     if include is None:
